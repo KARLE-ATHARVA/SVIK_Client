@@ -5,7 +5,7 @@ import { Maximize2, RotateCcw, MousePointer2, Plus } from "lucide-react";
 import { CONCEPT_IMAGE_BASE_URL } from "@/lib/constants";
 
 export default function PreviewArea() {
-  const [bgImage, setBgImage] = useState(`${CONCEPT_IMAGE_BASE_URL}kitchen-1.jpg`);
+  const [bgImage, setBgImage] = useState(`${CONCEPT_IMAGE_BASE_URL}kitchen1.png`);
 
   useEffect(() => {
     // Check if a specific variant was selected

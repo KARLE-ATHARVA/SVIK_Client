@@ -4,13 +4,8 @@ import { useState, useEffect } from "react";
 import { Search, LayoutGrid, List, SlidersHorizontal, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "./ProductCard";
-
-const FILTER_DATA = {
-  categories: ["Floor Tiles", "Wall Tiles", "Floor+Wall"],
-  applications: ["Indoor", "Outdoor", "Kitchen", "Bathroom", "Living Room"],
-  finishes: ["Matte", "Glossy", "Satin", "Sugar", "High Gloss"],
-  sizes: ["600x600", "300x600", "800x800", "600x1200", "200x1200"]
-};
+import { API_BASE } from "@/lib/constants";
+type DBMap = Record<string, string>;
 
 export default function Sidebar() {
   const [grid, setGrid] = useState(true);
@@ -19,17 +14,36 @@ export default function Sidebar() {
   const [products, setProducts] = useState<Array<{ id: string | number; name: string; image: string; size: string }>>([]);
   const searchParams = useSearchParams();
 
-  // 1. Permanent state (used for API calls)
-  const [activeFilters, setActiveFilters] = useState({
-    catNames: "Floor Tiles",
-    appNames: searchParams.get("app") || "Indoor",
-    finishNames: "Matte",
-    sizeNames: "600x600"
+  // Filter options available for the current space
+  const [filterOptions, setFilterOptions] = useState({
+    categories: [] as string[],
+    applications: [] as string[],
+    finishes: [] as string[],
+    sizes: [] as string[],
+    colors: [] as string[]
   });
 
-  // 2. Temporary UI state (holds values while the user clicks buttons)
-  const [tempFilters, setTempFilters] = useState({ ...activeFilters });
+  // Permanent state (used for API calls)
+  const [activeFilters, setActiveFilters] = useState({
+  catNames: [] as string[],
+  appNames: [] as string[],
+  finishNames: [] as string[],
+  sizeNames: [] as string[],
+  colorNames: [] as string[]
+});
 
+
+  // Dynamic options based on current selection
+  const [availableOptions, setAvailableOptions] = useState({
+    categories: [] as string[],
+    applications: [] as string[],
+    finishes: [] as string[],
+    sizes: [] as string[],
+    colors: [] as string[]
+  });
+
+  // Temporary UI state (holds values while the user clicks buttons)
+  const [tempFilters, setTempFilters] = useState({ ...activeFilters });
   const [currentSpace, setCurrentSpace] = useState("");
 
   useEffect(() => {
@@ -37,32 +51,51 @@ export default function Sidebar() {
     setCurrentSpace(savedSpace);
   }, []);
 
+  // Fetch all possible options for this space
+  useEffect(() => {
+    if (!currentSpace) return;
+    fetch(`${API_BASE}/FilterOptions?spaceName=${currentSpace}`)
+      .then(r => r.json())
+      .then(data => setFilterOptions(data))
+      .catch(err => console.error("FilterOptions error", err));
+  }, [currentSpace]);
+
+  // Fetch which options are "available" (not disabled) based on temp selection
+  useEffect(() => {
+    if (!currentSpace) return;
+    const params = new URLSearchParams();
+    params.append("spaceName", currentSpace);
+    Object.entries(tempFilters).forEach(([k, v]) => {
+  if (v.length) params.append(k, v.join(","));
+});
+
+
+    fetch(`${API_BASE}/FilterAvailableOptions?${params.toString()}`)
+      .then(r => r.json())
+      .then(setAvailableOptions)
+      .catch(err => console.error("AvailableOptions error", err));
+  }, [tempFilters, currentSpace]);
+
   const fetchProducts = async () => {
     if (!currentSpace) return;
-    
     setLoading(true);
     try {
-      const baseUrl = "https://vyr.svikinfotech.in/api/FilterTileList";
-      const params = new URLSearchParams({
-        spaceName: currentSpace.charAt(0).toUpperCase() + currentSpace.slice(1),
-        catNames: activeFilters.catNames,
-        appNames: activeFilters.appNames,
-        finishNames: activeFilters.finishNames,
-        sizeNames: activeFilters.sizeNames
-      });
+      const params = new URLSearchParams();
+      params.append("spaceName", currentSpace);
+      Object.entries(tempFilters).forEach(([k, v]) => {
+  if (v.length) params.append(k, v.join(","));
+});
 
-      const response = await fetch(`${baseUrl}?${params.toString()}`);
+      const response = await fetch(`${API_BASE}/FilterTileList?${params.toString()}`);
       if (!response.ok) throw new Error("API request failed");
-      
       const data = await response.json();
       
       const mappedProducts = (data || []).map((item: any) => ({
-        id: item.id || item.productCode || Math.random(),
-        name: item.productName || item.name || "Untitled Product",
-        image: item.imagePath || item.image || "/placeholder.jpg",
-        size: item.size || activeFilters.sizeNames
+        id: item.tile_id,
+        name: item.sku_name,
+        image: `https://vyr.svikinfotech.in/assets/media/thumb/${item.sku_code}.jpg`,
+        size: item.size_name
       }));
-
       setProducts(mappedProducts);
     } catch (error) {
       console.error("Fetch error:", error);
@@ -71,20 +104,26 @@ export default function Sidebar() {
     }
   };
 
-  // 3. Trigger fetch ONLY when activeFilters or currentSpace changes
   useEffect(() => {
     fetchProducts();
   }, [activeFilters, currentSpace]);
 
-  // Handle the Apply button click
   const handleApplyFilters = () => {
-    setActiveFilters({ ...tempFilters }); // Push temp changes to active state to trigger fetch
+    setActiveFilters({ ...tempFilters });
     setShowFilters(false);
   };
 
-  const updateTempFilter = (key: string, value: string) => {
-    setTempFilters(prev => ({ ...prev, [key]: value }));
-  };
+  const updateTempFilter = (key: keyof typeof tempFilters, value: string) => {
+  setTempFilters(prev => {
+    const list = prev[key];
+    return {
+      ...prev,
+      [key]: list.includes(value)
+        ? list.filter(v => v !== value)
+        : [...list, value]
+    };
+  });
+};
 
   return (
     <div className="h-full flex flex-col bg-transparent relative">
@@ -109,7 +148,7 @@ export default function Sidebar() {
         <div className="flex justify-between items-center gap-3">
           <button 
             onClick={() => {
-              setTempFilters({ ...activeFilters }); // Reset temp UI to match current active data
+              setTempFilters({ ...activeFilters });
               setShowFilters(!showFilters);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
@@ -143,7 +182,7 @@ export default function Sidebar() {
             </div>
           ) : (
             <div className="text-center py-20">
-               <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">No results found</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">No results found</p>
             </div>
           )}
         </div>
@@ -153,22 +192,29 @@ export default function Sidebar() {
             <div className="space-y-6 pb-12">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 mb-2">
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Locked Space</p>
-                <p className="text-sm font-bold text-slate-900 uppercase tracking-tight capitalize">{currentSpace}</p>
+                <p className="text-sm font-bold text-slate-900 uppercase tracking-tight ">{currentSpace}</p>
               </div>
 
               {/* Categories */}
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Category</h4>
                 <div className="flex flex-wrap gap-2">
-                  {FILTER_DATA.categories.map(cat => (
-                    <button 
-                      key={cat} 
-                      onClick={() => updateTempFilter("catNames", cat)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${tempFilters.catNames === cat ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"}`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+                  {filterOptions.categories.map(cat => {
+                    const isEnabled = availableOptions.categories.includes(cat);
+                    return (
+                      <button 
+                        key={cat} 
+                        onClick={() => updateTempFilter("catNames", cat)}
+                        disabled={!isEnabled}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
+                          !isEnabled ? "opacity-30 pointer-events-none" : 
+                          tempFilters.catNames.includes(cat) ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -176,11 +222,11 @@ export default function Sidebar() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Application</h4>
                 <div className="flex flex-wrap gap-2">
-                  {FILTER_DATA.applications.map(app => (
+                  {filterOptions.applications.map(app => (
                     <button 
                       key={app} 
                       onClick={() => updateTempFilter("appNames", app)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${tempFilters.appNames === app ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"}`}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${tempFilters.appNames.includes(app) ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"}`}
                     >
                       {app}
                     </button>
@@ -192,15 +238,22 @@ export default function Sidebar() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Finish</h4>
                 <div className="flex flex-wrap gap-2">
-                  {FILTER_DATA.finishes.map(f => (
-                    <button 
-                      key={f} 
-                      onClick={() => updateTempFilter("finishNames", f)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${tempFilters.finishNames === f ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"}`}
-                    >
-                      {f}
-                    </button>
-                  ))}
+                  {filterOptions.finishes.map(f => {
+                    const isEnabled = availableOptions.finishes.includes(f);
+                    return (
+                      <button 
+                        key={f} 
+                        disabled={!isEnabled}
+                        onClick={() => updateTempFilter("finishNames", f)}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
+                          !isEnabled ? "opacity-30 pointer-events-none" :
+                          tempFilters.finishNames.includes(f) ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -208,19 +261,43 @@ export default function Sidebar() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Size</h4>
                 <div className="flex flex-wrap gap-2">
-                  {FILTER_DATA.sizes.map(s => (
-                    <button 
-                      key={s} 
-                      onClick={() => updateTempFilter("sizeNames", s)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${tempFilters.sizeNames === s ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"}`}
+                  {filterOptions.sizes.map(s => {
+                    const isEnabled = availableOptions.sizes.includes(s);
+                    return (
+                      <button
+                        key={s}
+                        disabled={!isEnabled}
+                        onClick={() => updateTempFilter("sizeNames", s)}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
+                          !isEnabled ? "opacity-30 pointer-events-none" : 
+                          tempFilters.sizeNames.includes(s) ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ); 
+                  })}
+                </div>
+              </div>
+              
+              {/* Colors */}
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Color</h4>
+                <div className="flex flex-wrap gap-2">
+                  {filterOptions.colors.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => updateTempFilter("colorNames", c)}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
+                        tempFilters.colorNames.includes(c) ? "bg-slate-900 border-slate-900 text-white" : "border-slate-200 text-slate-500 bg-white"
+                      }`}
                     >
-                      {s}
+                      {c}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* THE APPLY BUTTON - Only trigger fetch here */}
               <button 
                 onClick={handleApplyFilters}
                 className="w-full bg-amber-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-amber-500/20 active:scale-95 transition-transform mt-4"

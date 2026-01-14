@@ -1,13 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Image from "next/image";
-import { FiArrowLeft, FiChevronRight } from "react-icons/fi";
+import { FiChevronRight } from "react-icons/fi";
 import StyleFilterOptions from "./StyleFilterOptions";
 import { CONCEPT_IMAGE_BASE_URL } from "@/lib/constants";
 
-// Generic styles that will apply the space name prefix
+const SPACE_FILE_PREFIX: Record<string, string> = {
+  kitchen: "kitchen",
+  living: "Living_Room",
+  bedroom: "Bedroom",
+  bathroom: "Bathroom"
+};
+
 const styleVariants = [
   { id: 1, name: "Minimal", index: 1, tag: "Clean & Sleek" },
   { id: 2, name: "Classic Elegance", index: 2, tag: "Timeless Craft" },
@@ -20,23 +26,29 @@ export default function KitchenStylePicker({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     const savedSpace = localStorage.getItem("selected_space_type");
-    if (savedSpace) setSpaceType(savedSpace);
+    if (savedSpace) {
+      setSpaceType(savedSpace);
+    } else {
+      // Default fallback if nothing is in storage
+      localStorage.setItem("selected_space_type", "kitchen");
+    }
   }, []);
 
   const handleStyleSelect = (index: number) => {
-    // Construct filename: <space>-<index>.jpg
-    const filename = `${spaceType}-${index}.jpg`;
-    const fullUrl = `${CONCEPT_IMAGE_BASE_URL}${filename}`;
-    
-    localStorage.setItem("selected_room_image", fullUrl);
-    setShowFilters(true);
-  };
+  const prefix = SPACE_FILE_PREFIX[spaceType] || spaceType;
+  const filename = `${prefix}${index}.png`;
+  const fullUrl = `${CONCEPT_IMAGE_BASE_URL}${filename}`;
+
+  localStorage.setItem("selected_room_image", fullUrl);
+  setShowFilters(true);
+};
+
 
   if (showFilters) {
     return (
       <StyleFilterOptions 
         onBack={() => setShowFilters(false)} 
-        onComplete={() => console.log("Final Step")} 
+        onComplete={() => console.log("Preferences set")} 
       />
     );
   }
@@ -84,12 +96,12 @@ export default function KitchenStylePicker({ onBack }: { onBack: () => void }) {
 
               <div className="relative flex-grow rounded-[32px] overflow-hidden border border-white/50 shadow-2xl shadow-slate-200/40 transition-all duration-700 group-hover:shadow-amber-900/10 group-hover:border-amber-500/30">
                 <Image 
-                  src={`${CONCEPT_IMAGE_BASE_URL}${spaceType}-${style.index}.jpg`} 
-                  alt={style.name} 
-                  fill 
-                  className="object-cover transition-transform duration-1000 group-hover:scale-110" 
-                  unoptimized // Use if external domain is not in next.config.js
-                />
+  src={`${CONCEPT_IMAGE_BASE_URL}${SPACE_FILE_PREFIX[spaceType] || spaceType}${style.index}.png`} 
+  alt={style.name} 
+  fill 
+  className="object-cover transition-transform duration-1000 group-hover:scale-110" 
+  unoptimized 
+/>
                 
                 <div className="absolute bottom-6 right-6 overflow-hidden">
                    <div className="bg-white/95 backdrop-blur-md px-5 py-2.5 rounded-2xl shadow-xl translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 flex items-center gap-2">
