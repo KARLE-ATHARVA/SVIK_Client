@@ -1,0 +1,11 @@
+# Python
+SVIK_Client/SVIK_Python_Backend/venv/
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Node
+node_modules/
+.next/
+dist/
