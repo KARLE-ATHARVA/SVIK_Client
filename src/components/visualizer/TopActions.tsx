@@ -1,24 +1,26 @@
 "use client";
 
 import { Share2, Download, Home, MessageCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+
 
 export default function TopActions() {
-  
+  const router = useRouter();
+
   const handleRoomsClick = (e: React.MouseEvent) => {
-    // 1. Prevent any parent motion-divs from intercepting the click
     e.preventDefault();
     e.stopPropagation();
 
-    // 2. Clear all room-specific data
+    // Optional: clear stored room state
     localStorage.removeItem("selected_space_type");
     localStorage.removeItem("selected_room_image");
     localStorage.removeItem("selected_variant");
     sessionStorage.clear();
 
-    // 3. Force a full browser reload to the base visualizer screen
-    // This destroys the current React state and forces Step 01 to mount fresh.
-    window.location.href = "/visualizerScreen"; 
+    // 🔥 Go to previous page
+    router.back();
   };
+
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
