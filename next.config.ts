@@ -3,11 +3,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* =========================
-     STATIC EXPORT (IIS)
-     ========================= */
-  output: "export",
-
-  /* =========================
      IMAGE HANDLING (STATIC)
      ========================= */
   images: {

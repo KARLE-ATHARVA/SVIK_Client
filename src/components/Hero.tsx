@@ -148,7 +148,7 @@ export default function Hero() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             {...fadeUp(0.9)}
-            onClick={() => router.push("/visualizer")}
+            onClick={() => router.push("/visualizer_old")}
             className="mt-6 w-full flex items-center justify-center gap-2 py-4 bg-amber-600 hover:bg-amber-700 transition rounded-full font-semibold shadow-xl"
           >
             <FiCamera size={20} /> Visualizer

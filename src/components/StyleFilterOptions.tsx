@@ -17,23 +17,23 @@ const colors = [
 type StyleFilterOptionsProps = {
   onBack: () => void;
   onComplete: () => void;
+  targetPath?: string;
 };
 
-export default function StyleFilterOptions({ onBack, onComplete }: StyleFilterOptionsProps) {
+export default function StyleFilterOptions({ onBack, onComplete, targetPath = "/visualizerScreen" }: StyleFilterOptionsProps) {
   const [selectedApp, setSelectedApp] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const router = useRouter();
 
   const handleProceed = () => {
     onComplete();
-    // Navigate with selection parameters
-    router.push(
-    `/visualizerScreen?app=${selectedApp.toUpperCase()}&color=${selectedColor}`
-  );
+    localStorage.setItem("selected_application", selectedApp.toUpperCase());
+    localStorage.setItem("selected_color", selectedColor);
+    router.push(`${targetPath}?app=${selectedApp.toUpperCase()}&color=${selectedColor}`);
   };
 
   const handleSkip = () => {
-    router.push("/visualizerScreen");
+    router.push(targetPath);
   };
 
   return (
