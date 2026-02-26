@@ -27,7 +27,7 @@ export default function VisualizerOptions() {
   const initialCategory = (searchParams.get("category") || "").toLowerCase();
   const validInitialCategory = CATEGORIES.some((c) => c.key === initialCategory) ? initialCategory : "";
 
-  const [showPicker, setShowPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(validInitialCategory !== "");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>(validInitialCategory);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
@@ -36,8 +36,6 @@ export default function VisualizerOptions() {
     () => CATEGORIES.find((c) => c.key === selectedCategory) ?? CATEGORIES[0],
     [selectedCategory]
   );
-
-  const shouldShowInitialRoomList = validInitialCategory !== "";
 
   const handleCategorySelect = (spaceKey: string) => {
     setSelectedCategory(spaceKey);
@@ -54,7 +52,7 @@ export default function VisualizerOptions() {
   return (
     <div className="w-full h-full flex flex-col justify-center">
       <AnimatePresence mode="wait">
-        {!showPicker && !shouldShowInitialRoomList ? (
+        {!showPicker ? (
           <motion.div
             key="room-selection"
             initial={{ opacity: 0, x: -15 }}
