@@ -1206,8 +1206,12 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
         });
     });
     k6 = R2[0][0];
-    p2 = y6 * k6[v39999.o(104)] / 500;
-    x2 = e6 * k6[v39999.V(97)] / 500;
+    var tileWmm = Number(n6);
+    var tileHmm = Number(b6);
+    var baseW = (isFinite(tileWmm) && tileWmm > 0) ? tileWmm : k6[v39999.o(104)];
+    var baseH = (isFinite(tileHmm) && tileHmm > 0) ? tileHmm : k6[v39999.V(97)];
+    p2 = y6 * baseW / 700;
+    x2 = e6 * baseH / 700;
     floorGeometry = new THREE[(v39999.R(25))](p2,x2);
     c2 = k39999.H7(x2, Math[v39999.V(23)](k39999.J7(1, skew_vertical) * Math[v39999.V(0)] / 2));
     floorGeometry[v39999.o(6)][0][v39999.u(51)] += c2;
