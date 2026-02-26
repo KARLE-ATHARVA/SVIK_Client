@@ -758,9 +758,10 @@ $(function(){
         var pageW = 210;
         var margin = 12;
         var cardW = pageW - margin * 2;
-        var cardH = 82;
+        var cardH = 56;
         var leftX = margin + 6;
-        var rightX = margin + cardW - 42;
+        var qrBox = { x: margin + cardW - 44, y: y + 10, w: 36, h: 36 };
+        var productBox = { x: qrBox.x - 48, y: y + 10, w: 40, h: 36 };
 
         pdf.setFillColor(248, 251, 252);
         pdf.roundedRect(margin, y, cardW, cardH, 3, 3, "F");
@@ -770,7 +771,7 @@ $(function(){
         pdf.setTextColor(18, 48, 47);
         pdf.setFontSize(13);
         pdf.setFontStyle("bold");
-        pdf.text(section.title, leftX, y + 9);
+        pdf.text(section.title, leftX, y + 10);
 
         pdf.setTextColor(34, 51, 59);
         pdf.setFontStyle("normal");
@@ -781,9 +782,6 @@ $(function(){
         if (section.tiles.length > 1) {
             pdf.text("Applied tiles in this section: " + section.tiles.length, leftX, y + 38);
         }
-
-        var productBox = { x: leftX, y: y + 44, w: 58, h: 32 };
-        var qrBox = { x: rightX, y: y + 16, w: 36, h: 36 };
         pdf.setDrawColor(214, 223, 228);
         pdf.rect(productBox.x, productBox.y, productBox.w, productBox.h);
         pdf.rect(qrBox.x, qrBox.y, qrBox.w, qrBox.h);
@@ -803,9 +801,9 @@ $(function(){
                 try {
                     pdf.setTextColor(14, 88, 86);
                     pdf.setFontSize(10);
-                    pdf.textWithLink(linkText, leftX, y + 14, { url: qrLink });
+                    pdf.textWithLink(linkText, leftX, y + 44, { url: qrLink });
                 } catch (e) {
-                    pdf.text(linkText + ": " + qrLink, leftX, y + 14);
+                    pdf.text(linkText + ": " + qrLink, leftX, y + 44);
                 }
 
                 fetchQrDataUrl(qrLink, function(qrDataUrl) {
