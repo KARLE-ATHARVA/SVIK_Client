@@ -309,14 +309,7 @@
                         </div>
                     </div>
                 </form>
-                <script>
-
-                    filter_select = function(inputs, mask) {
-                        inputs.each(function() {
-                            this.checked = eval(mask.replace('$', this.checked));
-                        });
-                    }
-                </script>
+               
             </div>
             <div class="modal-footer custome_modal_footer">
                 <button class="btn btn-default btn-sm custom_default_btn" type="button" data-dismiss="modal">Close</button>
@@ -495,14 +488,7 @@
                         </div>
                     </div>
                 </form>
-                <script>
-
-                    filter_select = function(inputs, mask) {
-                        inputs.each(function() {
-                            this.checked = eval(mask.replace('$', this.checked));
-                        });
-                    }
-                </script>
+        
             </div>
             <div class="modal-footer custome_modal_footer">
                 <button class="btn btn-default btn-sm custom_default_btn" type="button" data-dismiss="modal">Close</button>
@@ -613,3 +599,35 @@
 })(window);
 
 
+/* ======================================================
+   GLOBAL FILTER SELECT (SAFE VERSION)
+====================================================== */
+
+window.filter_select = function (inputs, mode) {
+    if (!inputs || !inputs.length) return;
+
+    var modal = inputs.first().closest(".modal");
+    if (!modal.length) return;
+
+    var key = modal.attr("id").replace("filter-section-", "");
+
+    inputs.each(function () {
+        if (mode === "true") {
+            this.checked = true;
+        } else if (mode === "false") {
+            this.checked = false;
+        } else if (mode === "!$") {
+            this.checked = !this.checked;
+        }
+    });
+
+    inputs.trigger("change");
+
+    if (typeof refreshFilterVisualState === "function") {
+        refreshFilterVisualState(key);
+    }
+
+    if (typeof applyFilter === "function") {
+        applyFilter(key);
+    }
+};

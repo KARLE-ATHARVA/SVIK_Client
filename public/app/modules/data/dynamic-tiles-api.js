@@ -81,6 +81,21 @@
         return s;
     }
 
+    function getAssetBase() {
+        var fromGlobal = "";
+        var fromStorage = "";
+        try {
+            fromGlobal = typeof global.VISUALIZER_ASSET_BASE === "string" ? global.VISUALIZER_ASSET_BASE : "";
+        } catch (e) {}
+        try {
+            fromStorage = global.localStorage && localStorage.getItem("visualizer_asset_base");
+        } catch (e) {}
+        var base = String(fromGlobal || fromStorage || "https://vyr.svikinfotech.in/assets/").trim();
+        if (!base) base = "https://vyr.svikinfotech.in/assets/";
+        if (base.slice(-1) !== "/") base += "/";
+        return base;
+    }
+
     function detectRoomId(explicitRoomId) {
         if (explicitRoomId !== undefined && explicitRoomId !== null) return String(explicitRoomId);
         var match = (global.location && global.location.pathname || "").match(/\/(\d+)\.html$/);
@@ -149,7 +164,7 @@
         if (direct) return toAbsUrl(direct);
 
         var skuCode = pick(item, ["sku_code", "skuCode", "code"], "");
-        if (skuCode) return "https://vyr.svikinfotech.in/assets/media/thumb/" + skuCode + ".jpg";
+        if (skuCode) return getAssetBase() + "media/thumb/" + skuCode + ".jpg";
 
         return "/app/images/tile_143.jpg";
     }
@@ -177,14 +192,28 @@
         return isFinite(n) ? n : (fallback || 0);
     }
 
+    function splitCsvValues(raw) {
+        return String(raw || "")
+            .split(",")
+            .map(function(v) { return String(v || "").replace(/\u00a0/g, " ").trim(); })
+            .filter(Boolean);
+    }
+
+    function normalizeApplicationValue(raw) {
+        var s = String(raw || "").toLowerCase();
+        if (s.indexOf("wall") > -1) return "WALL";
+        if (s.indexOf("floor") > -1) return "FLOOR";
+        return "";
+    }
+
     function mapToLegacyTile(item, panel, idx) {
         var baseId = asNumber(pick(item, ["tile_id", "tileId", "id"], idx + 1), idx + 1);
         var mappedId = baseId * 10 + panel;
         var size = parseSize(item);
         var category = safeText(pick(item, ["category_name", "category", "cat_name"], "Tiles"), "Tiles");
         var finish = safeText(pick(item, ["finish_name", "finish"], ""), "");
-        var application = safeText(pick(item, ["application_name", "application", "app_name"], ""), "");
-        var color = safeText(pick(item, ["color_name", "color"], ""), "");
+        var application = normalizeApplicationValue(pick(item, ["application_name", "application", "app_name"], ""));
+        var color = splitCsvValues(pick(item, ["color_name", "color"], "")).join(",");
         var price = asNumber(pick(item, ["price", "mrp", "rate"], 0), 0);
         var skuName = safeText(pick(item, ["sku_name", "name", "title"], "Tile " + baseId), "Tile " + baseId);
         var thumb = getThumbUrl(item);
@@ -1012,19 +1041,24 @@
             var sizeValues = uniqNonEmpty((optionsData && optionsData.sizes) || uniqueRows.map(function(r) { return pick(r, ["size_name", "sizeName"], ""); }));
             var finishValues = uniqNonEmpty((optionsData && optionsData.finishes) || uniqueRows.map(function(r) { return pick(r, ["finish_name", "finish"], ""); }));
             var categoryValues = uniqNonEmpty((optionsData && optionsData.categories) || uniqueRows.map(function(r) { return pick(r, ["cat_name", "category_name", "category"], ""); }));
-            var applicationValues = uniqNonEmpty((optionsData && optionsData.applications) || uniqueRows.map(function(r) { return pick(r, ["app_name", "application_name", "application"], ""); }));
+            var applicationValues = ["WALL", "FLOOR"];
             var colorValues = uniqNonEmpty((optionsData && optionsData.colors) || uniqueRows.map(function(r) { return pick(r, ["color_name", "color"], ""); }));
+            colorValues = uniqNonEmpty([].concat.apply([], colorValues.map(splitCsvValues)));
 
             replaceOptionsInFilterGroup(1, 23, sizeValues);
             replaceOptionsInFilterGroup(1, 25, finishValues);
+            removeFilterGroup(1, 29); // Remove legacy Price (panel 1)
             removeFilterGroup(1, 30); // Remove Price
+            removeFilterGroup(1, 31); // Remove legacy Sanita Wall
             removeFilterGroup(1, 32); // Remove legacy Sanita Floor
             upsertOptionFilterGroup(1, 27, "Category", categoryValues);
             upsertOptionFilterGroup(1, 34, "Application", applicationValues);
             upsertOptionFilterGroup(1, 33, "Color", colorValues);
             replaceOptionsInFilterGroup(2, 24, sizeValues);
             replaceOptionsInFilterGroup(2, 26, finishValues);
+            removeFilterGroup(2, 29); // Defensive cleanup
             removeFilterGroup(2, 30); // Remove Price
+            removeFilterGroup(2, 31); // Remove legacy Sanita Wall
             removeFilterGroup(2, 32); // Remove legacy Sanita Floor
             upsertOptionFilterGroup(2, 28, "Category", categoryValues);
             upsertOptionFilterGroup(2, 34, "Application", applicationValues);

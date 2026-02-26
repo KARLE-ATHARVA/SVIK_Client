@@ -49,6 +49,7 @@ export default function KitchenStylePicker({ onBack }: { onBack: () => void }) {
       <StyleFilterOptions 
         onBack={() => setShowFilters(false)} 
         onComplete={() => console.log("Preferences set")} 
+        spaceType={spaceType}
       />
     );
   }

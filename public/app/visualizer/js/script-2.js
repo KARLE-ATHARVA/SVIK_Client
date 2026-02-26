@@ -554,38 +554,94 @@ $(function(){
     }
 
     function getTileImageSrc(tile) {
+        function asProxyUrl(rawUrl) {
+            var u = String(rawUrl || "").trim();
+            if (!u) return "";
+            if (/^https?:\/\//i.test(u)) {
+                return "/api/tile-image?url=" + encodeURIComponent(u);
+            }
+            return u;
+        }
+
         if (!tile) return "";
-        var img = typeof tile.image === "string" ? tile.image : (tile.image && tile.image.src ? tile.image.src : "");
-        if (!img && tile.thumb_image) img = tile.thumb_image;
+        var img = "";
+        if (tile.thumb_image) {
+            img = String(tile.thumb_image);
+        } else {
+            img = typeof tile.image === "string" ? tile.image : (tile.image && tile.image.src ? tile.image.src : "");
+        }
         if (!img) return "";
-        if (/^https?:\/\//i.test(img) || /^data:/i.test(img) || img.charAt(0) === "/") return img;
+        if (/^data:/i.test(img) || img.indexOf("/api/tile-image?") === 0) return img;
+        if (/^https?:\/\//i.test(img) || img.charAt(0) === "/") return asProxyUrl(img);
         return "/" + img.replace(/^\.?\//, "");
     }
 
     function getTileProductLink(tile) {
-        var id = (tile && (tile.source_tile_id || tile.id)) || "";
-        var qs = [];
-        function q(k, v) {
-            if (v === undefined || v === null || v === "") return;
-            qs.push(encodeURIComponent(k) + "=" + encodeURIComponent(String(v)));
+        var source = (tile && (tile.name || tile.sku_code || tile.id)) || "tile";
+        var slug = String(source)
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+        return (window.location.origin || "") + "/product-details/" + encodeURIComponent(slug || "tile");
+    }
+
+    function getQrGenerateBase() {
+        var base = "";
+        if (typeof window.VISUALIZER_API_BASE === "string" && window.VISUALIZER_API_BASE.trim()) {
+            base = window.VISUALIZER_API_BASE.trim();
+        } else {
+            try {
+                var stored = localStorage.getItem("visualizer_api_base");
+                if (stored && stored.trim()) base = stored.trim();
+            } catch (e) {}
+        }
+        if (!base) base = window.location.origin || "";
+        return base.replace(/\/+$/, "");
+    }
+
+    function fetchGeneratedProductUrl(tile, done) {
+        var skuName = tile && tile.name ? String(tile.name).trim() : "";
+        var skuCode = tile && tile.sku_code ? String(tile.sku_code).trim() : "";
+        if (!skuName && !skuCode) {
+            done("");
+            return;
         }
 
-        var img = getTileImageSrc(tile);
-        var sizeText = (tile && tile.size && tile.size.length >= 2)
-            ? (tile.size[0] + " X " + tile.size[1] + " mm")
-            : "";
+        var query = skuName
+            ? ("skuName=" + encodeURIComponent(skuName))
+            : ("skuCode=" + encodeURIComponent(skuCode));
+        var base = getQrGenerateBase();
+        var candidates = [
+            base + "/Generate?" + query,
+            base + "/api/ProductQr/Generate?" + query
+        ];
 
-        q("name", tile && tile.name);
-        q("image", img);
-        q("size", sizeText);
-        q("finish", tile && tile.filters && (tile.filters["25"] || tile.filters["26"]));
-        q("application", tile && tile.filters && tile.filters["34"]);
-        q("color", tile && tile.filters && tile.filters["33"]);
-        q("material", tile && tile.cat_a_title);
-        q("looks", tile && tile.cat_b_title);
+        function tryFetch(index) {
+            if (index >= candidates.length) {
+                done("");
+                return;
+            }
+            fetch(candidates[index], { method: "GET", credentials: "include" })
+                .then(function(res) {
+                    if (!res.ok) throw new Error("generate failed");
+                    return res.json();
+                })
+                .then(function(payload) {
+                    var productUrl = payload && payload.productUrl ? String(payload.productUrl).trim() : "";
+                    if (productUrl) {
+                        done(productUrl);
+                    } else {
+                        tryFetch(index + 1);
+                    }
+                })
+                .catch(function() {
+                    tryFetch(index + 1);
+                });
+        }
 
-        var base = (window.location.origin || "") + "/product/" + encodeURIComponent(String(id || "tile"));
-        return qs.length ? (base + "?" + qs.join("&")) : base;
+        tryFetch(0);
     }
 
     function uniqTiles(list) {
@@ -698,12 +754,13 @@ $(function(){
     function drawProductCard(pdf, section, y, done) {
         var tile = section.tiles[0];
         var tileImage = getTileImageSrc(tile);
-        var productLink = getTileProductLink(tile);
-        var qrLink = normalizeProductLink(productLink) || window.location.href.split("#")[0];
+        var productLink = normalizeProductLink(getTileProductLink(tile)) || window.location.href.split("#")[0];
         var pageW = 210;
         var margin = 12;
         var cardW = pageW - margin * 2;
-        var cardH = 78;
+        var cardH = 82;
+        var leftX = margin + 6;
+        var rightX = margin + cardW - 42;
 
         pdf.setFillColor(248, 251, 252);
         pdf.roundedRect(margin, y, cardW, cardH, 3, 3, "F");
@@ -713,29 +770,20 @@ $(function(){
         pdf.setTextColor(18, 48, 47);
         pdf.setFontSize(13);
         pdf.setFontStyle("bold");
-        pdf.text(section.title, margin + 6, y + 9);
-
-        var linkText = "Open product page";
-        try {
-            pdf.setTextColor(14, 88, 86);
-            pdf.setFontSize(10);
-            pdf.textWithLink(linkText, margin + 6, y + 15, { url: qrLink });
-        } catch (e) {
-            pdf.text(linkText + ": " + qrLink, margin + 6, y + 15);
-        }
+        pdf.text(section.title, leftX, y + 9);
 
         pdf.setTextColor(34, 51, 59);
         pdf.setFontStyle("normal");
         pdf.setFontSize(10);
-        pdf.text("Name: " + (tile.name || "Tile"), margin + 6, y + 22);
-        pdf.text("Size: " + ((tile.size && tile.size[0]) || "-") + "x" + ((tile.size && tile.size[1]) || "-") + " mm", margin + 6, y + 28);
-        pdf.text("Finish: " + ((tile.filters && (tile.filters["25"] || tile.filters["26"])) || "-"), margin + 6, y + 34);
+        pdf.text("Name: " + (tile.name || "Tile"), leftX, y + 20);
+        pdf.text("Size: " + ((tile.size && tile.size[0]) || "-") + "x" + ((tile.size && tile.size[1]) || "-") + " mm", leftX, y + 26);
+        pdf.text("Finish: " + ((tile.filters && (tile.filters["25"] || tile.filters["26"])) || "-"), leftX, y + 32);
         if (section.tiles.length > 1) {
-            pdf.text("Applied tiles in this section: " + section.tiles.length, margin + 6, y + 40);
+            pdf.text("Applied tiles in this section: " + section.tiles.length, leftX, y + 38);
         }
 
-        var productBox = { x: margin + 6, y: y + 44, w: 64, h: 30 };
-        var qrBox = { x: margin + cardW - 36, y: y + 20, w: 28, h: 28 };
+        var productBox = { x: leftX, y: y + 44, w: 58, h: 32 };
+        var qrBox = { x: rightX, y: y + 16, w: 36, h: 36 };
         pdf.setDrawColor(214, 223, 228);
         pdf.rect(productBox.x, productBox.y, productBox.w, productBox.h);
         pdf.rect(qrBox.x, qrBox.y, qrBox.w, qrBox.h);
@@ -749,15 +797,27 @@ $(function(){
                 pdf.text("Image unavailable", productBox.x + 6, productBox.y + 16);
             }
 
-            fetchQrDataUrl(qrLink, function(qrDataUrl) {
+            fetchGeneratedProductUrl(tile, function(generatedLink) {
+                var qrLink = normalizeProductLink(generatedLink) || productLink;
+                var linkText = "Open product page";
+                try {
+                    pdf.setTextColor(14, 88, 86);
+                    pdf.setFontSize(10);
+                    pdf.textWithLink(linkText, leftX, y + 14, { url: qrLink });
+                } catch (e) {
+                    pdf.text(linkText + ": " + qrLink, leftX, y + 14);
+                }
+
+                fetchQrDataUrl(qrLink, function(qrDataUrl) {
                 if (qrDataUrl) {
                     pdf.addImage(qrDataUrl, "PNG", qrBox.x + 1, qrBox.y + 1, qrBox.w - 2, qrBox.h - 2);
                 } else {
                     pdf.setFontSize(8);
-                    pdf.text("QR", qrBox.x + 10, qrBox.y + 15);
+                    pdf.text("QR", qrBox.x + 14, qrBox.y + 20);
                 }
 
                 done(y + cardH + 6);
+            });
             });
         });
     }
@@ -801,6 +861,10 @@ $(function(){
 
         var idx = 0;
         var y = 132;
+        var pageH = 297;
+        var bottomMargin = 12;
+        // Keep in sync with drawProductCard() height + spacing.
+        var cardTotalHeight = 88;
 
         function nextCard() {
             if (idx >= sections.length) {
@@ -809,7 +873,8 @@ $(function(){
                 return;
             }
 
-            if (y > 255) {
+            // Start a new page when the full next card cannot fit.
+            if (y + cardTotalHeight > pageH - bottomMargin) {
                 pdf.addPage();
                 y = 16;
             }

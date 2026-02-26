@@ -39,6 +39,9 @@ export default function VisualizerOptions() {
 
   const handleCategorySelect = (spaceKey: string) => {
     setSelectedCategory(spaceKey);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("selected_space_type", spaceKey.toLowerCase());
+    }
     setShowPicker(true);
     setShowFilters(false);
     setSelectedRoomId(null);
@@ -95,6 +98,7 @@ export default function VisualizerOptions() {
             onBack={() => setShowFilters(false)}
             onComplete={() => {}}
             targetPath={`/${selectedRoomId}`}
+            spaceType={selectedCategory}
           />
         ) : (
           <motion.div
