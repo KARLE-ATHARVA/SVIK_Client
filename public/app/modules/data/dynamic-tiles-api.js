@@ -83,14 +83,18 @@
 
     function getAssetBase() {
         var fromGlobal = "";
+        var fromPublicEnv = "";
         var fromStorage = "";
         try {
             fromGlobal = typeof global.VISUALIZER_ASSET_BASE === "string" ? global.VISUALIZER_ASSET_BASE : "";
         } catch (e) {}
         try {
+            fromPublicEnv = typeof global.NEXT_PUBLIC_ASSET_BASE === "string" ? global.NEXT_PUBLIC_ASSET_BASE : "";
+        } catch (e) {}
+        try {
             fromStorage = global.localStorage && localStorage.getItem("visualizer_asset_base");
         } catch (e) {}
-        var base = String(fromGlobal || fromStorage || "https://vyr.svikinfotech.in/assets/").trim();
+        var base = String(fromGlobal || fromStorage || fromPublicEnv || "https://vyr.svikinfotech.in/assets/").trim();
         if (!base) base = "https://vyr.svikinfotech.in/assets/";
         if (base.slice(-1) !== "/") base += "/";
         return base;
@@ -216,6 +220,7 @@
         var color = splitCsvValues(pick(item, ["color_name", "color"], "")).join(",");
         var price = asNumber(pick(item, ["price", "mrp", "rate"], 0), 0);
         var skuName = safeText(pick(item, ["sku_name", "name", "title"], "Tile " + baseId), "Tile " + baseId);
+        var skuCode = safeText(pick(item, ["sku_code", "skuCode", "code"], ""), "");
         var thumb = getThumbUrl(item);
         var renderImage = toRenderableUrl(thumb);
         var productLink = normalizeProductLink(pick(item, [
@@ -233,12 +238,17 @@
             "website_url",
             "web_url"
         ], ""));
+        if (!productLink && skuCode) {
+            productLink = normalizeProductLink("/product-details/" + encodeURIComponent(skuCode));
+        }
 
         return {
             tile_type: panel,
             fixedId: baseId,
             fixed_tile_type: panel - 1,
             name: skuName,
+            sku_name: skuName,
+            sku_code: skuCode,
             cat_a_title: category || "Tiles",
             cat_b_title: safeText(pick(item, ["sub_category_name", "subcategory", "type"], "Type-1"), "Type-1"),
             grout_id: 1,
@@ -246,6 +256,7 @@
             with_no_grouth: false,
             price: String(price || 0),
             link: productLink || "-",
+            product_url: productLink || "",
             size: [size.width, size.height],
             id: mappedId,
             image: renderImage,
@@ -441,11 +452,12 @@
     function getApiBase(opts) {
         var fromOpts = opts && opts.apiBase;
         var fromGlobal = global.VISUALIZER_API_BASE;
+        var fromPublicEnv = global.NEXT_PUBLIC_API_BASE;
         var fromStorage = "";
         try {
             fromStorage = global.localStorage && localStorage.getItem("visualizer_api_base");
         } catch (e) {}
-        return normalizeApiBase(fromOpts || fromGlobal || fromStorage || "https://localhost:44357/");
+        return normalizeApiBase(fromOpts || fromGlobal || fromStorage || fromPublicEnv || "https://localhost:44357/");
     }
 
     function getPreferredFilters() {

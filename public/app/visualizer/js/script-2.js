@@ -553,7 +553,47 @@ $(function(){
         return raw;
     }
 
+    function getVisualizerAssetBase() {
+        var base = "";
+        if (typeof window.VISUALIZER_ASSET_BASE === "string" && window.VISUALIZER_ASSET_BASE.trim()) {
+            base = window.VISUALIZER_ASSET_BASE.trim();
+        } else {
+            try {
+                var stored = localStorage.getItem("visualizer_asset_base");
+                if (stored && stored.trim()) base = stored.trim();
+            } catch (e) {}
+        }
+        if (!base && typeof window.NEXT_PUBLIC_ASSET_BASE === "string" && window.NEXT_PUBLIC_ASSET_BASE.trim()) {
+            base = window.NEXT_PUBLIC_ASSET_BASE.trim();
+        }
+        if (!base) base = (window.location.origin || "") + "/assets/";
+        return base.replace(/\/+$/, "") + "/";
+    }
+
     function getTileImageSrc(tile) {
+        function readSku(obj) {
+            if (!obj) return "";
+            var candidates = [obj.sku_code, obj.skuCode, obj.sku, obj.code, obj.product_sku];
+            for (var i = 0; i < candidates.length; i++) {
+                var v = String(candidates[i] || "").trim();
+                if (v) return v;
+            }
+            return "";
+        }
+        function resolveTileSource(obj) {
+            if (!obj) return null;
+            if (readSku(obj)) return obj;
+            var refId = obj.source_tile_id || obj.id;
+            if (typeof avail_tiles !== "undefined" && avail_tiles) {
+                if (refId && avail_tiles[refId]) return avail_tiles[refId];
+                if (Array.isArray(avail_tiles) && refId) {
+                    for (var i = 0; i < avail_tiles.length; i++) {
+                        if (avail_tiles[i] && String(avail_tiles[i].id) === String(refId)) return avail_tiles[i];
+                    }
+                }
+            }
+            return obj;
+        }
         function asProxyUrl(rawUrl) {
             var u = String(rawUrl || "").trim();
             if (!u) return "";
@@ -564,6 +604,13 @@ $(function(){
         }
 
         if (!tile) return "";
+        var src = resolveTileSource(tile);
+        var skuCode = readSku(src);
+        if (skuCode) {
+            var assetBase = getVisualizerAssetBase();
+            var preferredThumb = assetBase + "media/thumb/" + encodeURIComponent(skuCode) + ".jpg";
+            return asProxyUrl(preferredThumb);
+        }
         var img = "";
         if (tile.thumb_image) {
             img = String(tile.thumb_image);
@@ -576,15 +623,93 @@ $(function(){
         return "/" + img.replace(/^\.?\//, "");
     }
 
-    function getTileProductLink(tile) {
-        var source = (tile && (tile.name || tile.sku_code || tile.id)) || "tile";
-        var slug = String(source)
+    function eachAvailTile(fn) {
+        if (typeof avail_tiles === "undefined" || !avail_tiles) return;
+        if (Array.isArray(avail_tiles)) {
+            for (var i = 0; i < avail_tiles.length; i++) {
+                if (avail_tiles[i]) fn(avail_tiles[i]);
+            }
+            return;
+        }
+        for (var k in avail_tiles) {
+            if (!avail_tiles.hasOwnProperty(k) || !avail_tiles[k]) continue;
+            fn(avail_tiles[k]);
+        }
+    }
+
+    function slugifyName(raw) {
+        return String(raw || "")
             .trim()
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/-+/g, "-")
             .replace(/^-|-$/g, "");
-        return (window.location.origin || "") + "/product-details/" + encodeURIComponent(slug || "tile");
+    }
+
+    function readTileName(tile) {
+        if (!tile) return "";
+        var n = String(tile.name || tile.sku_name || tile.title || "").trim();
+        if (n) return n;
+        var refId = tile.source_tile_id || tile.id;
+        if (typeof avail_tiles !== "undefined" && avail_tiles && refId && avail_tiles[refId]) {
+            return String(avail_tiles[refId].name || avail_tiles[refId].sku_name || "").trim();
+        }
+        return "";
+    }
+
+    function readTileSku(tile, depth) {
+        if (!tile) return "";
+        if ((depth || 0) > 2) return "";
+        var candidates = [tile.sku_code, tile.skuCode, tile.sku, tile.code, tile.product_sku];
+        for (var i = 0; i < candidates.length; i++) {
+            var v = String(candidates[i] || "").trim();
+            if (v) return v;
+        }
+        var refId = tile.source_tile_id || tile.id;
+        if (typeof avail_tiles !== "undefined" && avail_tiles) {
+            var src = avail_tiles[refId];
+            if (src && src !== tile) return readTileSku(src, (depth || 0) + 1);
+            if (Array.isArray(avail_tiles) && refId) {
+                for (var j = 0; j < avail_tiles.length; j++) {
+                    if (avail_tiles[j] && String(avail_tiles[j].id) === String(refId)) {
+                        return readTileSku(avail_tiles[j], (depth || 0) + 1);
+                    }
+                }
+            }
+        }
+        // Fallback: attempt name-based lookup in avail_tiles list.
+        var tileNameSlug = slugifyName(readTileName(tile));
+        if (tileNameSlug) {
+            var matchedSku = "";
+            eachAvailTile(function(at) {
+                if (matchedSku) return;
+                var atNameSlug = slugifyName(at && (at.name || at.sku_name || at.title));
+                if (atNameSlug !== tileNameSlug) return;
+                var fromMatch = String((at && (at.sku_code || at.skuCode || at.sku || at.code || at.product_sku)) || "").trim();
+                if (fromMatch) matchedSku = fromMatch;
+            });
+            if (matchedSku) return matchedSku;
+        }
+        return "";
+    }
+
+    function readTileLink(tile) {
+        if (!tile) return "";
+        var direct = normalizeProductLink(tile.link || tile.product_url || tile.productUrl || "");
+        if (direct) return direct;
+        var refId = tile.source_tile_id || tile.id;
+        if (typeof avail_tiles !== "undefined" && avail_tiles && refId && avail_tiles[refId]) {
+            return normalizeProductLink(avail_tiles[refId].link || avail_tiles[refId].product_url || avail_tiles[refId].productUrl || "");
+        }
+        return "";
+    }
+
+    function getTileProductLink(tile) {
+        var skuCode = readTileSku(tile);
+        if (skuCode) {
+            return (window.location.origin || "") + "/product-details/" + encodeURIComponent(skuCode);
+        }
+        return readTileLink(tile);
     }
 
     function getQrGenerateBase() {
@@ -597,25 +722,35 @@ $(function(){
                 if (stored && stored.trim()) base = stored.trim();
             } catch (e) {}
         }
+        if (!base && typeof window.NEXT_PUBLIC_API_BASE === "string" && window.NEXT_PUBLIC_API_BASE.trim()) {
+            base = window.NEXT_PUBLIC_API_BASE.trim();
+        }
+        if (!base && typeof window.API_BASE === "string" && window.API_BASE.trim()) {
+            base = window.API_BASE.trim();
+        }
+        if (!base) {
+            var metaBase = $('meta[name="api-base"]').attr("content");
+            if (metaBase && String(metaBase).trim()) base = String(metaBase).trim();
+        }
+        if (!base) base = "https://localhost:44357";
         if (!base) base = window.location.origin || "";
         return base.replace(/\/+$/, "");
     }
 
     function fetchGeneratedProductUrl(tile, done) {
-        var skuName = tile && tile.name ? String(tile.name).trim() : "";
-        var skuCode = tile && tile.sku_code ? String(tile.sku_code).trim() : "";
-        if (!skuName && !skuCode) {
+        var skuCode = readTileSku(tile);
+        if (!skuCode) {
             done("");
             return;
         }
 
-        var query = skuName
-            ? ("skuName=" + encodeURIComponent(skuName))
-            : ("skuCode=" + encodeURIComponent(skuCode));
+        var query = "skuCode=" + encodeURIComponent(skuCode);
         var base = getQrGenerateBase();
         var candidates = [
             base + "/Generate?" + query,
-            base + "/api/ProductQr/Generate?" + query
+            base + "/api/ProductQr/Generate?" + query,
+            "https://localhost:44357/Generate?" + query,
+            "https://localhost:44357/api/ProductQr/Generate?" + query
         ];
 
         function tryFetch(index) {
@@ -723,19 +858,28 @@ $(function(){
             return;
         }
 
-        var qrApi = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=" + encodeURIComponent(link);
-        fetch(qrApi)
-            .then(function(res) {
-                if (!res.ok) throw new Error("qr fetch failed");
-                return res.blob();
-            })
-            .then(function(blob) {
-                var reader = new FileReader();
-                reader.onload = function() { done(reader.result); };
-                reader.onerror = function() { done(null); };
-                reader.readAsDataURL(blob);
-            })
-            .catch(function() { done(null); });
+        var providers = [
+            "https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=" + encodeURIComponent(link),
+            "https://quickchart.io/qr?size=220&margin=0&text=" + encodeURIComponent(link),
+            "https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=" + encodeURIComponent(link)
+        ];
+
+        function tryProvider(index) {
+            if (index >= providers.length) {
+                done(null);
+                return;
+            }
+            var proxied = "/api/tile-image?url=" + encodeURIComponent(providers[index]);
+            loadImageForPdf(proxied, function(qrImgData) {
+                if (qrImgData && qrImgData.dataUrl) {
+                    done(qrImgData.dataUrl);
+                } else {
+                    tryProvider(index + 1);
+                }
+            });
+        }
+
+        tryProvider(0);
     }
 
     function fitRect(srcW, srcH, boxW, boxH) {
@@ -751,10 +895,25 @@ $(function(){
         };
     }
 
+    function pickBestTileForProduct(section) {
+        if (!section || !section.tiles || !section.tiles.length) return null;
+        var fallback = section.tiles[0];
+        for (var i = 0; i < section.tiles.length; i++) {
+            var t = section.tiles[i];
+            if (!t) continue;
+            if (readTileSku(t) || readTileLink(t)) return t;
+        }
+        return fallback;
+    }
+
     function drawProductCard(pdf, section, y, done) {
-        var tile = section.tiles[0];
+        var tile = pickBestTileForProduct(section);
+        if (!tile) {
+            done(y + 62);
+            return;
+        }
         var tileImage = getTileImageSrc(tile);
-        var productLink = normalizeProductLink(getTileProductLink(tile)) || window.location.href.split("#")[0];
+        var productLink = normalizeProductLink(getTileProductLink(tile));
         var pageW = 210;
         var margin = 12;
         var cardW = pageW - margin * 2;
@@ -796,19 +955,26 @@ $(function(){
             }
 
             fetchGeneratedProductUrl(tile, function(generatedLink) {
-                var qrLink = normalizeProductLink(generatedLink) || productLink;
+                var qrLink = productLink || normalizeProductLink(generatedLink);
                 var linkText = "Open product page";
-                try {
-                    pdf.setTextColor(14, 88, 86);
-                    pdf.setFontSize(10);
-                    pdf.textWithLink(linkText, leftX, y + 44, { url: qrLink });
-                } catch (e) {
-                    pdf.text(linkText + ": " + qrLink, leftX, y + 44);
+                if (qrLink) {
+                    try {
+                        pdf.setTextColor(14, 88, 86);
+                        pdf.setFontSize(10);
+                        pdf.textWithLink(linkText, leftX, y + 44, { url: qrLink });
+                    } catch (e) {
+                        pdf.text(linkText + ": " + qrLink, leftX, y + 44);
+                    }
+                } else {
+                    pdf.setTextColor(120, 120, 120);
+                    pdf.setFontSize(9);
+                    pdf.text("Product URL unavailable", leftX, y + 44);
                 }
 
                 fetchQrDataUrl(qrLink, function(qrDataUrl) {
                 if (qrDataUrl) {
-                    pdf.addImage(qrDataUrl, "PNG", qrBox.x + 1, qrBox.y + 1, qrBox.w - 2, qrBox.h - 2);
+                    var qrFmt = /^data:image\/png/i.test(qrDataUrl) ? "PNG" : "JPEG";
+                    pdf.addImage(qrDataUrl, qrFmt, qrBox.x + 1, qrBox.y + 1, qrBox.w - 2, qrBox.h - 2);
                 } else {
                     pdf.setFontSize(8);
                     pdf.text("QR", qrBox.x + 14, qrBox.y + 20);

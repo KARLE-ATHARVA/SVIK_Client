@@ -1,20 +1,21 @@
 import { API_BASE, ASSET_BASE } from "@/lib/constants";
+import axios from "axios";
+import https from "node:https";
 
 export type ProductDetails = {
   tileId: number;
   skuCode: string;
-  slug: string;
   name: string;
-  material: string;
+  category: string;
   application: string;
+  space: string;
   size: string;
-  looksLike: string;
   finish: string;
   color: string;
-  qtyPerBox: number;
-  coverageSqmPerBox: number;
-  coverageSqftPerBox: number;
+  faces: string;
+  block: string;
   faceImageUrl: string;
+  fallbackImageUrl: string;
 };
 
 function resolveBase(): string {
@@ -23,80 +24,73 @@ function resolveBase(): string {
   return base.endsWith("/") ? base : `${base}/`;
 }
 
-function toSlug(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function resolveAssetBase(): string {
   const base = String(ASSET_BASE ?? "").trim();
   if (base) return base.endsWith("/") ? base : `${base}/`;
   return "https://vyr.svikinfotech.in/assets/";
 }
 
-function fallbackProduct(slug: string): ProductDetails {
-  const name = "Ariana Grey - N";
-  const skuCode = "nttigvmgl1200x1800nogl02010";
-  const assetBase = resolveAssetBase();
-  return {
-    tileId: 41,
-    skuCode,
-    slug,
-    name,
-    material: "Glazed Vitrified Tiles",
-    application: "Floor",
-    size: "1200 x 1800 mm",
-    looksLike: "Marble",
-    finish: "Glossy",
-    color: "Grey",
-    qtyPerBox: 2,
-    coverageSqmPerBox: 4.32,
-    coverageSqftPerBox: 46.5,
-    faceImageUrl: `${assetBase}big/${skuCode}.jpg`,
-  };
-}
-
-export async function fetchProductDetails(slug: string): Promise<ProductDetails> {
-  const safeSlug = toSlug(slug || "");
-  if (!safeSlug) return fallbackProduct("sample-product");
-
-  const url = `${resolveBase()}ProductDetails?slug=${encodeURIComponent(safeSlug)}`;
+export async function fetchProductDetails(routeKey: string): Promise<ProductDetails | null> {
+  const safeRouteKey = String(routeKey || "").trim();
+  if (!safeRouteKey) return null;
+  const tried = new Set<string>();
+  const candidates = [safeRouteKey, safeRouteKey.toLowerCase(), safeRouteKey.toUpperCase()].filter((v) => {
+    if (!v || tried.has(v)) return false;
+    tried.add(v);
+    return true;
+  });
 
   try {
-    const response = await fetch(url, { method: "GET", cache: "no-store" });
-    if (!response.ok) throw new Error(`ProductDetails ${response.status}`);
+    let data: Record<string, unknown> | null = null;
+    for (const skuCandidate of candidates) {
+      const url = `${resolveBase()}GetTileBySku?skuCode=${encodeURIComponent(skuCandidate)}`;
+      try {
+        const response = await fetch(url, { method: "GET", cache: "no-store" });
+        if (response.status === 404) continue;
+        if (!response.ok) throw new Error(`GetTileBySku ${response.status}`);
+        data = (await response.json()) as Record<string, unknown> | null;
+      } catch {
+        // In local dev, Node fetch to https://localhost can fail on self-signed cert.
+        const isLocalhostHttps = /^https:\/\/localhost[:/]/i.test(url);
+        if (!isLocalhostHttps) {
+          throw new Error("GetTileBySku fetch failed");
+        }
+        const axiosRes = await axios.get(url, {
+          httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+          validateStatus: () => true,
+        });
+        if (axiosRes.status === 404) continue;
+        if (axiosRes.status < 200 || axiosRes.status >= 300) {
+          throw new Error(`GetTileBySku ${axiosRes.status}`);
+        }
+        data = (axiosRes.data ?? null) as Record<string, unknown> | null;
+      }
+      if (data) break;
+    }
+    if (!data) return null;
 
-    const data = (await response.json()) as Record<string, unknown> | null;
-    if (!data) throw new Error("Empty ProductDetails payload");
-
-    const name = String(data.name ?? data.sku_name ?? "Product");
-    const skuCode = String(data.skuCode ?? data.sku_code ?? "");
+    const name = String(data.sku_name ?? "").trim();
+    const skuCode = String(data.skuCode ?? data.sku_code ?? "").trim();
     const assetBase = resolveAssetBase();
-    const apiFace = String(data.faceImageUrl ?? data.face_image_url ?? "").trim();
-    const bigFromSku = skuCode
-      ? `${assetBase}big/${skuCode}.jpg`
-      : "";
+    const fallbackImage = `${assetBase}no-image.jpg`;
+    const bigFromSku = skuCode ? `${assetBase}media/big/${skuCode}.jpg` : fallbackImage;
 
     return {
       tileId: Number(data.tileId ?? data.tile_id ?? 0),
       skuCode,
-      slug: safeSlug,
-      name,
-      material: String(data.material ?? "Glazed Vitrified Tiles"),
-      application: String(data.application ?? data.app_name ?? "Floor"),
-      size: String(data.size ?? data.size_name ?? "N/A"),
-      looksLike: String(data.looksLike ?? data.looks_like ?? "N/A"),
-      finish: String(data.finish ?? data.finish_name ?? "N/A"),
-      color: String(data.color ?? data.color_name ?? "N/A"),
-      qtyPerBox: Number(data.qtyPerBox ?? data.qty_per_box ?? 1),
-      coverageSqmPerBox: Number(data.coverageSqmPerBox ?? data.coverage_sqm_per_box ?? 0),
-      coverageSqftPerBox: Number(data.coverageSqftPerBox ?? data.coverage_sqft_per_box ?? 0),
-      faceImageUrl: bigFromSku || apiFace,
+      name: name || skuCode || "Product",
+      category: String(data.cat_name ?? "").trim() || "N/A",
+      application: String(data.app_name ?? "").trim() || "N/A",
+      space: String(data.space_name ?? "").trim() || "N/A",
+      size: String(data.size_name ?? "").trim() || "N/A",
+      finish: String(data.finish_name ?? "").trim() || "N/A",
+      color: String(data.color_name ?? "").trim() || "N/A",
+      faces: String(data.faces ?? "").trim() || "N/A",
+      block: String(data.block ?? "").trim() || "N/A",
+      faceImageUrl: bigFromSku || fallbackImage,
+      fallbackImageUrl: fallbackImage,
     };
   } catch {
-    return fallbackProduct(safeSlug);
+    return null;
   }
 }
