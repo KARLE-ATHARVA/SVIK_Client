@@ -1,5 +1,6 @@
 scene_room_img=null;
 scene_shadow_img=null;
+scene_foreground_mask_img=null;
 scene_data=null;
 scene_id=-1;
 scene_data_path=null;
@@ -49,6 +50,66 @@ loadSceneImage=function(paths,onload,onerror)
     };
     tryNext();
 }
+buildForegroundMask=function(roomImg,overlayImg)
+{
+    scene_foreground_mask_img=null;
+    if(!roomImg || !overlayImg) return;
+    if(!roomImg.complete || !overlayImg.complete) return;
+    var w=(roomImg.naturalWidth||roomImg.width||overlayImg.naturalWidth||overlayImg.width);
+    var h=(roomImg.naturalHeight||roomImg.height||overlayImg.naturalHeight||overlayImg.height);
+    if(!w || !h) return;
+    var statsFor=function(img){
+        var c=document.createElement("canvas");
+        c.width=w;c.height=h;
+        var t=c.getContext("2d");
+        t.drawImage(img,0,0,w,h);
+        var d=t.getImageData(0,0,w,h).data;
+        var minA=255,maxA=0,sumA=0,count=0;
+        for(var i=3;i<d.length;i+=16){
+            var a=d[i];
+            if(a<minA)minA=a;
+            if(a>maxA)maxA=a;
+            sumA+=a;
+            count++;
+        }
+        return {min:minA,max:maxA,avg:(count?sumA/count:255)};
+    };
+    var makeMaskFromAlpha=function(img){
+        var src=document.createElement("canvas");
+        var out=document.createElement("canvas");
+        src.width=out.width=w;
+        src.height=out.height=h;
+        var sctx=src.getContext("2d");
+        var octx=out.getContext("2d");
+        sctx.drawImage(img,0,0,w,h);
+        var sd=sctx.getImageData(0,0,w,h);
+        var od=octx.createImageData(w,h);
+        for(var i=0;i<sd.data.length;i+=4){
+            var a=sd.data[i+3];
+            if(a>12){
+                od.data[i+3]=255;
+            }
+        }
+        octx.putImageData(od,0,0);
+        return out;
+    };
+    var rs=statsFor(roomImg);
+    var os=statsFor(overlayImg);
+    var roomHasCutout=(rs.min<250 && rs.avg<250);
+    var overlayHasCutout=(os.min<250 && os.avg<250);
+    if(roomHasCutout && overlayHasCutout){
+        scene_foreground_mask_img=(rs.avg<=os.avg)?makeMaskFromAlpha(roomImg):makeMaskFromAlpha(overlayImg);
+        return;
+    }
+    if(roomHasCutout){
+        scene_foreground_mask_img=makeMaskFromAlpha(roomImg);
+        return;
+    }
+    if(overlayHasCutout){
+        scene_foreground_mask_img=makeMaskFromAlpha(overlayImg);
+        return;
+    }
+}
 setScene=function(room,ondone)
 {
 		console.log(room);
@@ -67,6 +128,7 @@ setScene=function(room,ondone)
             }
     var room_img_paths=buildSceneImageCandidates(room[0]);
     var shadow_img_paths=buildSceneImageCandidates(room[1]);
+    scene_foreground_mask_img=null;
     var done_called=false;
     var done=function()
     {
@@ -78,11 +140,13 @@ setScene=function(room,ondone)
         scene_room_img=img;
         loadSceneImage(shadow_img_paths,function(simg){
             scene_shadow_img=simg;
+            buildForegroundMask(scene_room_img,scene_shadow_img);
             done();
         },done);
     },function(){
         loadSceneImage(shadow_img_paths,function(simg){
             scene_shadow_img=simg;
+            buildForegroundMask(scene_room_img,scene_shadow_img);
             done();
         },done);
     });
@@ -123,4 +187,3 @@ renderStuffs=function(cvs)
 	console.log('stuffs');
         blendStuffs(cvs,stuffs);
 }
-

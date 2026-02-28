@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tiles Visualizer</title>
+        <link rel="stylesheet" href="/app/visualizer/css/font-awesome.min.css">
+        <link rel="stylesheet" href="/app/visualizer/viewer.css">
+        <link rel="stylesheet" href="/app/visualizer/engine.css">
+        <link rel="stylesheet" href="/app/visualizer/css/jquery-ui.min.css">
+        <link rel="stylesheet" href="/app/visualizer/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/app/visualizer/css/style.css">
+        <link rel="stylesheet" href="/app/visualizer/css/component.css">
+        <script src="/app/visualizer/js/jquery-2.1.4.min.js"></script>
+        <link rel="stylesheet" href="/app/modules/ui/common-visualizer-ui.css">
+        <script src="/app/modules/ui/common-visualizer-popup.js"></script>
+    </head>
+    <body class="inner_page_bg cbp-spmenu-push" style="padding-right: 15px;">
+        <script src="/app/js/tiles.js"></script>
+        <script src="/app/modules/ui/common-visualizer-ui.js"></script>
+        <script src="/app/modules/shared/modals.js"></script>
+        <script src="/app/modules/shared/page-chrome.js"></script>
+<script>document.write(getCommonPreloadersHtml());</script>
+        <div id="page">
+            <script>document.write(getCommonPageChromeHtml("/app/visualizer/images"));</script>
+            <div id="commonLayoutModalsContainer"></div>
+            <script>document.write(getCommonGroutModalsHtml());</script>
+<script>document.write(getCommonFilterModalsHtml());</script>
+<script src="/app/modules/shared/filter-logic.js"></script>
+<script>document.write(getCommonSaveShareModalsHtml());</script>
+        </div>
+<script>document.write(getCommonMailModalHtml(""));</script>
+<div id='cont_for_vis_cvs'>
+    <canvas id='vis_cvs' class="view"></canvas>
+    <a data-isdragging="no" data-left="1000" data-top="150" data-side-target="1" onclick="showLeftMenu(1);" class="brush_icon js-wall-brush" href="#menuPanel1" aria-controls="1" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
+    <a data-isdragging="no" data-left="1360" data-top="150" data-side-target="3" onclick="showLeftMenu(1);" class="brush_icon js-wall-brush" href="#menuPanel1" aria-controls="1" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
+    <a data-isdragging="no" data-left="360" data-top="150" data-side-target="4" onclick="showLeftMenu(1);" class="brush_icon js-wall-brush" href="#menuPanel1" aria-controls="1" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
+    <a data-isdragging="no" data-left="900" data-top="780" onclick="showLeftMenu(2);" class="brush_icon" href="#menuPanel2" aria-controls="2" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
+</div>
+<section id="inverted-contain" style='display:none;'>
+    <div class="panzoom-parent">
+        <div class="canvas-wrap panzoom">
+            <div class='mask view' id='mask' style="height: 100%; width: 100%; position: absolute; top: 0px; left: 0px; display:none;">
+                <canvas id='line_cvs' class="view"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+<script>
+    $.each(avail_tiles, function(index, tile) {
+        if (tile.similar_images.length) {
+            $.each(tile.similar_images, function(i, img) {
+                var image = new Image();
+                image.src = img;
+            });
+        }
+    });
+
+    var grout_y_img_path = "/app/visualizer/res/grout-y.png";
+    var grout_x_img_path = "/app/visualizer/res/grout-x.png";
+    var send_mail_addr = "/app/admin/visualizer/mail";
+</script>
+<script id='script_0' src="/app/visualizer/js/iscroll.js"></script>
+<script id='script_1' src="/app/visualizer/js/modernizr.custom.js"></script>
+<script id='script_2' src="/app/visualizer/js/jquery-2.1.4.min.js"></script>
+<script id='script_3' src="/app/visualizer/js/respond.min.js"></script>
+<script id='script_4' src="/app/visualizer/js/jquery-ui.min.js"></script>
+<script id='script_5' src="/app/visualizer/js/jquery.validate.min.js"></script>
+<script id='script_6' src="/app/visualizer/js/easyResponsiveTabs.js"></script>
+<script id='script_7' src="/app/visualizer/js/jquery.slimscroll.min.js"></script>
+<script id='script_8' src="/app/visualizer/js/jQueryRotate.js"></script>
+<script id='script_9' src="/app/visualizer/js/jquery.prettySocial.min.js"></script>
+<script id='script_10' src="/app/visualizer/js/jquery.preloader.js"></script>
+<script id='script_11' src="/app/visualizer/js/popup.js"></script>
+<script id='script_12' src="/app/visualizer/js/fullscreen.js"></script>
+<script id='script_13' src="/app/visualizer/js/script.js"></script>
+<script id='script_14' src="/app/visualizer/three.min.js"></script>
+<script id='script_15' src="/app/visualizer/DDSLoader.js"></script>
+<script id='script_16' src="/app/visualizer/MTLLoader.js"></script>
+<script id='script_17' src="/app/visualizer/OBJMTLLoader.js"></script>
+<script id='script_18' src="/app/visualizer/engine.js"></script>
+<script id='script_19' src="/app/visualizer/engine.scene.js"></script>
+<script id='script_20' src="/app/visualizer/engine.tile.js"></script>
+<script id='script_21' src="/app/visualizer/engine.render.js"></script>
+<script id='script_22' src="/app/visualizer/engine.shape.js"></script>
+<script id='script_23' src="/app/visualizer/js/bootstrap.min.js"></script>
+<script id='script_24' src="/app/visualizer/js/masonry.pkgd.min.js"></script>
+<script id='script_25' src="/app/visualizer/js/jquery.slimscroll.min.js"></script>
+<script id='script_26' src="/app/visualizer/js/hideAddressbar.min.js"></script>
+<script id='script_27' src="/app/visualizer/js/classie.js"></script>
+<script id='script_28' src="/app/visualizer/js/script-2.js"></script>
+<script id='script_29' src="/app/visualizer/js/jquery.panzoom.js"></script>
+<script id='script_jspdf' src="/app/visualizer/js/jspdf.min.js"></script>
+<script id='script_html2canvas' src="/app/visualizer/js/html2canvas.js"></script>
+<script type="text/javascript">
+    (function() {
+        var $section = $('#inverted-contain');
+        $section.find('.panzoom').panzoom({
+            $zoomIn: $section.find(".zoom-in"),
+            $zoomOut: $section.find(".zoom-out"),
+            $zoomRange: $section.find(".zoom-range"),
+            $reset: $(".reset"),
+            startTransform: 'scale(1.1)',
+            increment: 0.1,
+            contain: 'invert',
+            minScale: 1
+        }).panzoom('zoom');
+    })();
+
+    var $panzoom = $('.panzoom').panzoom();
+    $(window).on('resize', function() {
+        $panzoom.panzoom('resetDimensions');
+    });
+
+    setScene(["/app/images/room_background_34.png", "/app/images/room_foreground_34.png", "[{\"0\":1,\"1\":-47,\"2\":-22,\"3\":0,\"4\":0,\"5\":0,\"6\":0,\"7\":100,\"8\":100,\"9\":11,\"10\":10,\"11\":[[365,0],[1240,0],[1240,403],[365,411]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"16\":1000,\"17\":150,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":-67,\"2\":-28,\"3\":0,\"4\":-84.5,\"5\":0,\"6\":0,\"7\":100,\"8\":140,\"9\":20,\"10\":20,\"11\":[[310,900],[510,670],[1108,672],[1231,811],[1507,861],[1550,900],[310,900]],\"12\":5,\"13\":5,\"14\":0,\"15\":0,\"16\":0,\"17\":0,\"177\":1,\"176\":\"Floor\"},{\"0\":3,\"1\":26,\"2\":-21.699999999999999289457264239899814128875732421875,\"3\":0,\"4\":0,\"5\":-95,\"6\":0,\"7\":100,\"8\":100,\"9\":17,\"10\":9.9000000000000003552713678800500929355621337890625,\"11\":[[1240,0],[1600,0],[1600,900],[1551,900],[1510,865],[1513,471],[1240,404],[1240,0]],\"12\":3,\"13\":5,\"14\":0,\"15\":-0.05000000000000000277555756156289135105907917022705078125,\"16\":1360,\"17\":150,\"177\":0,\"176\":\"Wall\"},{\"0\":4,\"1\":-50.5,\"2\":-50.39999999999999857891452847979962825775146484375,\"3\":14,\"4\":0,\"5\":88,\"6\":0,\"7\":100,\"8\":100,\"9\":30,\"10\":18.129999999999999005240169935859739780426025390625,\"11\":[[297,395],[297,0],[365,0],[365,413.5],[0,512.5],[0,1],[58,0],[61,443]],\"12\":3,\"13\":5,\"14\":0,\"15\":0.06999999999999999278355033993648248724639415740966796875,\"16\":360,\"17\":150,\"177\":0,\"176\":\"Wall\"}]"], function() {
+        render(vis_cvs);
+
+        $('#preloader').hide();
+        $('#preloader2').hide();
+
+        setTimeout(function() {
+            $('.tile-type-label > img').each(function() {
+                if (this.dataset && this.dataset.src) {
+                    this.src = this.dataset.src;
+                    delete this.dataset.src;
+                }
+            });
+
+            if (window.location.hash.lastIndexOf("#design-data:") === 0) {
+                var design_data = JSON.parse(atob(window.location.hash.substring("#design-data:".length)));
+                console.log_(design_data);
+                loadDesign(design_data);
+            }
+        }, 1000);
+    });
+</script>
+<script src="/app/modules/ui/common-visualizer-interactions.js"></script>
+<script src="/app/modules/data/dynamic-tiles-api.js"></script>
+<script>
+window.__wallTargetTileType = 1;
+
+$(document).on("click", ".js-wall-brush", function() {
+    var side = Number($(this).attr("data-side-target"));
+    if (side) {
+        window.__wallTargetTileType = side;
+    }
+});
+
+(function() {
+    if (typeof window.selectTile !== "function" || window.__wallSelectTilePatched) {
+        return;
+    }
+    window.__wallSelectTilePatched = true;
+
+    var originalSelectTile = window.selectTile;
+    window.selectTile = function(tiles) {
+        if (tiles && tiles.length && window.__wallTargetTileType) {
+            tiles = tiles.map(function(tile) {
+                if (!tile || Number(tile.tile_type) !== 1) {
+                    return tile;
+                }
+                var clone = $.extend({}, tile);
+                clone.tile_type = Number(window.__wallTargetTileType);
+                clone.fixed_tile_type = clone.tile_type - 1;
+                return clone;
+            });
+        }
+        return originalSelectTile(tiles);
+    };
+})();
+</script>
+<script>
+$(function() {
+    var panelsLoaded = { "1": false, "2": false };
+    var apiInitTriggered = false;
+
+    function tryInitApiTiles() {
+        if (apiInitTriggered || !panelsLoaded["1"] || !panelsLoaded["2"]) {
+            return;
+        }
+        apiInitTriggered = true;
+
+        if (typeof window.initDynamicTilesFromApi === "function") {
+            window.initDynamicTilesFromApi({
+                roomId: 34
+            }).then(function(result) {
+                if (result) {
+                    console.log("[dynamic-tiles-api] 34.html loaded", result);
+                }
+            });
+        }
+    }
+
+    $("#roomsContainer").load("/app/modules/partials/room.html");
+
+    $("#menuPanel1").load("/app/modules/partials/menu-panel-1.html", function() {
+        if (typeof window.forceEnhanceVisualizerSidebar === "function") {
+            window.forceEnhanceVisualizerSidebar(1);
+        }
+        if (typeof window.setVisualizerTilesLoading === "function") {
+            window.setVisualizerTilesLoading(1);
+        }
+        $('.tile-type-label > img', this).each(function() {
+            if (this.dataset && this.dataset.src) {
+                this.src = this.dataset.src;
+                delete this.dataset.src;
+            }
+        });
+        if ($.fn.preloader) {
+            $("#tiles-list-1").preloader();
+        }
+        panelsLoaded["1"] = true;
+        tryInitApiTiles();
+    });
+
+    $("#menuPanel2").load("/app/modules/partials/menu-panel-2.html", function() {
+        if (typeof window.forceEnhanceVisualizerSidebar === "function") {
+            window.forceEnhanceVisualizerSidebar(2);
+        }
+        if (typeof window.setVisualizerTilesLoading === "function") {
+            window.setVisualizerTilesLoading(2);
+        }
+        $('.tile-type-label > img', this).each(function() {
+            if (this.dataset && this.dataset.src) {
+                this.src = this.dataset.src;
+                delete this.dataset.src;
+            }
+        });
+        if ($.fn.preloader) {
+            $("#tiles-list-2").preloader();
+        }
+        panelsLoaded["2"] = true;
+        tryInitApiTiles();
+    });
+
+    $("#productModalContainer").load("/app/modules/partials/product-modal.html");
+    $("#commonLayoutModalsContainer").load("/app/modules/partials/common-layout-modals.html");
+});
+</script>
+</body></html>
