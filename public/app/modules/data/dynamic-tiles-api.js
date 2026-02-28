@@ -363,7 +363,7 @@
             var val = esc(v);
             html += "" +
                 "<span style='display:inline-block; padding:8px 15px; width: 45%;'>" +
-                    "<input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for=\"filter\" data-filter-type=\"option\" data-filter-id=\"" + filterId + "\" data-min=0 data-max=1 value='" + val + "'/>" + val +
+                    "<input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for=\"filter\" data-filter-type=\"option\" data-filter-id=\"" + filterId + "\" data-min=0 data-max=1 value='" + val + "'/>" + val +
                 "</span>";
         });
 
@@ -389,7 +389,7 @@
             var val = esc(v);
             optionHtml += "" +
                 "<span style='display:inline-block; padding:8px 15px; width: 45%;'>" +
-                "<input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for=\"filter\" data-filter-type=\"option\" data-filter-id=\"" + filterId + "\" data-min=0 data-max=1 value='" + val + "'/>" + val +
+                "<input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for=\"filter\" data-filter-type=\"option\" data-filter-id=\"" + filterId + "\" data-min=0 data-max=1 value='" + val + "'/>" + val +
                 "</span>";
         });
 
@@ -468,6 +468,40 @@
             color = (localStorage.getItem("selected_color") || "").trim();
         } catch (e) {}
         return { app: app, color: color };
+    }
+
+    function syncStoredFiltersToCheckboxes(panel) {
+        var scope = $("#filter-section-" + panel);
+        if (!scope.length) return;
+    
+        var storedApp = (localStorage.getItem("selected_application") || "").toLowerCase();
+        var storedColor = (localStorage.getItem("selected_color") || "").toLowerCase();
+    
+        // APPLICATION (id = 34)
+        if (storedApp) {
+            var $apps = scope.find('input[data-filter-id="34"]');
+            $apps.prop("checked", false);
+    
+            $apps.each(function () {
+                if ($(this).val().toLowerCase() === storedApp) {
+                    $(this).prop("checked", true);
+                }
+            });
+        }
+    
+        // COLOR (id = 33)
+        if (storedColor) {
+            var $colors = scope.find('input[data-filter-id="33"]');
+            $colors.prop("checked", false);
+    
+            $colors.each(function () {
+                if ($(this).val().toLowerCase() === storedColor) {
+                    $(this).prop("checked", true);
+                }
+            });
+        }
+    
+        refreshFilterVisualState(panel);
     }
 
     function applyTileDataToUi(panel, panelTiles) {
@@ -1084,6 +1118,9 @@
                 global.applyFilter("1");
                 global.applyFilter("2");
             }
+
+            syncStoredFiltersToCheckboxes("1");
+            syncStoredFiltersToCheckboxes("2");
 
             return {
                 roomId: roomId,
