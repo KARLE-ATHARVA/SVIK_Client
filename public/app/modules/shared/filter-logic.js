@@ -299,12 +299,60 @@ function ensureApplicationSelectionForKey(key, preferred) {
         ($preferred.length ? $preferred : $apps.first()).prop("checked", true);
     }
 }
+function applyInitialStoredFilters(key) {
+    var scope = $("#filter-section-" + key);
+    if (!scope.length) return;
 
-$(document).on("shown.bs.modal", '.modal[id^="filter-section-"]', function() {
+    var storedApp = "";
+    var storedColor = "";
+
+    try {
+        storedApp = (localStorage.getItem("selected_application") || "").trim().toLowerCase();
+        storedColor = (localStorage.getItem("selected_color") || "").trim().toLowerCase();
+    } catch (e) {}
+
+    // ------------------------
+    // APPLICATION (Filter ID = 34)
+    // ------------------------
+    if (storedApp) {
+        var $apps = $('input[data-filter-id="34"]', scope);
+
+        $apps.each(function() {
+            var val = String($(this).val() || "").trim().toLowerCase();
+            $(this).prop("checked", val === storedApp);
+        });
+    }
+
+    // ------------------------
+    // COLOR (Filter ID = 33)
+    // ------------------------
+    if (storedColor) {
+        var $colors = $('input[data-filter-id="33"]', scope);
+
+        $colors.each(function() {
+            var val = String($(this).val() || "").trim().toLowerCase();
+            $(this).prop("checked", val === storedColor);
+        });
+    }
+}
+
+/*$(document).on("shown.bs.modal", '.modal[id^="filter-section-"]', function() {
     var key = this.id.replace("filter-section-", "");
     normalizeFilterFields(key);
     cleanupFilterActionSeparators(key);
     autoApplyApplicationForPanel(key);
+    refreshFilterVisualState(key);
+});*/
+
+$(document).on("shown.bs.modal", '.modal[id^="filter-section-"]', function() {
+    var key = this.id.replace("filter-section-", "");
+
+    normalizeFilterFields(key);
+    cleanupFilterActionSeparators(key);
+
+    // ✅ APPLY STORED FILTER STATE
+    applyInitialStoredFilters(key);
+
     refreshFilterVisualState(key);
 });
 
