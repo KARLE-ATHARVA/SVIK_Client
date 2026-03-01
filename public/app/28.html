@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8">
@@ -32,7 +32,7 @@
 <script>document.write(getCommonMailModalHtml(""));</script>
 <div id='cont_for_vis_cvs'>
     <canvas id='vis_cvs' class="view"></canvas>
-    <script>document.write(getCommonBrushIconsHtml({ imageSrc: "/app/visualizer/images/brush.png", panel1Left: 300, panel1Top: 200, panel2Left: 800, panel2Top: 800 }));</script>
+    <a data-isdragging="no" data-left="880" data-top="790" onclick="showLeftMenu(1);" class="brush_icon" href="#menuPanel1" aria-controls="1" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
 </div>
 <section id="inverted-contain" style='display:none;'>
     <div class="panzoom-parent">
@@ -109,7 +109,7 @@
         $panzoom.panzoom('resetDimensions');
     });
 
-    setScene(["/app/images/room_background_21.png", "#/app/images/room_foreground_21.png", "[{\"0\":1,\"1\":-50,\"2\":-20,\"3\":-20,\"4\":0,\"5\":0,\"6\":0,\"7\":100,\"8\":120,\"9\":13,\"10\":13,\"11\":[[70,0],[1600,0],[1600,634],[70,634],[70,0]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"16\":300,\"17\":200,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":-78,\"2\":-22,\"3\":24,\"4\":-89.1299999999999954525264911353588104248046875,\"5\":0,\"6\":0,\"7\":140,\"8\":180,\"9\":18,\"10\":22,\"11\":[[108,634],[1600,634],[1600,900],[0,900],[0,643.5],[108,634]],\"12\":6,\"13\":2,\"14\":0,\"15\":0,\"16\":800,\"17\":800,\"177\":1,\"176\":\"Floor\"}]"], function() {
+    setScene(["/app/images/room_background_28.png", "#/app/images/room_foreground_28.png", "[{\"0\":1,\"1\":-80,\"2\":-22,\"3\":20,\"4\":-81,\"5\":0,\"6\":0,\"7\":100,\"8\":170,\"9\":24,\"10\":24,\"11\":[[0,539],[1600,529],[1600,900],[0,900],[0,539]],\"12\":4,\"13\":3,\"14\":0.0099999999999999984734433411404097569175064563751220703125,\"15\":0,\"16\":880,\"17\":790,\"177\":1,\"176\":\"Floor\"}]"], function() {
         render(vis_cvs);
 
         $('#preloader').hide();
@@ -135,21 +135,21 @@
 <script src="/app/modules/data/dynamic-tiles-api.js"></script>
 <script>
 $(function() {
-    var panelsLoaded = { "1": false, "2": false };
+    var panelsLoaded = { "1": false };
     var apiInitTriggered = false;
 
     function tryInitApiTiles() {
-        if (apiInitTriggered || !panelsLoaded["1"] || !panelsLoaded["2"]) {
+        if (apiInitTriggered || !panelsLoaded["1"]) {
             return;
         }
         apiInitTriggered = true;
 
         if (typeof window.initDynamicTilesFromApi === "function") {
             window.initDynamicTilesFromApi({
-                roomId: 21
+                roomId: 28
             }).then(function(result) {
                 if (result) {
-                    console.log("[dynamic-tiles-api] 21.html loaded", result);
+                    console.log("[dynamic-tiles-api] 28.html loaded", result);
                 }
             });
         }
@@ -177,28 +177,18 @@ $(function() {
         tryInitApiTiles();
     });
 
-    $("#menuPanel2").load("/app/modules/partials/menu-panel-2.html", function() {
-        if (typeof window.forceEnhanceVisualizerSidebar === "function") {
-            window.forceEnhanceVisualizerSidebar(2);
-        }
-        if (typeof window.setVisualizerTilesLoading === "function") {
-            window.setVisualizerTilesLoading(2);
-        }
-        $('.tile-type-label > img', this).each(function() {
-            if (this.dataset && this.dataset.src) {
-                this.src = this.dataset.src;
-                delete this.dataset.src;
-            }
-        });
-        if ($.fn.preloader) {
-            $("#tiles-list-2").preloader();
-        }
-        panelsLoaded["2"] = true;
-        tryInitApiTiles();
-    });
-
     $("#productModalContainer").load("/app/modules/partials/product-modal.html");
     $("#commonLayoutModalsContainer").load("/app/modules/partials/common-layout-modals.html");
 });
 </script>
 </body></html>
+
+
+
+
+
+
+
+
+
+

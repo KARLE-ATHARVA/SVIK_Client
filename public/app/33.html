@@ -32,7 +32,7 @@
 <script>document.write(getCommonMailModalHtml(""));</script>
 <div id='cont_for_vis_cvs'>
     <canvas id='vis_cvs' class="view"></canvas>
-    <script>document.write(getCommonBrushIconsHtml({ imageSrc: "/app/visualizer/images/brush.png", panel1Left: 300, panel1Top: 200, panel2Left: 800, panel2Top: 800 }));</script>
+    <script>document.write(getCommonBrushIconsHtml({ imageSrc: "/app/visualizer/images/brush.png", panel1Left: 500, panel1Top: 200, panel2Left: 300, panel2Top: 820 }));</script>
 </div>
 <section id="inverted-contain" style='display:none;'>
     <div class="panzoom-parent">
@@ -109,7 +109,7 @@
         $panzoom.panzoom('resetDimensions');
     });
 
-    setScene(["/app/images/room_background_21.png", "#/app/images/room_foreground_21.png", "[{\"0\":1,\"1\":-50,\"2\":-20,\"3\":-20,\"4\":0,\"5\":0,\"6\":0,\"7\":100,\"8\":120,\"9\":13,\"10\":13,\"11\":[[70,0],[1600,0],[1600,634],[70,634],[70,0]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"16\":300,\"17\":200,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":-78,\"2\":-22,\"3\":24,\"4\":-89.1299999999999954525264911353588104248046875,\"5\":0,\"6\":0,\"7\":140,\"8\":180,\"9\":18,\"10\":22,\"11\":[[108,634],[1600,634],[1600,900],[0,900],[0,643.5],[108,634]],\"12\":6,\"13\":2,\"14\":0,\"15\":0,\"16\":800,\"17\":800,\"177\":1,\"176\":\"Floor\"}]"], function() {
+    setScene(["/app/images/room_background_33.png", "#/app/images/room_foreground_33.png", "[{\"0\":1,\"1\":-61,\"2\":-20,\"3\":-20,\"4\":0,\"5\":0,\"6\":0,\"7\":100,\"8\":140,\"9\":13,\"10\":13,\"11\":[[0,0],[1600,0],[1600,586],[0,591],[0,0]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"16\":500,\"17\":200,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":-86,\"2\":-22,\"3\":20,\"4\":-85.0799999999999982946974341757595539093017578125,\"5\":0,\"6\":0,\"7\":100,\"8\":180,\"9\":20,\"10\":20,\"11\":[[0,591],[1600,586],[1600,900],[0,900],[0,0]],\"12\":6,\"13\":3,\"14\":0,\"15\":0,\"16\":300,\"17\":820,\"177\":1,\"176\":\"Floor\"}]"], function() {
         render(vis_cvs);
 
         $('#preloader').hide();
@@ -146,10 +146,10 @@ $(function() {
 
         if (typeof window.initDynamicTilesFromApi === "function") {
             window.initDynamicTilesFromApi({
-                roomId: 21
+                roomId: 33
             }).then(function(result) {
                 if (result) {
-                    console.log("[dynamic-tiles-api] 21.html loaded", result);
+                    console.log("[dynamic-tiles-api] 33.html loaded", result);
                 }
             });
         }

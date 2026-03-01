@@ -32,7 +32,9 @@
 <script>document.write(getCommonMailModalHtml(""));</script>
 <div id='cont_for_vis_cvs'>
     <canvas id='vis_cvs' class="view"></canvas>
-    <script>document.write(getCommonBrushIconsHtml({ imageSrc: "/app/visualizer/images/brush.png", panel1Left: 300, panel1Top: 200, panel2Left: 800, panel2Top: 800 }));</script>
+    <a data-isdragging="no" data-left="666.8" data-top="226.4" data-side-target="1" onclick="showLeftMenu(1);" class="brush_icon js-target-brush" href="#menuPanel1" aria-controls="1" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
+    <a data-isdragging="no" data-left="1422.1" data-top="200.2" data-side-target="2" onclick="showLeftMenu(1);" class="brush_icon js-target-brush" href="#menuPanel1" aria-controls="1" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
+    <a data-isdragging="no" data-left="817.28571428571" data-top="746" data-side-target="3" onclick="showLeftMenu(2);" class="brush_icon js-target-brush" href="#menuPanel2" aria-controls="2" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
 </div>
 <section id="inverted-contain" style='display:none;'>
     <div class="panzoom-parent">
@@ -109,7 +111,7 @@
         $panzoom.panzoom('resetDimensions');
     });
 
-    setScene(["/app/images/room_background_21.png", "#/app/images/room_foreground_21.png", "[{\"0\":1,\"1\":-50,\"2\":-20,\"3\":-20,\"4\":0,\"5\":0,\"6\":0,\"7\":100,\"8\":120,\"9\":13,\"10\":13,\"11\":[[70,0],[1600,0],[1600,634],[70,634],[70,0]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"16\":300,\"17\":200,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":-78,\"2\":-22,\"3\":24,\"4\":-89.1299999999999954525264911353588104248046875,\"5\":0,\"6\":0,\"7\":140,\"8\":180,\"9\":18,\"10\":22,\"11\":[[108,634],[1600,634],[1600,900],[0,900],[0,643.5],[108,634]],\"12\":6,\"13\":2,\"14\":0,\"15\":0,\"16\":800,\"17\":800,\"177\":1,\"176\":\"Floor\"}]"], function() {
+    setScene(["/app/images/room_background_47.png", "#/app/images/room_foreground_47.png", "[{\"0\":1,\"1\":-50,\"2\":-23,\"3\":-19,\"4\":0,\"5\":0,\"6\":0,\"7\":100,\"8\":100,\"9\":10,\"10\":10,\"11\":[[247,0],[1302,0],[1302,566],[236,566],[247,0]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":35.39999999999999857891452847979962825775146484375,\"2\":-22.60000000000000142108547152020037174224853515625,\"3\":-24,\"4\":0,\"5\":-85,\"6\":0,\"7\":100,\"8\":100,\"9\":12,\"10\":10,\"11\":[[1303.5,0],[1600,0],[1600,571],[1303.5,430],[1303.5,0]],\"12\":2,\"13\":4,\"14\":0,\"15\":-0.054999999999999993338661852249060757458209991455078125,\"177\":0,\"176\":\"Wall\"},{\"0\":3,\"1\":-78,\"2\":-27,\"3\":0,\"4\":-85,\"5\":0,\"6\":0,\"7\":140,\"8\":160,\"9\":19.300000000000000710542735760100185871124267578125,\"10\":19,\"11\":[[230,566],[1082,566],[1209,801],[1600,812],[1600,900],[0,900],[0,677]],\"12\":6,\"13\":3,\"14\":0,\"15\":0,\"177\":1,\"176\":\"Floor\"}]"], function() {
         render(vis_cvs);
 
         $('#preloader').hide();
@@ -134,6 +136,39 @@
 <script src="/app/modules/ui/common-visualizer-interactions.js"></script>
 <script src="/app/modules/data/dynamic-tiles-api.js"></script>
 <script>
+window.__targetTileType = 1;
+
+$(document).on("click", ".js-target-brush", function() {
+    var side = Number($(this).attr("data-side-target"));
+    if (side) {
+        window.__targetTileType = side;
+    }
+});
+
+(function() {
+    if (typeof window.selectTile !== "function" || window.__targetSelectTilePatched) {
+        return;
+    }
+    window.__targetSelectTilePatched = true;
+
+    var originalSelectTile = window.selectTile;
+    window.selectTile = function(tiles) {
+        if (tiles && tiles.length && window.__targetTileType) {
+            tiles = tiles.map(function(tile) {
+                if (!tile) {
+                    return tile;
+                }
+                var clone = $.extend({}, tile);
+                clone.tile_type = Number(window.__targetTileType);
+                clone.fixed_tile_type = clone.tile_type - 1;
+                return clone;
+            });
+        }
+        return originalSelectTile(tiles);
+    };
+})();
+</script>
+<script>
 $(function() {
     var panelsLoaded = { "1": false, "2": false };
     var apiInitTriggered = false;
@@ -146,10 +181,10 @@ $(function() {
 
         if (typeof window.initDynamicTilesFromApi === "function") {
             window.initDynamicTilesFromApi({
-                roomId: 21
+                roomId: 47
             }).then(function(result) {
                 if (result) {
-                    console.log("[dynamic-tiles-api] 21.html loaded", result);
+                    console.log("[dynamic-tiles-api] 47.html loaded", result);
                 }
             });
         }

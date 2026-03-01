@@ -32,7 +32,7 @@
 <script>document.write(getCommonMailModalHtml(""));</script>
 <div id='cont_for_vis_cvs'>
     <canvas id='vis_cvs' class="view"></canvas>
-    <script>document.write(getCommonBrushIconsHtml({ imageSrc: "/app/visualizer/images/brush.png", panel1Left: 300, panel1Top: 200, panel2Left: 800, panel2Top: 800 }));</script>
+    <script>document.write(getCommonBrushIconsHtml({ imageSrc: "/app/visualizer/images/brush.png", panel1Left: 444.125, panel1Top: 240.25, panel2Left: 515, panel2Top: 736.85714285714 }));</script>
 </div>
 <section id="inverted-contain" style='display:none;'>
     <div class="panzoom-parent">
@@ -109,7 +109,7 @@
         $panzoom.panzoom('resetDimensions');
     });
 
-    setScene(["/app/images/room_background_21.png", "#/app/images/room_foreground_21.png", "[{\"0\":1,\"1\":-50,\"2\":-20,\"3\":-20,\"4\":0,\"5\":0,\"6\":0,\"7\":100,\"8\":120,\"9\":13,\"10\":13,\"11\":[[70,0],[1600,0],[1600,634],[70,634],[70,0]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"16\":300,\"17\":200,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":-78,\"2\":-22,\"3\":24,\"4\":-89.1299999999999954525264911353588104248046875,\"5\":0,\"6\":0,\"7\":140,\"8\":180,\"9\":18,\"10\":22,\"11\":[[108,634],[1600,634],[1600,900],[0,900],[0,643.5],[108,634]],\"12\":6,\"13\":2,\"14\":0,\"15\":0,\"16\":800,\"17\":800,\"177\":1,\"176\":\"Floor\"}]"], function() {
+    setScene(["/app/images/room_background_26.png", "#/app/images/room_foreground_26.png", "[{\"0\":1,\"1\":-79,\"2\":-22.800000000000000710542735760100185871124267578125,\"3\":-40,\"4\":0,\"5\":0,\"6\":0,\"7\":120,\"8\":120,\"9\":12,\"10\":12,\"11\":[[0,100],[469,95],[469,1],[1091,0],[1094,577],[430,577],[0,472],[0,100]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":-45.2000000000000028421709430404007434844970703125,\"2\":-23,\"3\":20,\"4\":-85.7039999999999935198502498678863048553466796875,\"5\":0,\"6\":0,\"7\":120,\"8\":120,\"9\":16.800000000000000710542735760100185871124267578125,\"10\":16.82000000000000028421709430404007434844970703125,\"11\":[[432,576],[1100,576],[1482,900],[0,900],[0,833],[159,797],[432,576]],\"12\":7,\"13\":3,\"14\":-0.005000000000000000104083408558608425664715468883514404296875,\"15\":0,\"177\":1,\"176\":\"Floor\"}]"], function() {
         render(vis_cvs);
 
         $('#preloader').hide();
@@ -146,10 +146,10 @@ $(function() {
 
         if (typeof window.initDynamicTilesFromApi === "function") {
             window.initDynamicTilesFromApi({
-                roomId: 21
+                roomId: 26
             }).then(function(result) {
                 if (result) {
-                    console.log("[dynamic-tiles-api] 21.html loaded", result);
+                    console.log("[dynamic-tiles-api] 26.html loaded", result);
                 }
             });
         }
