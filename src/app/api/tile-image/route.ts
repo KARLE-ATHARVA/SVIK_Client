@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 const ALLOWED_HOSTS = new Set([
   "vyr.svikinfotech.in",
+  "api.qrserver.com",
+  "quickchart.io",
+  "chart.googleapis.com",
 ]);
 
 export async function GET(req: NextRequest) {

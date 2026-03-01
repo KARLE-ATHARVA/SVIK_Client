@@ -1170,29 +1170,6 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
             Y6 = u6[v39999.V(83)](v39999.u(56));
             Y6[v39999.Y(98)] = k39999.F7(q6);
             Y6[v39999.V(70)](R6, 0, 0, u6[v39999.u(104)], u6[v39999.R(97)]);
-            Y6[v39999.Y(24)] = grout_alpha;
-            Y6[v39999.o(81)] = k39999.y7(U6);
-            Y6[v39999.V(33)]();
-            Y6[v39999.o(60)](0, 0);
-            Y6[v39999.Y(86)](u6[v39999.u(104)], 0);
-            Y6[v39999.R(19)]();
-            Y6[v39999.R(30)]();
-            Y6[v39999.R(33)]();
-            Y6[v39999.V(60)](0, u6[v39999.V(97)]);
-            Y6[v39999.u(86)](u6[v39999.R(104)], u6[v39999.R(97)]);
-            Y6[v39999.R(19)]();
-            Y6[v39999.Y(30)]();
-            Y6[v39999.u(81)] = l6;
-            Y6[v39999.V(33)]();
-            Y6[v39999.o(60)](0, 0);
-            Y6[v39999.o(86)](0, u6[v39999.R(97)]);
-            Y6[v39999.R(19)]();
-            Y6[v39999.V(30)]();
-            Y6[v39999.V(33)]();
-            Y6[v39999.V(60)](u6[v39999.V(104)], 0);
-            Y6[v39999.R(86)](u6[v39999.o(104)], u6[v39999.Y(97)]);
-            Y6[v39999.u(19)]();
-            Y6[v39999.Y(30)]();
             Y6[v39999.V(24)] = k39999.e7(1);
             R6[v39999.R(68)] = new THREE[(v39999.Y(22))](u6);
             R6[v39999.R(68)][v39999.o(43)] = THREE[v39999.V(62)];
@@ -1210,8 +1187,36 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
     var tileHmm = Number(b6);
     var baseW = (isFinite(tileWmm) && tileWmm > 0) ? tileWmm : k6[v39999.o(104)];
     var baseH = (isFinite(tileHmm) && tileHmm > 0) ? tileHmm : k6[v39999.V(97)];
-    p2 = y6 * baseW / 700;
-    x2 = e6 * baseH / 700;
+    p2 = y6 * baseW / 500;
+    x2 = e6 * baseH / 500;
+    var gapPx = 3;
+    var texW = (k6 && k6[v39999.o(104)]) ? k6[v39999.o(104)] : 256;
+    var texH = (k6 && k6[v39999.V(97)]) ? k6[v39999.V(97)] : 256;
+    var tileGapX = p2 * gapPx / texW;
+    var tileGapY = x2 * gapPx / texH;
+    var edgePadX = 0;
+    var edgePadY = 0;
+    var groutFillX = Math.max(0, tileGapX - 2 * edgePadX);
+    var groutFillY = Math.max(0, tileGapY - 2 * edgePadY);
+    var stepX = p2 + tileGapX;
+    var stepY = x2 + tileGapY;
+    var groutOpacity = 1;
+    var groutColorValue = null;
+    var groutColorCss = (K2 && typeof K2.grout_color == "string") ? K2.grout_color : "";
+    if (groutColorCss) {
+        var groutMatch = groutColorCss.match(/^\s*rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)\s*$/i);
+        if (groutMatch) {
+            var gr = Math.max(0, Math.min(255, Number(groutMatch[1]) || 0));
+            var gg = Math.max(0, Math.min(255, Number(groutMatch[2]) || 0));
+            var gb = Math.max(0, Math.min(255, Number(groutMatch[3]) || 0));
+            var ga = (groutMatch[4] == null) ? 1 : Math.max(0, Math.min(1, Number(groutMatch[4]) || 0));
+            groutColorValue = "rgb(" + gr + "," + gg + "," + gb + ")";
+            groutOpacity = ga;
+        } else if (groutColorCss.toLowerCase() != "transparent") {
+            groutColorValue = groutColorCss;
+        }
+    }
+    var groutEnabled = groutOpacity > 0 && groutColorValue != null;
     floorGeometry = new THREE[(v39999.R(25))](p2,x2);
     c2 = k39999.H7(x2, Math[v39999.V(23)](k39999.J7(1, skew_vertical) * Math[v39999.V(0)] / 2));
     floorGeometry[v39999.o(6)][0][v39999.u(51)] += c2;
@@ -1220,8 +1225,46 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
     floorGeometry[v39999.V(6)][1][v39999.R(49)] += Z2;
     floorGeometry[v39999.V(6)][3][v39999.u(49)] += Z2;
     obj = k39999.P7(new THREE[(v39999.u(66))]());
-    for (var u2 = k39999.j7(0); u2 * p2 <= k39999.i7(h6, 1); u2++)
-        for (var Y2 = 0; Y2 * x2 <= M6 + 1; Y2++) {
+    var groutVerticalGeometry = null;
+    var groutHorizontalGeometry = null;
+    var groutVerticalMaterial = null;
+    var groutHorizontalMaterial = null;
+    if (groutEnabled) {
+        var applySkewToPlane = function(G, w, h) {
+            var cx = h / Math[v39999.V(23)]((1 - skew_vertical) * Math[v39999.V(0)] / 2);
+            G[v39999.o(6)][0][v39999.u(51)] += cx;
+            G[v39999.Y(6)][1][v39999.V(51)] += cx;
+            var zy = w / Math[v39999.o(23)]((1 - skew_horizontal) * Math[v39999.u(0)] / 2);
+            G[v39999.V(6)][1][v39999.R(49)] += zy;
+            G[v39999.V(6)][3][v39999.u(49)] += zy;
+        };
+        groutVerticalGeometry = new THREE[(v39999.R(25))](groutFillX,x2 + tileGapY);
+        groutHorizontalGeometry = new THREE[(v39999.R(25))](p2 + tileGapX,groutFillY);
+        applySkewToPlane(groutVerticalGeometry, groutFillX, x2 + tileGapY);
+        applySkewToPlane(groutHorizontalGeometry, p2 + tileGapX, groutFillY);
+        groutVerticalMaterial = new THREE[(v39999.o(80))]({
+            color: groutColorValue,
+            transparent: groutOpacity < 1,
+            opacity: groutOpacity,
+            depthTest: true,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
+        });
+        groutHorizontalMaterial = new THREE[(v39999.o(80))]({
+            color: groutColorValue,
+            transparent: groutOpacity < 1,
+            opacity: groutOpacity,
+            depthTest: true,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
+        });
+    }
+    for (var u2 = k39999.j7(0); u2 * stepX <= k39999.i7(h6, 1); u2++)
+        for (var Y2 = 0; Y2 * stepY <= M6 + 1; Y2++) {
             a6 = true;
             v6 = [k39999.Q7(r2, 256), Math[v39999.R(9)](r2 / 256), F6];
             O2 = {
@@ -1242,21 +1285,37 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
                     rotateTexture(floorGeometry, N6, G2);
                 N6 = new THREE[(v39999.o(80))](O2);
                 floor = new THREE[(v39999.Y(36))](floorGeometry,N6);
-                floor[v39999.Y(75)][v39999.V(51)] = (u2 + 0.5) * p2 + c2 * Y2;
+                floor[v39999.Y(75)][v39999.V(51)] = u2 * stepX + p2 / 2 + c2 * Y2;
                 floor[v39999.u(75)][(584.58,
-                2870) <= 219.72 ? v39999.V(35) : v39999.Y(49)] = k39999.w7(k39999.t7(Y2, 0.5) * x2, Z2 * u2);
+                2870) <= 219.72 ? v39999.V(35) : v39999.Y(49)] = Y2 * stepY + x2 / 2 + Z2 * u2;
                 floor[v39999.o(75)][v39999.R(73)] = -F6 * 0.0001;
                 switch (D2) {
                 case v39999.Y(92):
-                    floor[v39999.Y(75)][v39999.R(51)] -= k39999.o7((p2 + c2) / 2, Y2 % 2);
+                    floor[v39999.Y(75)][v39999.R(51)] -= (stepX + c2) / 2 * (Y2 % 2);
                     floor[v39999.o(75)][v39999.R(49)] -= k39999.V7(k39999.Y7(Z2, 2) * (Y2 % 2));
                     break;
                 case v39999.R(84):
-                    floor[v39999.u(75)][v39999.o(49)] -= (x2 + Z2) / 2 * (u2 % 2);
+                    floor[v39999.u(75)][v39999.o(49)] -= (stepY + Z2) / 2 * (u2 % 2);
                     floor[v39999.Y(75)][v39999.u(51)] -= k39999.u7(c2 / 2 * k39999.R7(u2, 2));
                     break;
                 }
                 obj[v39999.o(40)](floor);
+                if (groutEnabled && (u2 + 1) * stepX <= k39999.i7(h6, 1)) {
+                    var groutV = new THREE[(v39999.Y(36))](groutVerticalGeometry,groutVerticalMaterial);
+                    groutV[v39999.Y(75)][v39999.V(51)] = floor[v39999.Y(75)][v39999.V(51)] + p2 / 2 + tileGapX / 2;
+                    groutV[v39999.Y(75)][v39999.V(49)] = floor[v39999.Y(75)][v39999.V(49)];
+                    groutV[v39999.Y(75)][v39999.u(73)] = floor[v39999.Y(75)][v39999.u(73)] + 0.00002;
+                    groutV.renderOrder = 2;
+                    obj[v39999.o(40)](groutV);
+                }
+                if (groutEnabled && (Y2 + 1) * stepY <= M6 + 1) {
+                    var groutH = new THREE[(v39999.Y(36))](groutHorizontalGeometry,groutHorizontalMaterial);
+                    groutH[v39999.Y(75)][v39999.V(51)] = floor[v39999.Y(75)][v39999.V(51)];
+                    groutH[v39999.Y(75)][v39999.V(49)] = floor[v39999.Y(75)][v39999.V(49)] + x2 / 2 + tileGapY / 2;
+                    groutH[v39999.Y(75)][v39999.u(73)] = floor[v39999.Y(75)][v39999.u(73)] + 0.00002;
+                    groutH.renderOrder = 2;
+                    obj[v39999.o(40)](groutH);
+                }
             }
             r2++;
         }

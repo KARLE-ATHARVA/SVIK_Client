@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { ProductDetails } from "@/lib/productDetailsApi";
 
@@ -8,98 +8,94 @@ type ProductDetailsViewProps = {
   product: ProductDetails;
 };
 
-function toFixedSafe(value: number, digits: number): string {
-  if (!Number.isFinite(value)) return "0.00";
-  return value.toFixed(digits);
-}
-
 export default function ProductDetailsView({ product }: ProductDetailsViewProps) {
-  const [boxCount, setBoxCount] = useState<number>(0);
+  const fallbackImage = product.fallbackImageUrl;
+  const [mainImageSrc, setMainImageSrc] = useState<string>(product.faceImageUrl || fallbackImage);
 
-  const totals = useMemo(() => {
-    const safeBoxes = Number.isFinite(boxCount) && boxCount > 0 ? boxCount : 0;
-    return {
-      sqm: safeBoxes * product.coverageSqmPerBox,
-      sqft: safeBoxes * product.coverageSqftPerBox,
-    };
-  }, [boxCount, product.coverageSqftPerBox, product.coverageSqmPerBox]);
+  useEffect(() => {
+    setMainImageSrc(product.faceImageUrl || fallbackImage);
+  }, [product.faceImageUrl]);
 
   return (
-    <main className="min-h-screen bg-[#f4f4f4] text-slate-900">
-      <section className="mx-auto max-w-[1320px] px-4 py-6">
-        <div className="mb-4 text-sm text-slate-500">
-          Home / Glazed Vitrified Tiles
-        </div>
+    <main className="min-h-screen bg-[#f8f8f6] text-slate-900">
+      <section className="relative overflow-hidden px-4 py-6 lg:px-8">
+        <div className="pointer-events-none absolute right-[-5%] top-[-8%] h-[420px] w-[420px] rounded-full bg-amber-200/25 blur-[110px]" />
+        <div className="pointer-events-none absolute bottom-[-12%] left-[-4%] h-[500px] w-[500px] rounded-full bg-slate-200/50 blur-[120px]" />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="overflow-hidden rounded-sm bg-white shadow-sm">
-            <div className="relative min-h-[540px] bg-slate-100">
-              <Image
-                src={product.faceImageUrl}
-                alt={product.name}
-                fill
-                unoptimized
-                sizes="(max-width: 1024px) 100vw, 66vw"
-                className="object-cover"
-              />
-            </div>
+        <div className="relative mx-auto max-w-[1380px]">
+          <div className="mb-5 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
+            <span className="h-[1px] w-8 bg-amber-500" />
+            <span>Home / {product.category}</span>
           </div>
 
-          <aside className="rounded-sm bg-white p-6 shadow-sm">
-            <h1 className="mb-6 text-4xl font-medium leading-tight">{product.name}</h1>
-
-            <dl className="grid grid-cols-[132px_1fr] gap-x-3 gap-y-3 text-lg">
-              <dt className="text-slate-500">Material</dt>
-              <dd>{product.material}</dd>
-
-              <dt className="text-slate-500">Application</dt>
-              <dd>{product.application}</dd>
-
-              <dt className="text-slate-500">Size</dt>
-              <dd>{product.size}</dd>
-
-              <dt className="text-slate-500">Looks Like</dt>
-              <dd>{product.looksLike}</dd>
-
-              <dt className="text-slate-500">Finish</dt>
-              <dd>{product.finish}</dd>
-
-              <dt className="text-slate-500">Colour</dt>
-              <dd>{product.color}</dd>
-
-              <dt className="text-slate-500">Qty. Per Box</dt>
-              <dd>{product.qtyPerBox} Pcs</dd>
-
-              <dt className="text-slate-500">Coverage</dt>
-              <dd>
-                {toFixedSafe(product.coverageSqmPerBox, 2)} sq mt / {toFixedSafe(product.coverageSqftPerBox, 1)} sq ft / box
-              </dd>
-
-              <dt className="text-slate-500">No. of Boxes</dt>
-              <dd>
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={boxCount}
-                  onChange={(event) => setBoxCount(Number(event.target.value || 0))}
-                  className="w-full max-w-[140px] border border-slate-300 px-2 py-1.5"
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">
+            <div className="rounded-[30px] border border-white/80 bg-white/70 p-4 shadow-[0_25px_60px_-20px_rgba(15,23,42,0.22)] backdrop-blur-sm lg:p-6">
+              <div className="relative h-[360px] overflow-hidden rounded-[24px] border border-slate-200/70 bg-slate-100 lg:h-[520px]">
+                <div className="absolute left-4 top-4 z-10 rounded-full bg-white/92 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-sm">
+                  {product.skuCode}
+                </div>
+                <Image
+                  src={mainImageSrc}
+                  alt={product.name}
+                  fill
+                  unoptimized
+                  sizes="(max-width: 1024px) 100vw, 65vw"
+                  className="object-cover"
+                  onError={() => setMainImageSrc(fallbackImage)}
                 />
-              </dd>
+              </div>
+            </div>
 
-              <dt className="text-slate-500">Total Area</dt>
-              <dd>
-                {toFixedSafe(totals.sqm, 2)} sq mt / {toFixedSafe(totals.sqft, 2)} sq ft
-              </dd>
-            </dl>
+            <aside className="rounded-[30px] border border-slate-100 bg-white p-6 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.12)] lg:p-8">
+              <div className="mb-5 flex flex-wrap gap-2">
+                <span className="rounded-full bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+                  {product.application}
+                </span>
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                  {product.finish}
+                </span>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-600">
+                  {product.color}
+                </span>
+              </div>
 
-            <button
-              type="button"
-              className="mt-8 w-full bg-black px-5 py-4 text-left text-2xl font-bold tracking-wide text-white transition hover:bg-slate-800"
-            >
-              ADD TO CATALOG
-            </button>
-          </aside>
+              <h1 className="mb-7 text-3xl font-extrabold leading-tight text-slate-900 lg:text-5xl">
+                {product.name}
+              </h1>
+
+              <dl className="space-y-4">
+                <div className="grid grid-cols-[130px_1fr] items-center gap-3 border-b border-slate-100 pb-3">
+                  <dt className="text-sm font-bold uppercase tracking-wide text-slate-400">SKU Code</dt>
+                  <dd className="text-base font-semibold text-slate-900">{product.skuCode}</dd>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] items-center gap-3 border-b border-slate-100 pb-3">
+                  <dt className="text-sm font-bold uppercase tracking-wide text-slate-400">Category</dt>
+                  <dd className="text-base font-semibold text-slate-900">{product.category}</dd>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] items-center gap-3 border-b border-slate-100 pb-3">
+                  <dt className="text-sm font-bold uppercase tracking-wide text-slate-400">Application</dt>
+                  <dd className="text-base font-semibold text-slate-900">{product.application}</dd>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] items-center gap-3 border-b border-slate-100 pb-3">
+                  <dt className="text-sm font-bold uppercase tracking-wide text-slate-400">Space</dt>
+                  <dd className="text-base font-semibold text-slate-900">{product.space}</dd>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] items-center gap-3 border-b border-slate-100 pb-3">
+                  <dt className="text-sm font-bold uppercase tracking-wide text-slate-400">Size</dt>
+                  <dd className="text-base font-semibold text-slate-900">{product.size}</dd>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] items-center gap-3 border-b border-slate-100 pb-3">
+                  <dt className="text-sm font-bold uppercase tracking-wide text-slate-400">Finish</dt>
+                  <dd className="text-base font-semibold text-slate-900">{product.finish}</dd>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] items-center gap-3 border-b border-slate-100 pb-3">
+                  <dt className="text-sm font-bold uppercase tracking-wide text-slate-400">Color</dt>
+                  <dd className="text-base font-semibold text-slate-900">{product.color}</dd>
+                </div>
+                <div className="h-1" />
+              </dl>
+            </aside>
+          </div>
         </div>
       </section>
     </main>
