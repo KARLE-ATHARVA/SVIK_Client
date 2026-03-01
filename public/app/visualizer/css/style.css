@@ -276,6 +276,19 @@ body {
   opacity: 1;
   font-size: 25px;
 }
+
+/* Force modal close button visible and black */
+.modal .close.custom_modal_btn {
+    opacity: 1 !important;
+    color: #000 !important;
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    text-shadow: none !important;
+}
+
+.modal .close.custom_modal_btn span {
+    color: #000 !important;
+}
 .filter_form label {
   text-align: left !important;
   font-family: 'UbuntuR' !important;
