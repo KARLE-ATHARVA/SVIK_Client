@@ -54,6 +54,7 @@ export default function AboutUsFero() {
 
   return (
     <section
+      id="about"
       ref={ref}
       className="bg-white text-slate-900 container mx-auto px-6 py-6 md:py-10 overflow-hidden"
     >

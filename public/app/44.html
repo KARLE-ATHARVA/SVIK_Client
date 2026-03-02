@@ -136,37 +136,318 @@
 <script src="/app/modules/ui/common-visualizer-interactions.js"></script>
 <script src="/app/modules/data/dynamic-tiles-api.js"></script>
 <script>
+window.__targetTileType = 1;
 window.__wallTargetTileType = 1;
+window.__wallTileTypes = [1, 2];
+window.__wallGroutByTileType = {};
+window.__wallTileTypes.forEach(function(t) { window.__wallGroutByTileType[t] = 1; });
 
-$(document).on("click", ".js-wall-brush", function() {
-    var side = Number($(this).attr("data-side-target"));
-    if (side) {
-        window.__wallTargetTileType = side;
+function getWallSelectedTileIds(tileType) {
+    var ids = [];
+    var source = null;
+
+    if (window.free_tiles && free_tiles[tileType] && free_tiles[tileType].length) {
+        source = free_tiles[tileType];
+    } else if (window.tile_datas && tile_datas[tileType] && tile_datas[tileType].length) {
+        source = tile_datas[tileType];
+    }
+
+    if (!source) {
+        return ids;
+    }
+
+    source.forEach(function(tile) {
+        var id = Number(tile && tile.id);
+        if (id && ids.indexOf(id) === -1) {
+            ids.push(id);
+        }
+    });
+
+    return ids;
+}
+
+function syncWallTileSelectionUi(tileType) {
+    var $inputs = $('#menuPanel1 .tile-type-input');
+    if (!$inputs.length) {
+        return;
+    }
+
+    var selected = getWallSelectedTileIds(tileType);
+    $inputs.prop('checked', false);
+
+    if (!selected.length) {
+        return;
+    }
+
+    $inputs.each(function() {
+        if (selected.indexOf(Number(this.value)) !== -1) {
+            this.checked = true;
+        }
+    });
+}
+
+function getGroutIdForTileType(tileType) {
+    if (!(window.tile_datas && tile_datas[tileType] && tile_datas[tileType].length)) {
+        return null;
+    }
+
+    var groutColor = String(tile_datas[tileType][0].grout_color || '').toLowerCase();
+    if (!groutColor) {
+        return null;
+    }
+
+    if (groutColor === 'rgba(0,0,0,0)') {
+        return -1;
+    }
+
+    if (!window.colors) {
+        return null;
+    }
+
+    var found = null;
+    Object.keys(colors).some(function(id) {
+        if (String(colors[id] || '').toLowerCase() === groutColor) {
+            found = Number(id);
+            return true;
+        }
+        return false;
+    });
+
+    return found;
+}
+
+function syncWallGroutModal(tileType) {
+    var groutId = getGroutIdForTileType(tileType);
+    if (groutId === null || groutId === undefined) {
+        groutId = window.__wallGroutByTileType[tileType];
+    }
+    if (groutId === null || groutId === undefined) {
+        groutId = 1;
+    }
+
+    window.__wallGroutByTileType[tileType] = Number(groutId);
+
+    var radioSuffix = Number(groutId) === -1 ? 'null' : String(groutId);
+    $('input[name="tile_grout_1"]').prop('checked', false);
+    $('#tile_grout_1_' + radioSuffix).prop('checked', true);
+}
+
+function forceWallGroutRestore(tileType) {
+    var groutId = window.__wallGroutByTileType[tileType];
+    if (groutId === null || groutId === undefined || !window.__originalSelectGrout) {
+        return;
+    }
+
+    window.__originalSelectGrout(tileType, Number(groutId), true);
+    if (typeof window.render === 'function' && window.vis_cvs) {
+        render(vis_cvs);
+    }
+}
+
+function ensureWallLayoutStateInputs() {
+    var $modal = $('#layouts-section-1');
+    if (!$modal.length) {
+        return;
+    }
+
+    var $form = $modal.find('form').first();
+    var $visibleInputs = $modal.find('.layout-list .layout-type-input[data-room="1"]');
+    if (!$form.length || !$visibleInputs.length) {
+        return;
+    }
+
+    var $store = $modal.find('.js-layout-state-store');
+    if (!$store.length) {
+        $store = $('<div class="js-layout-state-store" style="display:none;"></div>');
+        $form.append($store);
+    }
+
+    window.__wallTileTypes.forEach(function(tileType) {
+        if ($store.find('.layout-type-input[data-room="1"][data-tile-id="' + tileType + '"]').length) {
+            return;
+        }
+
+        $visibleInputs.each(function() {
+            var $clone = $(this).clone();
+            $clone.attr('id', 'layout-' + this.value + '-wall-store-' + tileType);
+            $clone.attr('name', 'layout-type-store-' + tileType);
+            $clone.attr('data-room', '1');
+            $clone.attr('data-tile-id', String(tileType));
+            $clone.prop('checked', this.value === 'grid');
+            $store.append($clone);
+        });
+    });
+}
+
+function getVisibleLayoutValue() {
+    return $('#layouts-section-1 .layout-list .layout-type-input[data-room="1"]:checked').val() || 'grid';
+}
+
+function syncVisibleLayoutToStore(tileType) {
+    var layoutValue = getVisibleLayoutValue();
+    var $storedGroup = $('#layouts-section-1 .js-layout-state-store .layout-type-input[data-room="1"][data-tile-id="' + tileType + '"]');
+    if (!$storedGroup.length) {
+        return;
+    }
+
+    $storedGroup.prop('checked', false);
+    $storedGroup.filter('[value="' + layoutValue + '"]').prop('checked', true);
+}
+
+function setVisibleLayoutForWall(tileType) {
+    var $storedChecked = $('#layouts-section-1 .js-layout-state-store .layout-type-input[data-room="1"][data-tile-id="' + tileType + '"]:checked');
+    var selectedLayout = $storedChecked.val() || 'grid';
+    var $visibleInputs = $('#layouts-section-1 .layout-list .layout-type-input[data-room="1"]');
+
+    $visibleInputs.each(function() {
+        this.checked = (this.value === selectedLayout);
+        this.setAttribute('data-tile-id', String(tileType));
+    });
+}
+
+function switchActiveWall(tileType) {
+    ensureWallLayoutStateInputs();
+
+    var prev = Number(window.__wallTargetTileType || 1);
+    syncVisibleLayoutToStore(prev);
+
+    window.__wallTargetTileType = Number(tileType || 1);
+    window.__targetTileType = window.__wallTargetTileType;
+    setVisibleLayoutForWall(window.__wallTargetTileType);
+    syncWallTileSelectionUi(window.__wallTargetTileType);
+}
+
+$(document).on('click', '.js-wall-brush', function() {
+    var side = Number($(this).attr('data-side-target'));
+    if (!side) {
+        return;
+    }
+
+    window.__targetTileType = side;
+    if (window.__wallTileTypes.indexOf(side) !== -1) {
+        switchActiveWall(side);
     }
 });
 
+$(document).on('show.bs.modal', '#layouts-section-1', function() {
+    if (window.__wallTileTypes.indexOf(Number(window.__targetTileType || 0)) !== -1) {
+        window.__wallTargetTileType = Number(window.__targetTileType || 1);
+    }
+    ensureWallLayoutStateInputs();
+    setVisibleLayoutForWall(Number(window.__wallTargetTileType || 1));
+});
+
+$(document).on('change', '#layouts-section-1 .layout-list .layout-type-input[data-room="1"]', function() {
+    var wallTarget = Number(window.__wallTargetTileType || 1);
+    syncVisibleLayoutToStore(wallTarget);
+
+    setTimeout(function() { forceWallGroutRestore(wallTarget); }, 0);
+    setTimeout(function() { forceWallGroutRestore(wallTarget); }, 180);
+    setTimeout(function() { forceWallGroutRestore(wallTarget); }, 450);
+});
+
+$(document).on('show.bs.modal', '#grouts-section-1', function() {
+    if (window.__wallTileTypes.indexOf(Number(window.__targetTileType || 0)) !== -1) {
+        window.__wallTargetTileType = Number(window.__targetTileType || 1);
+    }
+    syncWallGroutModal(Number(window.__wallTargetTileType || 1));
+});
+
 (function() {
-    if (typeof window.selectTile !== "function" || window.__wallSelectTilePatched) {
+    if (typeof window.selectGrout !== 'function' || window.__wallSelectGroutPatched) {
         return;
     }
-    window.__wallSelectTilePatched = true;
+    window.__wallSelectGroutPatched = true;
+
+    var originalSelectGrout = window.selectGrout;
+    window.__originalSelectGrout = originalSelectGrout;
+
+    window.selectGrout = function(key, id, dont_render) {
+        var resolvedKey = key;
+        var modalTarget = Number(window.__targetTileType || 1);
+
+        if (Number(key) === 1 && $('#grouts-section-1').is(':visible') && window.__wallTileTypes.indexOf(modalTarget) !== -1) {
+            resolvedKey = modalTarget;
+        }
+
+        var out = originalSelectGrout(resolvedKey, id, dont_render);
+
+        if (window.__wallTileTypes.indexOf(Number(resolvedKey)) !== -1) {
+            window.__wallGroutByTileType[Number(resolvedKey)] = Number(id);
+            syncWallTileSelectionUi(Number(resolvedKey));
+        }
+
+        return out;
+    };
+})();
+
+(function() {
+    if (typeof window.selectTile !== 'function' || window.__targetSelectTilePatched) {
+        return;
+    }
+    window.__targetSelectTilePatched = true;
 
     var originalSelectTile = window.selectTile;
     window.selectTile = function(tiles) {
-        if (tiles && tiles.length && window.__wallTargetTileType) {
+        var targetType = Number(window.__targetTileType || 1);
+        var isWallTarget = window.__wallTileTypes.indexOf(targetType) !== -1;
+        var cachedGroutId = isWallTarget ? window.__wallGroutByTileType[targetType] : null;
+        var previousGroutId = (!isWallTarget || cachedGroutId === null || cachedGroutId === undefined)
+            ? (isWallTarget ? getGroutIdForTileType(targetType) : null)
+            : Number(cachedGroutId);
+
+        if (tiles && tiles.length && targetType) {
             tiles = tiles.map(function(tile) {
                 if (!tile) {
                     return tile;
                 }
                 var clone = $.extend({}, tile);
-                clone.tile_type = Number(window.__wallTargetTileType);
-                clone.fixed_tile_type = clone.tile_type - 1;
+                clone.tile_type = targetType;
+                clone.fixed_tile_type = targetType - 1;
                 return clone;
             });
         }
-        return originalSelectTile(tiles);
+
+        var out = originalSelectTile(tiles);
+
+        if (isWallTarget && previousGroutId !== null && previousGroutId !== undefined && window.__originalSelectGrout) {
+            var applyGrout = function() {
+                window.__originalSelectGrout(targetType, previousGroutId, true);
+                window.__wallGroutByTileType[targetType] = Number(previousGroutId);
+                if (typeof window.render === 'function' && window.vis_cvs) {
+                    render(vis_cvs);
+                }
+            };
+
+            applyGrout();
+            setTimeout(applyGrout, 0);
+            setTimeout(applyGrout, 120);
+            setTimeout(applyGrout, 320);
+            setTimeout(applyGrout, 650);
+        }
+
+        if (isWallTarget) {
+            syncWallTileSelectionUi(targetType);
+        }
+        return out;
     };
 })();
+
+$(function() {
+    ensureWallLayoutStateInputs();
+
+    window.__wallTileTypes.forEach(function(tileType) {
+        var g = getGroutIdForTileType(tileType);
+        if (g !== null && g !== undefined) {
+            window.__wallGroutByTileType[tileType] = Number(g);
+        } else if (window.__wallGroutByTileType[tileType] === null || window.__wallGroutByTileType[tileType] === undefined) {
+            window.__wallGroutByTileType[tileType] = 1;
+        }
+    });
+
+    setVisibleLayoutForWall(window.__wallTileTypes[0] || 1);
+    syncWallTileSelectionUi(window.__wallTileTypes[0] || 1);
+});
 </script>
 <script>
 $(function() {
@@ -208,6 +489,9 @@ $(function() {
         if ($.fn.preloader) {
             $("#tiles-list-1").preloader();
         }
+        if (typeof window.syncWallTileSelectionUi === "function") {
+            window.syncWallTileSelectionUi(Number(window.__wallTargetTileType || (window.__wallTileTypes && window.__wallTileTypes[0]) || 1));
+        }
         panelsLoaded["1"] = true;
         tryInitApiTiles();
     });
@@ -237,6 +521,7 @@ $(function() {
 });
 </script>
 </body></html>
+
 
 
 

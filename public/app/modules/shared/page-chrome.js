@@ -38,7 +38,7 @@
     <div class="header_nav header_nav_xs">
         <!--<a class="btn pre_btn" id='addArea'>Add Area</a>-->
         <a data-toggle="modal" class="btn pre_btn" data-target="#roomsModal">Select Room</a>
-        <a href="#" data-toggle="modal" class="btn pre_btn" data-target=".modal_info">Product Info</a>
+        <a href="#" class="btn pre_btn" onclick="return openProductInfoModal(event);">Product Info</a>
     </div>
     <div class="right_side_btns">
         <a href="#" data-toggle="modal" data-target="#modal_save">

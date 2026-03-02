@@ -67,10 +67,6 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer custome_modal_footer">
-                <button class="btn btn-default btn-sm custom_default_btn" type="button" data-dismiss="modal">Close</button>
-                <button class="btn btn-default btn-sm custom_primery_btn" type="button">Select</button>
-            </div>
         </div>
     </div>
 </div>
@@ -139,10 +135,6 @@
                         </div>
                     </div>
                 </form>
-            </div>
-            <div class="modal-footer custome_modal_footer">
-                <button class="btn btn-default btn-sm custom_default_btn" type="button" data-dismiss="modal">Close</button>
-                <button class="btn btn-default btn-sm custom_primery_btn" type="button">Select</button>
             </div>
         </div>
     </div>
