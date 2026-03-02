@@ -16,14 +16,14 @@
     global.getCommonTopHeaderHtml = function(toggleImagePath) {
         var toggleSrc = normalizePath(toggleImagePath);
         return '' +
-            '<div style="top:15px;left:15px;position:fixed;">' +
+            '<div style="top:15px;left:15px;position:fixed;z-index:2147483646;pointer-events:auto;">' +
             '  <a href="#" class="menu_toggle" id="showLeft">' +
             '    <img src="' + toggleSrc + '" alt="">' +
             '  </a>' +
             '</div>' +
-            '<div style="top:15px;right:15px;position:fixed;" class="header_nav hidden-xs">' +
+            '<div style="top:15px;right:15px;position:fixed;z-index:2147483647;pointer-events:auto;" class="header_nav hidden-xs">' +
             '  <a data-toggle="modal" class="btn pre_btn" data-target="#roomsModal">Select Room</a>' +
-            '  <a href="#" data-toggle="modal" class="btn pre_btn" data-target=".modal_info">Product Info</a>' +
+            '  <a href="#" data-toggle="modal" class="btn pre_btn" data-target="#modal_info" onclick="$(\'#modal_info\').modal(\'show\'); return false;">Product Info</a>' +
             '</div>';
     };
 

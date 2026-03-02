@@ -267,6 +267,19 @@ $(function(){
         });
     }());
 
+    // Refresh Product Info every time modal opens so multi-wall selections are reflected.
+    $(document).on("show.bs.modal", "#modal_info", function() {
+        if (typeof updateInfo === "function") {
+            updateInfo([], false);
+        }
+    });
+
+    // Fallback: ensure Product Info opens even when data-api click is blocked.
+    $(document).on("click", "a.pre_btn[data-target='.modal_info']", function(e) {
+        e.preventDefault();
+        $("#modal_info").modal("show");
+    });
+
     $(".download_opt li").click(function(e){
         e.preventDefault();
 
@@ -852,35 +865,77 @@ $(function(){
         return out;
     }
 
+    function isFloorTileType(tileType) {
+        var targetType = Number(tileType);
+        if (!isFinite(targetType)) return false;
+
+        if (typeof scene_data !== "undefined" && scene_data && scene_data.length) {
+            for (var i = 0; i < scene_data.length; i++) {
+                var s = scene_data[i];
+                if (!s) continue;
+
+                var sType = Number(s.tile_type);
+                if (!isFinite(sType) && typeof s[0] !== "undefined") {
+                    sType = Number(s[0]);
+                }
+                if (!isFinite(sType) || sType !== targetType) continue;
+
+                var marker = s.is_floor;
+                if (typeof marker === "undefined") marker = s["is_floor"];
+                if (typeof marker === "undefined") marker = s[177];
+                if (typeof marker === "undefined") marker = s["177"];
+
+                return Number(marker) === 1 || marker === true;
+            }
+        }
+
+        // Legacy fallback for old 2-surface rooms when scene metadata is missing.
+        return targetType === 2;
+    }
+
+    function getAppliedTilesForType(id) {
+        var current = [];
+        if (free_tiles[id] && free_tiles[id].length) {
+            for (var i = 0; i < free_tiles[id].length; i++) {
+                if (free_tiles[id][i]) current.push(free_tiles[id][i]);
+            }
+        } else if (tile_datas[id] && tile_datas[id].length) {
+            for (var j = 0; j < tile_datas[id].length; j++) {
+                if (tile_datas[id][j]) current.push(tile_datas[id][j]);
+            }
+        }
+        return uniqTiles(current);
+    }
+
     function getAppliedTilesByPanel() {
-        var panels = [];
+        var wallTiles = [];
+        var floorTiles = [];
+
         for (var k in tile_datas) {
             if (!tile_datas.hasOwnProperty(k) || !isFinite(k)) continue;
             var id = Number(k);
             if (id <= 0) continue;
-            var current = [];
-            if (free_tiles[id] && free_tiles[id].length) {
-                for (var i = 0; i < free_tiles[id].length; i++) {
-                    if (free_tiles[id][i]) current.push(free_tiles[id][i]);
-                }
-            } else if (tile_datas[id] && tile_datas[id].length) {
-                for (var j = 0; j < tile_datas[id].length; j++) {
-                    if (tile_datas[id][j]) current.push(tile_datas[id][j]);
-                }
-            }
-
-            current = uniqTiles(current);
+            var current = getAppliedTilesForType(id);
             if (!current.length) continue;
 
-            panels.push({
-                id: id,
-                title: id === 1 ? "Wall Tile" : "Floor Tile",
-                tiles: current
-            });
+            if (isFloorTileType(id)) {
+                floorTiles = floorTiles.concat(current);
+            } else {
+                wallTiles = wallTiles.concat(current);
+            }
         }
 
-        panels.sort(function(a, b) { return a.id - b.id; });
-        return panels;
+        wallTiles = uniqTiles(wallTiles);
+        floorTiles = uniqTiles(floorTiles);
+
+        var sections = [];
+        if (wallTiles.length) {
+            sections.push({ id: 1, title: "Wall Tile", tiles: wallTiles });
+        }
+        if (floorTiles.length) {
+            sections.push({ id: 2, title: "Floor Tile", tiles: floorTiles });
+        }
+        return sections;
     }
 
     function loadImageForPdf(url, done) {
@@ -954,19 +1009,25 @@ $(function(){
         };
     }
 
-    function pickBestTileForProduct(section) {
-        if (!section || !section.tiles || !section.tiles.length) return null;
-        var fallback = section.tiles[0];
-        for (var i = 0; i < section.tiles.length; i++) {
-            var t = section.tiles[i];
-            if (!t) continue;
-            if (readTileSku(t) || readTileLink(t)) return t;
+    function buildPdfCardsFromSections(sections) {
+        var cards = [];
+        for (var i = 0; i < sections.length; i++) {
+            var section = sections[i];
+            if (!section || !section.tiles || !section.tiles.length) continue;
+            var tiles = uniqTiles(section.tiles);
+            for (var j = 0; j < tiles.length; j++) {
+                cards.push({
+                    title: section.title,
+                    tile: tiles[j],
+                    sectionTileCount: section.tiles.length
+                });
+            }
         }
-        return fallback;
+        return cards;
     }
 
-    function drawProductCard(pdf, section, y, done) {
-        var tile = pickBestTileForProduct(section);
+    function drawProductCard(pdf, card, y, done) {
+        var tile = card && card.tile ? card.tile : null;
         if (!tile) {
             done(y + 62);
             return;
@@ -989,7 +1050,7 @@ $(function(){
         pdf.setTextColor(18, 48, 47);
         pdf.setFontSize(13);
         pdf.setFontStyle("bold");
-        pdf.text(section.title, leftX, y + 10);
+        pdf.text((card && card.title) || "Tile", leftX, y + 10);
 
         pdf.setTextColor(34, 51, 59);
         pdf.setFontStyle("normal");
@@ -997,8 +1058,8 @@ $(function(){
         pdf.text("Name: " + (tile.name || "Tile"), leftX, y + 20);
         pdf.text("Size: " + ((tile.size && tile.size[0]) || "-") + "x" + ((tile.size && tile.size[1]) || "-") + " mm", leftX, y + 26);
         pdf.text("Finish: " + ((tile.filters && (tile.filters["25"] || tile.filters["26"])) || "-"), leftX, y + 32);
-        if (section.tiles.length > 1) {
-            pdf.text("Applied tiles in this section: " + section.tiles.length, leftX, y + 38);
+        if (card && card.sectionTileCount > 1) {
+            pdf.text("Applied tiles in this section: " + card.sectionTileCount, leftX, y + 38);
         }
         pdf.setDrawColor(214, 223, 228);
         pdf.rect(productBox.x, productBox.y, productBox.w, productBox.h);
@@ -1073,7 +1134,8 @@ $(function(){
         pdf.text("Applied Product Details", margin, 128);
 
         var sections = getAppliedTilesByPanel();
-        if (!sections.length) {
+        var cards = buildPdfCardsFromSections(sections);
+        if (!cards.length) {
             pdf.setFontSize(10);
             pdf.setFontStyle("normal");
             pdf.text("No applied tiles found for wall/floor.", margin, 136);
@@ -1087,10 +1149,10 @@ $(function(){
         var pageH = 297;
         var bottomMargin = 12;
         // Keep in sync with drawProductCard() height + spacing.
-        var cardTotalHeight = 88;
+        var cardTotalHeight = 64;
 
         function nextCard() {
-            if (idx >= sections.length) {
+            if (idx >= cards.length) {
                 pdf.save("Design-with-info.pdf");
                 if (typeof onDone === "function") onDone();
                 return;
@@ -1102,7 +1164,7 @@ $(function(){
                 y = 16;
             }
 
-            drawProductCard(pdf, sections[idx], y, function(nextY) {
+            drawProductCard(pdf, cards[idx], y, function(nextY) {
                 y = nextY;
                 idx += 1;
                 nextCard();
@@ -1528,47 +1590,59 @@ function selectGrout(key,id,dont_render) {
 
 
 function updateInfo(tiles, isShape) {
-    var t, html = '';
-
-    var tls=[];
-
-    tiles.map(function(tile){tls.push(tile);});
-
-    var type=tiles[0].tile_type;
-
-    var fts=free_tiles[type];
-    if(fts instanceof Array)
-    {
-        fts.map(function(tile)
-        {
-            if(tls.indexOf(tile)==-1)
-                tls.push(tile);
-        });
+    function renderProductRows(list) {
+        var html = '';
+        for (var i = 0; i < list.length; i++) {
+            var t = list[i];
+            if (!t) continue;
+            var imageSrc = typeof t.image == "string" ? t.image : (t.image && t.image.src ? t.image.src : "");
+            var sizeText = (t.size && t.size.length >= 2) ? (t.size[0] + "x" + t.size[1]) : "-";
+            html += '<div class="row product_wrapper">' +
+                        '<div class="col-xs-3">' +
+                            '<img src="' + imageSrc + '" class="img-responsive">' +
+                        '</div>' +
+                        '<div class="col-xs-9">' +
+                            '<p class="selected_product_name">' + (t.name || "Tile") + '</p>' +
+                            '<p class="product_type">' +
+                                '<label>Size: </label> ' + sizeText + 'mm' + '</p>' +
+                                '<label>Price: </label> ' + 'Rs.' + (t.price || 0) + '</p>' +
+                        '</div>' +
+                    '</div>';
+        }
+        return html;
     }
 
-    console.log_(tls[0]);
-
-    for(var i = 0; i < tls.length; i++) {
-        t = tls[i];
-        html += '<div class="row product_wrapper">' +
-                    '<div class="col-xs-3">' +
-                        '<img src="' + (typeof t.image == "string" ? t.image : t.image.src) + '" class="img-responsive">' +
-                    '</div>' +
-                    '<div class="col-xs-9">' +
-                        '<p class="selected_product_name">' + t.name + '</p>' +
-                        '<!--p class="product_style">' +
-                            '<label>Upper Category: </label> ' + t.cat_a_title + '</p>' +
-                        '<p class="product_style">' +
-                            '<label>Sub Category: </label> ' + t.cat_b_title + '</p-->' +
-                        '<p class="product_type">' +
-                            '<label>Size: </label> ' + (t.size[0]+"x"+t.size[1]) + 'mm'+'</p>' +
-                            '<label>Price: </label> ' + 'Rs.' + t.price + '</p>' +
-                       
-                    '</div>' +
-                '</div>';
+    if (isShape) {
+        var shapeTiles = [];
+        (tiles || []).map(function(tile){ shapeTiles.push(tile); });
+        var shapeType = shapeTiles[0] && shapeTiles[0].tile_type;
+        if (!shapeType) return;
+        var fts = free_tiles[shapeType];
+        if (fts instanceof Array) {
+            fts.map(function(tile) {
+                if (shapeTiles.indexOf(tile) == -1) shapeTiles.push(tile);
+            });
+        }
+        $("#tile_info_list_shapes_" + shapeType).html(renderProductRows(shapeTiles));
+        return;
     }
 
-    $("#tile_info_list_" + (isShape ? 'shapes_' : '') +type).html(html);
+    var wallTiles = [];
+    var floorTiles = [];
+    for (var k in tile_datas) {
+        if (!tile_datas.hasOwnProperty(k) || !isFinite(k)) continue;
+        var typeId = Number(k);
+        if (typeId <= 0) continue;
+        var applied = getAppliedTilesForType(typeId);
+        if (!applied.length) continue;
+        if (isFloorTileType(typeId)) floorTiles = floorTiles.concat(applied);
+        else wallTiles = wallTiles.concat(applied);
+    }
+
+    wallTiles = uniqTiles(wallTiles);
+    floorTiles = uniqTiles(floorTiles);
+    $("#tile_info_list_1").html(renderProductRows(wallTiles));
+    $("#tile_info_list_2").html(renderProductRows(floorTiles));
 }
 
 function drawFilters(fd)
