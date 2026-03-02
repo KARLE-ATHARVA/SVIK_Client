@@ -544,10 +544,16 @@
                 <h4 class="modal-title custom_modal_title" id="share-dialog-label">Share</h4>
             </div>
             <div class="modal-body">
-                <div class="row" align="center">
-                    <a href="#" class="fa fa-facebook share-link" title="Share on Facebook" data-service="facebook" data-dismiss="modal"></a>
-                    <a href="#" class="fa fa-twitter share-link" title="Share on Twitter" data-service="twitter" data-dismiss="modal"></a>
-                    <a href="#" class="fa fa-google-plus share-link" title="Share on Google Plus" data-service="google" data-dismiss="modal"></a>
+                <div class="row share-actions" align="center">
+                    <a href="#" class="fa fa-facebook share-link" title="Share on Facebook" aria-label="Share on Facebook" data-service="facebook" data-dismiss="modal">
+                        <span class="share-label">Facebook</span>
+                    </a>
+                    <a href="#" class="fa fa-twitter share-link" title="Share on Twitter" aria-label="Share on Twitter" data-service="twitter" data-dismiss="modal">
+                        <span class="share-label">Twitter</span>
+                    </a>
+                    <a href="#" class="fa fa-google-plus share-link" title="Share on Google Plus" aria-label="Share on Google Plus" data-service="google" data-dismiss="modal">
+                        <span class="share-label">Google+</span>
+                    </a>
                 </div>
             </div>
             <div class="modal-footer custome_modal_footer">
@@ -574,7 +580,6 @@
                     <h4 class="modal-title custom_modal_title" id="mail-dialog-label">Email</h4>
                 </div>
                 <div class="modal-body">
-                    <input type="hidden" name="from" class="from" value="info@tilesvisualizer.com">
                     <div class="form-group">
                         <input type="text" placeholder="Your Full Name" name="full_name" class="full_name form-control"/>
                     </div>
@@ -589,7 +594,7 @@
                     </div>
                 </div>
                 <div class="modal-footer custome_modal_footer">
-                    <input type="submit" id="sendMail" value="Send" name="submit" class="btn btn-default btn-sm custom_default_btn" type="button">
+                    <input type="submit" id="sendMail" value="Send" name="submit" class="btn btn-default btn-sm custom_default_btn">
                 </div>
             </form>
         </div>

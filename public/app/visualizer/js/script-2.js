@@ -42,6 +42,97 @@ $(window).load(function() {
 });
 
 $(function(){
+    function resolveMailEndpoint() {
+        if (typeof getSharedVisualizerMailEndpoint === "function") {
+            return getSharedVisualizerMailEndpoint(send_mail_addr);
+        }
+
+        var endpoint = (typeof send_mail_addr === "string" && send_mail_addr) ? send_mail_addr : "";
+        endpoint = endpoint.trim();
+
+        if (!endpoint) {
+            return "/api/visualizer/mail";
+        }
+
+        if (/^https?:\/\//i.test(endpoint)) {
+            return endpoint;
+        }
+
+        if (
+            endpoint.indexOf("/visualizermail") !== -1 ||
+            endpoint.indexOf("/app/admin/visualizer/mail") !== -1 ||
+            endpoint.indexOf("/api/visualizer/mail") !== -1
+        ) {
+            return "/api/visualizer/mail";
+        }
+        return endpoint;
+    }
+
+
+    function fallbackToMailClient(fullname, to, subject, message, roomname, designUrl) {
+        var recipient = (to || "").trim();
+        if (!recipient) {
+            alert("Please provide recipient email.");
+            return;
+        }
+        var body = [
+            "Name: " + (fullname || ""),
+            "Room: " + (roomname || ""),
+            "",
+            message || "",
+            "",
+            "Design URL: " + (designUrl || window.location.href)
+        ].join("\n");
+
+        var mailtoHref = "mailto:" + encodeURIComponent(recipient) +
+            "?subject=" + encodeURIComponent(subject || "Tile Visualizer Design") +
+            "&body=" + encodeURIComponent(body);
+        window.location.href = mailtoHref;
+    }
+
+    function getSelectedGroutId(tileKey) {
+        var selected = $('.grout-type-input[name="tile_grout_' + tileKey + '"]:checked');
+        if (!selected.length) return 1;
+        var rawId = String(selected.attr("id") || "");
+        var match = rawId.match(/tile_grout_\d+_(-?\d+)$/);
+        if (!match) return 1;
+        var parsed = Number(match[1]);
+        return isFinite(parsed) ? parsed : 1;
+    }
+
+    function buildDesignPayload() {
+        var payload = { tiles: {}, indexeds: indexeds };
+        for (var tk in tile_datas) {
+            if (!isFinite(tk)) continue;
+
+            var layout = $('.layout-type-input[data-tile-id=' + tk + ']:checked').val() || "grid";
+            var groutId = getSelectedGroutId(tk);
+            var clickedTiles = [];
+
+            if (free_tiles[tk] && free_tiles[tk].length > 0) {
+                for (var i = 0; i < free_tiles[tk].length; i++) {
+                    clickedTiles.push(free_tiles[tk][i].id);
+                }
+            } else if (tile_datas[tk] && tile_datas[tk].length > 0) {
+                for (var j = 0; j < tile_datas[tk].length; j++) {
+                    clickedTiles.push(tile_datas[tk][j].id);
+                }
+            }
+
+            payload.tiles[tk] = [groutId, layout, clickedTiles];
+        }
+        return payload;
+    }
+
+    function createDesignShareLink() {
+        try {
+            var data = JSON.stringify(buildDesignPayload());
+            var encoded = btoa(data);
+            return window.location.href.split("#")[0] + "#design-data:" + encoded;
+        } catch (e) {
+            return window.location.href.split("#")[0];
+        }
+    }
 
 
     $("#mailform").validate({
@@ -75,13 +166,14 @@ $(function(){
             }
         },
         submitHandler : function() {
-            var from    = $(".from").val();
+            var endpoint = resolveMailEndpoint();
             var fullname    = $(".full_name").val();
             var to      = $(".to").val();
             var subject = $(".subject").val();
             var message = $(".message").val();
             var imgUrl  = vis_cvs.toDataURL_('image/jpeg');
             var roomname = $.trim($(".rooms-tabs li.active a").text());
+            var designLink = createDesignShareLink();
             var tiles = {};
             for(var i in tile_datas) {
                 if(isFinite(i)) {
@@ -104,15 +196,33 @@ $(function(){
             /*else{*/
                 $("#sendMail").attr("disabled","disabled").val("sending...");
                 $.ajax({
-                    url: send_mail_addr,
+                    url: endpoint,
                     type: "POST",
-                    data : {"full_name":fullname,"from": from, "to" : to, "subject" : subject , "message" : message, "roomname" : roomname, tiles: JSON.stringify(tiles), "imgpath" : imgUrl},
+                    data : {"full_name":fullname, "to" : to, "subject" : subject , "message" : message, "roomname" : roomname, tiles: JSON.stringify(tiles), "imgpath" : imgUrl, "design_link": designLink},
                     success : function(data){
                         console.log("Email is sent");
                         alert("Email is sent.");
                         $("#mailform")[0].reset();
                         $("#modal_mail").modal('hide');
                         $("#sendMail").removeAttr("disabled").val("Send");
+                    },
+                    error: function(xhr) {
+                        $("#sendMail").removeAttr("disabled").val("Send");
+                        var serverError = "";
+                        try {
+                            var payload = xhr && xhr.responseJSON ? xhr.responseJSON : null;
+                            if (payload && payload.error) {
+                                serverError = payload.error;
+                                if (payload.details) {
+                                    serverError += " (" + payload.details + ")";
+                                }
+                            }
+                        } catch (e) {}
+                        if (serverError) {
+                            alert("Email send failed: " + serverError);
+                        }
+                        $("#modal_mail").modal('hide');
+                        fallbackToMailClient(fullname, to, subject, message, roomname, designLink);
                     }
                 });
             //}
@@ -125,12 +235,14 @@ $(function(){
     });
 
     (function() {
-        var imageUrl;
+        var imageUrl = createDesignShareLink();
 
         $(".share-link").click(function(e) {
             var url;
 
             e.preventDefault();
+            if (!imageUrl) imageUrl = window.location.href;
+            var encodedUrl = encodeURIComponent(imageUrl);
             switch($(this).data("service")) {
             case "facebook":
                 url = "https://www.facebook.com/sharer/sharer.php?u=";
@@ -145,23 +257,13 @@ $(function(){
                 break;
             }
 
-            window.open(url + imageUrl, "sharer", "width=626,height=436");
+            window.open(url + encodedUrl, "sharer", "width=626,height=436");
         });
 
         $(".share-toggle").click(function(e) {
             e.preventDefault();
-
-            $('#preloader2').show();
-
-            $.post(send_mail_addr, {share: true, imgpath: vis_cvs.toDataURL_('image/jpeg'), roomname: $(".resp-tab-active").text()}, function(response) {
-                $('#preloader2').hide();
-                $('#modal_share').modal('show');
-                if(response.error) {
-                    alert('An error occured while saving the image.');
-                    return;
-                }
-                imageUrl = response.url;
-            }, 'json');
+            imageUrl = createDesignShareLink();
+            $('#modal_share').modal('show');
         });
     }());
 
@@ -392,50 +494,7 @@ $(function(){
 
         if(this.dataset.as=="link")
         {
-            var _layouts={};
-            var _click_tiles={};
-            var _indexeds=indexeds;
-
-            var link_data={tiles:{},indexeds:_indexeds};
-
-            for(var tk in tile_datas)
-            {
-                if(tk[0]=="_")
-                    continue;
-
-                _layouts[tk]=$('.layout-type-input[data-tile-id=' + tk + ']:checked').val() || "grid";
-
-                var _grout_color_id=eval($('.grout-type-input[name="tile_grout_'+tk+'"]:checked').attr("id").substring("tile_grout_x_".length));
-
-                _click_tiles[tk]=[];
-                if(free_tiles[tk] && free_tiles[tk].length>0)
-                    for(var i=0;i<free_tiles[tk].length;i++)
-                    {
-                        _click_tiles[tk].push(free_tiles[tk][i].id);
-                    }
-                else
-                    for(var i=0;i<tile_datas[tk].length;i++)
-                    {
-                        _click_tiles[tk].push(tile_datas[tk][i].id);
-                    }
-
-                link_data.tiles[tk]=[_grout_color_id,_layouts[tk],_click_tiles[tk]];
-            }
-
-            /*var link_data=
-            [
-                _click_tiles,
-                _layouts,
-                _indexeds
-            ];*/
-
-            link_data=JSON.stringify(link_data);
-
-            console.log_(link_data);
-
-            var based64=btoa(link_data);
-
-            var link=window.location.href.split("#")[0]+"#design-data:"+based64;
+            var link=createDesignShareLink();
 
             $('button[data-dismiss="modal"]').click();
             $( "<div title='Design has been saved'><style>.no-close .ui-dialog-titlebar-close {display: none }</style>Copy & Save <a style='text-decoration:underline;' href='"+link+"' target='_blank'>this link</a>.</div>" ).appendTo(document.body).dialog({
@@ -1630,3 +1689,4 @@ function confirm_Refresh()
         setTimeout("location.reload();",1000);
 
 }
+
