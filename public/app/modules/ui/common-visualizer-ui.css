@@ -189,11 +189,14 @@
 }
 
 /* Top-right header actions themed with sidebar style */
-.header_nav.hidden-xs,
-.header_nav.header_nav_xs {
+.header_nav.hidden-xs {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.header_nav.header_nav_xs {
+    display: none;
 }
 
 .header_nav.hidden-xs a.pre_btn,

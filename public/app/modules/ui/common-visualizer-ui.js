@@ -3,6 +3,53 @@
         return path || "";
     }
 
+    function ensureProductModalLoaded(done) {
+        var $ = global.jQuery;
+        if (!$) {
+            if (typeof done === "function") done();
+            return;
+        }
+
+        if ($("#modal_info").length) {
+            if (typeof done === "function") done();
+            return;
+        }
+
+        var $container = $("#productModalContainer");
+        if (!$container.length) {
+            if (typeof done === "function") done();
+            return;
+        }
+
+        if ($container.attr("data-product-modal-loading") === "1") {
+            setTimeout(function() { ensureProductModalLoaded(done); }, 60);
+            return;
+        }
+
+        $container.attr("data-product-modal-loading", "1");
+        $container.load("/app/modules/partials/product-modal.html", function() {
+            $container.attr("data-product-modal-loading", "0");
+            if (typeof done === "function") done();
+        });
+    }
+
+    global.openProductInfoModal = function(evt) {
+        var $ = global.jQuery;
+        if (!$) return false;
+        if (evt) {
+            if (typeof evt.preventDefault === "function") evt.preventDefault();
+            if (typeof evt.stopPropagation === "function") evt.stopPropagation();
+            if (typeof evt.stopImmediatePropagation === "function") evt.stopImmediatePropagation();
+        }
+
+        ensureProductModalLoaded(function() {
+            if ($("#modal_info").length) {
+                $("#modal_info").modal("show");
+            }
+        });
+        return false;
+    };
+
     global.getCommonPreloadersHtml = function() {
         return '' +
             '<div class="js">' +
@@ -23,7 +70,7 @@
             '</div>' +
             '<div style="top:15px;right:15px;position:fixed;z-index:2147483647;pointer-events:auto;" class="header_nav hidden-xs">' +
             '  <a data-toggle="modal" class="btn pre_btn" data-target="#roomsModal">Select Room</a>' +
-            '  <a href="#" data-toggle="modal" class="btn pre_btn" data-target="#modal_info" onclick="$(\'#modal_info\').modal(\'show\'); return false;">Product Info</a>' +
+            '  <a href="#" class="btn pre_btn" onclick="return openProductInfoModal(event);">Product Info</a>' +
             '</div>';
     };
 

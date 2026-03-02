@@ -274,9 +274,10 @@ $(function(){
         }
     });
 
-    // Fallback: ensure Product Info opens even when data-api click is blocked.
+    // Fallback only for legacy `.modal_info` triggers to avoid double-toggle on `#modal_info`.
     $(document).on("click", "a.pre_btn[data-target='.modal_info']", function(e) {
         e.preventDefault();
+        e.stopImmediatePropagation();
         $("#modal_info").modal("show");
     });
 
@@ -1286,6 +1287,62 @@ $(window).resize(function() {
     // });
 });
 
+// Shared helpers used outside the document-ready closure.
+function uniqTiles(list) {
+    var out = [];
+    var seen = {};
+    for (var i = 0; i < list.length; i++) {
+        var t = list[i];
+        if (!t) continue;
+        var key = String(t.id || t.source_tile_id || t.name || i);
+        if (seen[key]) continue;
+        seen[key] = true;
+        out.push(t);
+    }
+    return out;
+}
+
+function isFloorTileType(tileType) {
+    var targetType = Number(tileType);
+    if (!isFinite(targetType)) return false;
+
+    if (typeof scene_data !== "undefined" && scene_data && scene_data.length) {
+        for (var i = 0; i < scene_data.length; i++) {
+            var s = scene_data[i];
+            if (!s) continue;
+
+            var sType = Number(s.tile_type);
+            if (!isFinite(sType) && typeof s[0] !== "undefined") {
+                sType = Number(s[0]);
+            }
+            if (!isFinite(sType) || sType !== targetType) continue;
+
+            var marker = s.is_floor;
+            if (typeof marker === "undefined") marker = s["is_floor"];
+            if (typeof marker === "undefined") marker = s[177];
+            if (typeof marker === "undefined") marker = s["177"];
+
+            return Number(marker) === 1 || marker === true;
+        }
+    }
+
+    // Legacy fallback for old 2-surface rooms when scene metadata is missing.
+    return targetType === 2;
+}
+
+function getAppliedTilesForType(id) {
+    var current = [];
+    if (free_tiles[id] && free_tiles[id].length) {
+        for (var i = 0; i < free_tiles[id].length; i++) {
+            if (free_tiles[id][i]) current.push(free_tiles[id][i]);
+        }
+    } else if (tile_datas[id] && tile_datas[id].length) {
+        for (var j = 0; j < tile_datas[id].length; j++) {
+            if (tile_datas[id][j]) current.push(tile_datas[id][j]);
+        }
+    }
+    return uniqTiles(current);
+}
 
 function fillCatSelB(key) {
     var a=document.getElementById("filter-category-a-"+key);
