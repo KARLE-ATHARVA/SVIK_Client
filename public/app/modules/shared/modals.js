@@ -321,8 +321,12 @@
 <script>
 
     $(function() {
-        init_number_filters('1');
-        applyFilter('1');
+        if (typeof init_number_filters === "function") {
+            init_number_filters('1');
+        }
+        if (typeof applyFilter === "function") {
+            applyFilter('1');
+        }
     });
 </script>
 <!-- Filter Modal -->
@@ -500,8 +504,12 @@
 <script>
 
     $(function() {
-        init_number_filters('2');
-        applyFilter('2');
+        if (typeof init_number_filters === "function") {
+            init_number_filters('2');
+        }
+        if (typeof applyFilter === "function") {
+            applyFilter('2');
+        }
     });
 </script>
 </div>

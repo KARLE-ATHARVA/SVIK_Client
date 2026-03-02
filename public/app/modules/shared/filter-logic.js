@@ -108,7 +108,9 @@ function collectVisibleOptionGroups(key) {
     $('input[data-for="filter"][data-filter-type="option"]', scope)
         .each(function () {
             var $input = $(this);
-            if (!$input.closest(".form-group").is(":visible")) return;
+            // Treat a group as active unless that group itself is hidden.
+            // This avoids losing filter state when the modal container is closed.
+            if ($input.closest(".form-group").css("display") === "none") return;
 
             var fid = String($input.attr("data-filter-id") || "");
             if (!fid) return;
@@ -241,7 +243,7 @@ function ensureAtLeastOneSelectionPerGroup(key) {
     var byGroup = {};
     $('input[data-for="filter"][data-filter-type="option"]', scope).each(function () {
         var $input = $(this);
-        if (!$input.closest(".form-group").is(":visible")) return;
+        if ($input.closest(".form-group").css("display") === "none") return;
         var fid = String($input.attr("data-filter-id") || "");
         if (!fid) return;
         if (!byGroup[fid]) byGroup[fid] = [];

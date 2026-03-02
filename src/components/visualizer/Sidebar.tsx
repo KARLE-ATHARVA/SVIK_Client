@@ -120,6 +120,43 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
+
+function areFilterSelectionsEqual(
+  left: TileFilterSelections,
+  right: TileFilterSelections
+): boolean {
+  return (
+    areStringArraysEqual(left.catNames, right.catNames) &&
+    areStringArraysEqual(left.appNames, right.appNames) &&
+    areStringArraysEqual(left.finishNames, right.finishNames) &&
+    areStringArraysEqual(left.sizeNames, right.sizeNames) &&
+    areStringArraysEqual(left.colorNames, right.colorNames)
+  );
+}
+
+function pruneSelectionsToAvailableOptions(
+  filters: TileFilterSelections,
+  options: TileFilterOptions
+): TileFilterSelections {
+  const categories = new Set(options.categories);
+  const applications = new Set(options.applications);
+  const finishes = new Set(options.finishes);
+  const sizes = new Set(options.sizes);
+  const colors = new Set(options.colors);
+
+  return sanitizeFilterSelections({
+    catNames: filters.catNames.filter((value) => categories.has(value)),
+    appNames: filters.appNames.filter((value) => applications.has(value)),
+    finishNames: filters.finishNames.filter((value) => finishes.has(value)),
+    sizeNames: filters.sizeNames.filter((value) => sizes.has(value)),
+    colorNames: filters.colorNames.filter((value) => colors.has(value)),
+  });
+}
+
 function mapTilesToProducts(rows: TileListItem[]): Product[] {
   const assetBase = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
@@ -224,11 +261,32 @@ export default function Sidebar() {
           fetchFilterAvailableOptions(request),
         ]);
 
-        setProducts(mapTilesToProducts(tileRows));
-        setFilterOptions(available);
-        setTempFilters(sanitized);
-        syncPreferenceStorage(sanitized);
-        lastAppliedQueryKey.current = queryKey;
+        const pruned = pruneSelectionsToAvailableOptions(sanitized, available);
+        const shouldRetryWithPruned =
+          tileRows.length === 0 && !areFilterSelectionsEqual(pruned, sanitized);
+
+        let finalRows = tileRows;
+        let finalOptions = available;
+        let finalFilters = sanitized;
+        let finalQueryKey = queryKey;
+
+        if (shouldRetryWithPruned) {
+          const retryRequest = { spaceName: currentSpace, ...pruned };
+          const [retryRows, retryAvailable] = await Promise.all([
+            fetchFilterTileList(retryRequest),
+            fetchFilterAvailableOptions(retryRequest),
+          ]);
+          finalRows = retryRows;
+          finalOptions = retryAvailable;
+          finalFilters = pruned;
+          finalQueryKey = buildFilterRequestKey(retryRequest);
+        }
+
+        setProducts(mapTilesToProducts(finalRows));
+        setFilterOptions(finalOptions);
+        setTempFilters(finalFilters);
+        syncPreferenceStorage(finalFilters);
+        lastAppliedQueryKey.current = finalQueryKey;
       } catch (error) {
         console.error("Filter apply error:", error);
         setProducts([]);
@@ -310,6 +368,10 @@ export default function Sidebar() {
     fetchFilterAvailableOptions(request, controller.signal)
       .then((available) => {
         setFilterOptions(available);
+        setTempFilters((previous) => {
+          const pruned = pruneSelectionsToAvailableOptions(previous, available);
+          return areFilterSelectionsEqual(previous, pruned) ? previous : pruned;
+        });
         lastAvailableQueryKey.current = queryKey;
       })
       .catch((error) => {
@@ -338,6 +400,14 @@ export default function Sidebar() {
     setTempFilters((prev) => {
       const list = prev[key];
       const exists = list.includes(value);
+
+      if (key === "colorNames") {
+        return {
+          ...prev,
+          colorNames: exists ? [] : [value],
+        };
+      }
+
       return {
         ...prev,
         [key]: exists ? list.filter((v) => v !== value) : [...list, value],

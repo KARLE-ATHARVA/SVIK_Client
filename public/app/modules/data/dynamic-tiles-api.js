@@ -1002,16 +1002,17 @@
         var spaceName = detectSpaceName(roomId, opts.spaceName);
         var apiBase = getApiBase(opts);
         LAST_API_BASE = apiBase;
-        var preferred = getPreferredFilters();
         ensureTopHeaderActions(roomId, spaceName);
 
         setTilesLoading(1);
         setTilesLoading(2);
 
         var optionsUrl = apiBase + "FilterOptions?spaceName=" + encodeURIComponent(spaceName);
+        // Fetch the complete tile set for the selected space.
+        // Preference values are applied in UI state (checkboxes + applyFilter),
+        // so users can switch to any other color/application without being
+        // constrained by an already pre-filtered API response.
         var tilesQuery = "spaceName=" + encodeURIComponent(spaceName);
-        if (preferred.app) tilesQuery += "&appNames=" + encodeURIComponent(preferred.app);
-        if (preferred.color) tilesQuery += "&colorNames=" + encodeURIComponent(preferred.color);
         var tilesUrl = apiBase + "FilterTileList?" + tilesQuery;
 
         return Promise.all([
@@ -1110,17 +1111,19 @@
             upsertOptionFilterGroup(2, 34, "Application", applicationValues);
             upsertOptionFilterGroup(2, 33, "Color", colorValues);
 
+            syncStoredFiltersToCheckboxes("1");
+            syncStoredFiltersToCheckboxes("2");
+
             if (typeof global.init_number_filters === "function") {
                 global.init_number_filters("1");
                 global.init_number_filters("2");
             }
             if (typeof global.applyFilter === "function") {
+                // Apply filters after syncing stored preferences so initial view
+                // reflects selected refine-preference values (e.g. color).
                 global.applyFilter("1");
                 global.applyFilter("2");
             }
-
-            syncStoredFiltersToCheckboxes("1");
-            syncStoredFiltersToCheckboxes("2");
 
             return {
                 roomId: roomId,
