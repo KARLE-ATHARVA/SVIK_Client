@@ -15,10 +15,10 @@ type RoomCategory = {
 
 const CATEGORIES: RoomCategory[] = [
   { key: "living", label: "Living Rooms", icon: FaCouch, roomIds: [6, 20, 21, 22, 30, 33, 47] },
-  { key: "kitchen", label: "Kitchens", icon: FaUtensils, roomIds: [8, 19, 26, 29, 34, 35, 45, 46] },
+  { key: "kitchen", label: "Kitchens", icon: FaUtensils, roomIds: [8, 26, 29, 34, 35, 45, 46] },
   { key: "bedroom", label: "Bedrooms", icon: FaBed, roomIds: [36, 37, 38, 39] },
   { key: "bathroom", label: "Bathrooms", icon: FaBath, roomIds: [12, 23, 24, 25, 40, 42, 44] },
-  { key: "outdoor", label: "Indoor / Outdoor", icon: FaHome, roomIds: [27, 29, 31, 32] },
+  { key: "outdoor", label: "Indoor / Outdoor", icon: FaHome, roomIds: [27, 28, 31, 32] },
   { key: "saved", label: "Saved", icon: FaHeart, roomIds: [] },
 ];
 
