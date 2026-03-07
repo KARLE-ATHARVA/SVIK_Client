@@ -10,6 +10,7 @@ const ProductShowcase = dynamicImport(() => import("@/components/ProductShowcase
 const AboutUsFero = dynamicImport(() => import("@/components/AboutUsFero"), { ssr: false });
 const Newsletter = dynamicImport(() => import("@/components/Newsletter"), { ssr: false });
 const Footer = dynamicImport(() => import("@/components/Footer"), { ssr: false });
+const ChatbotShell = dynamicImport(() => import("@/components/ChatbotShell"), { ssr: false });
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
         <Newsletter />
         <Footer />
       </div>
+      <ChatbotShell />
     </main>
   );
 }
