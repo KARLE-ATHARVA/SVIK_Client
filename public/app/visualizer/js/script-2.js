@@ -1626,7 +1626,65 @@ function selectTile(tiles) {
         // $('#tile_grout_'+d.tile_type+'_'+d.grout_id).prop('checked', true);//.checkboxradio( "refresh" );;
 
         updateInfo(tiles);
+        logUserActivity(tiles[0]);
     }
+}
+
+function getDirectUserActivityUrl() {
+    var baseFromStorage = "";
+    try { baseFromStorage = (window.localStorage && localStorage.getItem("visualizer_api_base")) || ""; } catch (e) {}
+    var base = String(baseFromStorage || "https://localhost:44357/").trim();
+    if (!base) base = "https://localhost:44357/";
+    if (base.charAt(base.length - 1) !== "/") base += "/";
+    return base + "AddUserActivity";
+}
+
+function resolveActivityTileId(tile) {
+    if (!tile) return 0;
+    var raw = tile.source_tile_id || tile.fixedId || tile.id || 0;
+    var parsed = Number(raw);
+    return isFinite(parsed) ? parsed : 0;
+}
+
+function logUserActivity(tile) {
+    if (typeof fetch !== "function") return;
+
+    var resolvedIp = "127.0.0.1";
+    try {
+        if (window && window.location && window.location.hostname && window.location.hostname !== "localhost") {
+            resolvedIp = window.location.hostname;
+        }
+    } catch (e) {}
+
+    var resolvedUrl = "";
+    try {
+        resolvedUrl = (window && window.location && window.location.href) ? window.location.href : "";
+    } catch (e) {}
+
+    var resolvedTileId = resolveActivityTileId(tile);
+    var payload = {
+        source: "visualizer_web",
+        Source: "visualizer_web",
+        ipAddress: resolvedIp,
+        IpAddress: resolvedIp,
+        ip_address: resolvedIp,
+        url: resolvedUrl,
+        Url: resolvedUrl,
+        tileId: resolvedTileId,
+        TileId: resolvedTileId,
+        tile_id: resolvedTileId,
+        block: false,
+        Block: false
+    };
+
+    fetch(getDirectUserActivityUrl(), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "include"
+    }).catch(function(err) {
+        console.warn("[user-activity] log failed:", err && err.message ? err.message : err);
+    });
 }
 
 
