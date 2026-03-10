@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+	
+<!-- Mirrored from html.tilesvisualizer.com/app/20 by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 21 Feb 2026 10:34:09 GMT -->
+<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=UTF-8" /><!-- /Added by HTTrack -->
+<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Tiles Visualizer</title>
+					<link rel="stylesheet" href="visualizer/css/font-awesome.min.css">
+					<link rel="stylesheet" href="visualizer/viewer.css">
+					<link rel="stylesheet" href="visualizer/engine.css">
+					<link rel="stylesheet" href="visualizer/css/jquery-ui.min.css">
+					<link rel="stylesheet" href="visualizer/css/bootstrap.min.css">
+					<link rel="stylesheet" href="visualizer/css/style.css">
+					<link rel="stylesheet" href="visualizer/css/component.css">
+					<script src="visualizer/js/jquery-2.1.4.min.js"></script>
+				
+<link rel="stylesheet" href="/app/modules/ui/common-visualizer-ui.css">
+<script src="/app/modules/ui/common-visualizer-popup.js"></script>
+		
+		
+
+
+	</head>
+	<body class="inner_page_bg cbp-spmenu-push"  style="padding-right: 15px;">
+<script src="/app/js/tiles.js"></script>
+<script src="/app/modules/ui/common-visualizer-ui.js"></script>
+        <script src="/app/modules/shared/modals.js"></script>
+        <script src="/app/modules/shared/mail-config.js"></script>
+        <script src="/app/modules/shared/page-chrome.js"></script>
+<script>document.write(getCommonPreloadersHtml());</script>
+
+
+	<div id="page">
+		<script>document.write(getCommonPageChromeHtml("/app/visualizer/images"));</script>
+                        <!-- Shared layout modals -->
+            <div id="commonLayoutModalsContainer"></div>
+            <script>document.write(getCommonGroutModalsHtml());</script>
+<script>document.write(getCommonFilterModalsHtml());</script>
+<script src="/app/modules/shared/filter-logic.js"></script>
+<script>document.write(getCommonSaveShareModalsHtml());</script>
+	</div>
+
+	<script>document.write(getCommonMailModalHtml(""));</script>
+
+        <div id='cont_for_vis_cvs'>
+        <canvas id='vis_cvs' class="view"></canvas>
+                    <script>document.write(getCommonBrushIconsHtml({ imageSrc: "visualizer/images/brush.png", panel1Left: 640, panel1Top: 244, panel2Left: 600, panel2Top: 780 }));</script>
+        </div>
+	<section id="inverted-contain" style='display:none;'>
+		<div class="panzoom-parent">
+			<div class="canvas-wrap panzoom">
+                            <div class='mask view' id='mask' style="height: 100%; width: 100%; position: absolute; top: 0px; left: 0px; display:none;">
+                                    <canvas id='line_cvs' class="view"></canvas>
+                            </div>
+			</div>
+		</div>
+	</section>
+
+
+
+	<script>
+
+        // loading similar images
+        // changes by sagar
+        $.each(avail_tiles,function(index,tile){
+            if(tile.similar_images.length) {
+                $.each(tile.similar_images,function(i,img){
+                    var i = new Image();
+                    i.src = img;
+                });
+            }
+        });
+var grout_y_img_path="#\/app\/visualizer\/res\/grout-y.png";
+		var grout_x_img_path="#\/app\/visualizer\/res\/grout-x.png";</script>
+
+        		<script id='script_0' src="visualizer/js/iscroll.js"></script>
+			<script id='script_1' src="visualizer/js/modernizr.custom.js"></script>
+			<script id='script_2' src="visualizer/js/jquery-2.1.4.min.js"></script>
+			<script id='script_3' src="visualizer/js/respond.min.js"></script>
+			<script id='script_4' src="visualizer/js/jquery-ui.min.js"></script>
+			<script id='script_5' src="visualizer/js/jquery.validate.min.js"></script>
+			<script id='script_6' src="visualizer/js/easyResponsiveTabs.js"></script>
+			<script id='script_7' src="visualizer/js/jquery.slimscroll.min.js"></script>
+			<script id='script_8' src="visualizer/js/jQueryRotate.js"></script>
+			<script id='script_9' src="visualizer/js/jquery.prettySocial.min.js"></script>
+			<script id='script_10' src="visualizer/js/jquery.preloader.js"></script>
+			<script id='script_11' src="visualizer/js/popup.js"></script>
+			<script id='script_12' src="visualizer/js/fullscreen.js"></script>
+			<script id='script_13' src="visualizer/js/script.js"></script>
+			<script id='script_14' src="visualizer/three.min.js"></script>
+			<script id='script_15' src="visualizer/DDSLoader.js"></script>
+			<script id='script_16' src="visualizer/MTLLoader.js"></script>
+			<script id='script_17' src="visualizer/OBJMTLLoader.js"></script>
+			<script id='script_18' src="visualizer/engine.js"></script>
+			<script id='script_19' src="visualizer/engine.scene.js"></script>
+			<script id='script_20' src="visualizer/engine.tile.js"></script>
+			<script id='script_21' src="visualizer/engine.render.js"></script>
+			<script id='script_22' src="visualizer/engine.shape.js"></script>
+			<script id='script_23' src="visualizer/js/bootstrap.min.js"></script>
+			<script id='script_24' src="visualizer/js/masonry.pkgd.min.js"></script>
+			<script id='script_25' src="visualizer/js/jquery.slimscroll.min.js"></script>
+			<script id='script_26' src="visualizer/js/hideAddressbar.min.js"></script>
+			<script id='script_27' src="visualizer/js/classie.js"></script>
+			<script id='script_28' src="visualizer/js/script-2.js"></script>
+			<script id='script_29' src="visualizer/js/jquery.panzoom.js"></script>
+			<script id='script_jspdf' src="visualizer/js/jspdf.min.js"></script>
+			<script id='script_html2canvas' src="visualizer/js/html2canvas.js"></script>
+	
+
+
+	<script type="text/javascript">
+
+
+
+                (function() {
+                        var $section = $('#inverted-contain');
+                            $section.find('.panzoom').panzoom({
+                                  $zoomIn: $section.find(".zoom-in"),
+                                  $zoomOut: $section.find(".zoom-out"),
+                                  $zoomRange: $section.find(".zoom-range"),
+                                  $reset: $(".reset"),
+                                  startTransform: 'scale(1.1)',
+                                  increment: 0.1,
+                                   contain: 'invert',
+                                  minScale: 1
+                            }).panzoom('zoom');
+                          })();
+                          var $panzoom = $('.panzoom').panzoom();
+                                  $(window).on('resize', function() {
+                                    $panzoom.panzoom('resetDimensions');
+                                  });
+
+                          setScene(["\/app\/images\/room_background_20.png","#\/app\/images\/room_foreground_20.png","[{\"0\":1,\"1\":-61,\"2\":-12,\"3\":-20,\"4\":0,\"5\":0,\"6\":0,\"7\":120,\"8\":140,\"9\":15,\"10\":15,\"11\":[[0,0],[1600,0],[1600,610],[0,610],[0,0]],\"12\":3,\"13\":3,\"14\":0,\"15\":0,\"16\":0,\"17\":0,\"177\":0,\"176\":\"Wall\"},{\"0\":2,\"1\":-105,\"2\":-28,\"3\":-1,\"4\":-87.0400000000000062527760746888816356658935546875,\"5\":0,\"6\":0,\"7\":130,\"8\":200,\"9\":26,\"10\":26,\"11\":[[0,645],[1600,645],[1600,900],[0,900],[0,0]],\"12\":5,\"13\":3,\"14\":0.01000000000000000020816681711721685132943093776702880859375,\"15\":0,\"16\":600,\"17\":780,\"177\":1,\"176\":\"Floor\"}]"],function() {
+                                  render(vis_cvs);
+                                  // $(".filter_thumbs").each(function(){
+                                   //   $(this).find('.tile-wrap').first().find('label').click();
+                                //  })
+
+                              $('#preloader').hide();
+                      $('#preloader2').hide();
+                      // Start loading the tiles images
+                      setTimeout(function() {
+
+                          $('.tile-type-label > img').each(function() {
+                                  if (this.dataset && this.dataset.src) {
+                                      this.src = this.dataset.src;
+                                      delete this.dataset.src;
+                                  }
+                              });
+
+						  if(window.location.hash.lastIndexOf("#design-data:")===0)
+							{
+								var design_data=JSON.parse(atob(window.location.hash.substring("#design-data:".length)));
+
+								console.log_(design_data);
+
+								loadDesign(design_data);
+							}
+                      }, 1000);
+		});
+	</script>
+        <script src="/app/modules/ui/common-visualizer-interactions.js"></script>
+<script src="/app/modules/data/dynamic-tiles-api.js"></script>
+
+
+        
+<script>
+$(function(){
+    var panelsLoaded = { "1": false, "2": false };
+    var apiInitTriggered = false;
+
+    function tryInitApiTiles() {
+        if (apiInitTriggered || !panelsLoaded["1"] || !panelsLoaded["2"]) {
+            return;
+        }
+        apiInitTriggered = true;
+
+        if (typeof window.initDynamicTilesFromApi === "function") {
+            window.initDynamicTilesFromApi({
+                roomId: 20
+            }).then(function(result) {
+                if (result) {
+                    console.log("[dynamic-tiles-api] 20.html loaded", result);
+                }
+            });
+        }
+    }
+
+    $("#roomsContainer").load("/app/modules/partials/room.html");
+    // Load shared menu panels
+    $("#menuPanel1").load("/app/modules/partials/menu-panel-1.html", function() {
+        if (typeof window.forceEnhanceVisualizerSidebar === "function") {
+            window.forceEnhanceVisualizerSidebar(1);
+        }
+        if (typeof window.setVisualizerTilesLoading === "function") {
+            window.setVisualizerTilesLoading(1);
+        }
+        $('.tile-type-label > img', this).each(function() {
+            if (this.dataset && this.dataset.src) {
+                this.src = this.dataset.src;
+                delete this.dataset.src;
+            }
+        });
+        if ($.fn.preloader) {
+            $("#tiles-list-1").preloader();
+        }
+        panelsLoaded["1"] = true;
+        tryInitApiTiles();
+    });
+    $("#menuPanel2").load("/app/modules/partials/menu-panel-2.html", function() {
+        if (typeof window.forceEnhanceVisualizerSidebar === "function") {
+            window.forceEnhanceVisualizerSidebar(2);
+        }
+        if (typeof window.setVisualizerTilesLoading === "function") {
+            window.setVisualizerTilesLoading(2);
+        }
+        $('.tile-type-label > img', this).each(function() {
+            if (this.dataset && this.dataset.src) {
+                this.src = this.dataset.src;
+                delete this.dataset.src;
+            }
+        });
+        if ($.fn.preloader) {
+            $("#tiles-list-2").preloader();
+        }
+        panelsLoaded["2"] = true;
+        tryInitApiTiles();
+    });
+
+    $("#productModalContainer").load("/app/modules/partials/product-modal.html");
+
+    // Load shared layout modals
+    $("#commonLayoutModalsContainer").load("/app/modules/partials/common-layout-modals.html");
+
+
+});
+</script>
+	</body>
+
+<!-- Mirrored from html.tilesvisualizer.com/app/20 by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 21 Feb 2026 10:34:09 GMT -->
+</html>
+
+
+
+

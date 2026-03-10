@@ -62,14 +62,34 @@ async function getJson<T>(
   return (await response.json()) as T;
 }
 
+function unwrapApiPayload<T>(raw: unknown): T {
+  if (raw && typeof raw === "object") {
+    const record = raw as Record<string, unknown>;
+    const wrapped =
+      record.data ??
+      record.result ??
+      record.rows ??
+      record.items ??
+      record.payload ??
+      record.response;
+    if (wrapped !== undefined) {
+      return wrapped as T;
+    }
+  }
+
+  return raw as T;
+}
+
 export async function fetchFilterOptions(
   spaceName: string,
   signal?: AbortSignal
 ): Promise<TileFilterOptions> {
-  const raw = await getJson<Partial<TileFilterOptions>>(
-    "FilterOptions",
-    { spaceName },
-    signal
+  const raw = unwrapApiPayload<Partial<TileFilterOptions>>(
+    await getJson<unknown>(
+      "FilterOptions",
+      { spaceName },
+      signal
+    )
   );
 
   return {
@@ -85,10 +105,12 @@ export async function fetchFilterAvailableOptions(
   request: TileFilterRequest,
   signal?: AbortSignal
 ): Promise<TileFilterOptions> {
-  const raw = await getJson<Partial<TileFilterOptions>>(
-    "FilterAvailableOptions",
-    request,
-    signal
+  const raw = unwrapApiPayload<Partial<TileFilterOptions>>(
+    await getJson<unknown>(
+      "FilterAvailableOptions",
+      request,
+      signal
+    )
   );
 
   return {
@@ -104,10 +126,14 @@ export async function fetchFilterTileList(
   request: TileFilterRequest,
   signal?: AbortSignal
 ): Promise<TileListItem[]> {
-  const raw = await getJson<unknown>("FilterTileList", request, signal);
+  const raw = unwrapApiPayload<unknown>(await getJson<unknown>("FilterTileList", request, signal));
 
   if (Array.isArray(raw)) {
     return raw as TileListItem[];
+  }
+
+  if (raw != null) {
+    console.warn("FilterTileList returned unexpected payload:", raw);
   }
 
   return [];

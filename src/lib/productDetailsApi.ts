@@ -1,6 +1,4 @@
 import { API_BASE, ASSET_BASE } from "@/lib/constants";
-import axios from "axios";
-import https from "node:https";
 
 export type ProductDetails = {
   tileId: number;
@@ -44,27 +42,10 @@ export async function fetchProductDetails(routeKey: string): Promise<ProductDeta
     let data: Record<string, unknown> | null = null;
     for (const skuCandidate of candidates) {
       const url = `${resolveBase()}GetTileBySku?skuCode=${encodeURIComponent(skuCandidate)}`;
-      try {
-        const response = await fetch(url, { method: "GET", cache: "no-store" });
-        if (response.status === 404) continue;
-        if (!response.ok) throw new Error(`GetTileBySku ${response.status}`);
-        data = (await response.json()) as Record<string, unknown> | null;
-      } catch {
-        // In local dev, Node fetch to https://localhost can fail on self-signed cert.
-        const isLocalhostHttps = /^https:\/\/localhost[:/]/i.test(url);
-        if (!isLocalhostHttps) {
-          throw new Error("GetTileBySku fetch failed");
-        }
-        const axiosRes = await axios.get(url, {
-          httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-          validateStatus: () => true,
-        });
-        if (axiosRes.status === 404) continue;
-        if (axiosRes.status < 200 || axiosRes.status >= 300) {
-          throw new Error(`GetTileBySku ${axiosRes.status}`);
-        }
-        data = (axiosRes.data ?? null) as Record<string, unknown> | null;
-      }
+      const response = await fetch(url, { method: "GET", cache: "no-store" });
+      if (response.status === 404) continue;
+      if (!response.ok) throw new Error(`GetTileBySku ${response.status}`);
+      data = (await response.json()) as Record<string, unknown> | null;
       if (data) break;
     }
     if (!data) return null;

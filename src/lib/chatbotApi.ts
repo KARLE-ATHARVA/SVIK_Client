@@ -20,6 +20,28 @@ type ChatbotRequest = {
   sessionId: string;
 };
 
+const CHATBOT_API_BASE = process.env.NEXT_PUBLIC_API_BASE?.replace(/\/+$/, "") ?? "";
+
+function buildApiUrl(path: string) {
+  if (!CHATBOT_API_BASE) {
+    return path;
+  }
+
+  let normalizedPath = path;
+  if (
+    CHATBOT_API_BASE.toLowerCase().endsWith("/api") &&
+    normalizedPath.toLowerCase().startsWith("/api")
+  ) {
+    normalizedPath = normalizedPath.slice(4) || "/";
+  }
+
+  if (!normalizedPath.startsWith("/")) {
+    return `${CHATBOT_API_BASE}/${normalizedPath}`;
+  }
+
+  return `${CHATBOT_API_BASE}${normalizedPath}`;
+}
+
 function buildErrorMessage(fallback: string, payload: unknown) {
   if (payload && typeof payload === "object" && "error" in payload) {
     const message = payload.error;
@@ -36,7 +58,7 @@ export async function postChatbotQuery({
   query,
   sessionId,
 }: ChatbotRequest): Promise<ChatbotResponse> {
-  const response = await fetch("/api/chatbot", {
+  const response = await fetch(buildApiUrl("/api/chatbot"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -57,9 +79,12 @@ export async function postChatbotQuery({
 }
 
 export async function clearChatbotSession(sessionId: string): Promise<void> {
-  const response = await fetch(`/api/chatbot/session/${encodeURIComponent(sessionId)}`, {
-    method: "DELETE",
-  });
+  const response = await fetch(
+    buildApiUrl(`/api/chatbot/session/${encodeURIComponent(sessionId)}`),
+    {
+      method: "DELETE",
+    },
+  );
 
   const payload = await response.json().catch(() => null);
 
