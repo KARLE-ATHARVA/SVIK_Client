@@ -354,10 +354,7 @@
         var $group = $modal.find('[data-filter-id="' + filterId + '"]').first().closest(".form-group");
         if (!$group.length || !(values instanceof Array) || !values.length) return;
 
-        var html = "" +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"true\")'>All</a>, " +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"false\")'>None</a>, " +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"!$\")'>Invert</a><hr/>";
+        var html = "<hr/>";
 
         values.forEach(function(v) {
             var val = esc(v);
@@ -380,10 +377,7 @@
         var $targetInput = $modal.find('[data-filter-id="' + filterId + '"]').first();
         var $group = $targetInput.length ? $targetInput.closest(".form-group") : $();
 
-        var optionHtml = "" +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"true\")'>All</a>, " +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"false\")'>None</a>, " +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"!$\")'>Invert</a><hr/>";
+        var optionHtml = "<hr/>";
 
         values.forEach(function(v) {
             var val = esc(v);
