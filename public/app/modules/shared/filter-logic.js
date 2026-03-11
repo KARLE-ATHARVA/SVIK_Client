@@ -53,49 +53,8 @@ function normalizeFilterFields(key) {
         return /sanita/i.test($(this).text());
     }).closest(".form-group").hide();
 
-    ensureApplicationSelectionForKey(key, "wall");
-    ensureAtLeastOneSelectionPerGroup(key);
+    ensureApplicationSelectionForKey(key, getPreferredApplicationForPanel(key));
 }
-
-/* -----------------------------
-   ALL / NONE / INVERT FIX
-------------------------------*/
-
-$(document).on("click", ".filter-action-all", function () {
-    var scope = $(this).closest(".modal");
-    var key = scope.attr("id").replace("filter-section-", "");
-
-    $('input[data-filter-type="option"]:visible', scope)
-        .prop("checked", true)
-        .trigger("change");
-
-    refreshFilterVisualState(key);
-    applyFilter(key);
-});
-
-$(document).on("click", ".filter-action-none", function () {
-    var scope = $(this).closest(".modal");
-    var key = scope.attr("id").replace("filter-section-", "");
-
-    $('input[data-filter-type="option"]:visible', scope)
-        .prop("checked", false)
-        .trigger("change");
-
-    refreshFilterVisualState(key);
-    applyFilter(key);
-});
-
-$(document).on("click", ".filter-action-invert", function () {
-    var scope = $(this).closest(".modal");
-    var key = scope.attr("id").replace("filter-section-", "");
-
-    $('input[data-filter-type="option"]:visible', scope).each(function () {
-        $(this).prop("checked", !this.checked);
-    }).trigger("change");
-
-    refreshFilterVisualState(key);
-    applyFilter(key);
-});
 
 /* -----------------------------
    FILTER CORE
@@ -152,8 +111,7 @@ function matchesAnyCheckedValue(itemValues, checkedValues) {
 }
 
 function applyFilter(key) {
-    ensureApplicationSelectionForKey(key, "wall");
-    ensureAtLeastOneSelectionPerGroup(key);
+    ensureApplicationSelectionForKey(key, getPreferredApplicationForPanel(key));
 
     var scope = $("#filter-section-" + key);
     var optionGroups = collectVisibleOptionGroups(key);
@@ -170,8 +128,7 @@ function applyFilter(key) {
             var checked = group.checked;
             var total = group.total;
 
-            if (total <= 0 || checked.length === total) return;
-            if (!checked.length) { show = false; return; }
+            if (total <= 0 || checked.length === total || !checked.length) return;
 
             var itemValues = parseItemFilterValues(el.attr("data-filter-" + fid));
             if (!matchesAnyCheckedValue(itemValues, checked)) {
@@ -221,7 +178,7 @@ function autoApplyApplicationForPanel(key) {
     var scope = $("#filter-section-" + key);
     if (!scope.length) return;
 
-    var target = key === "1" ? "wall" : "floor";
+    var target = getPreferredApplicationForPanel(key);
     var $apps = $('input[data-for="filter"][data-filter-type="option"][data-filter-id="34"]', scope);
     if (!$apps.length) return;
 
@@ -234,43 +191,6 @@ function autoApplyApplicationForPanel(key) {
     $match.prop("checked", true).trigger("change");
     refreshFilterVisualState(key);
     applyFilter(key);
-}
-
-function ensureAtLeastOneSelectionPerGroup(key) {
-    var scope = $("#filter-section-" + key);
-    if (!scope.length) return;
-
-    var byGroup = {};
-    $('input[data-for="filter"][data-filter-type="option"]', scope).each(function () {
-        var $input = $(this);
-        if ($input.closest(".form-group").css("display") === "none") return;
-        var fid = String($input.attr("data-filter-id") || "");
-        if (!fid) return;
-        if (!byGroup[fid]) byGroup[fid] = [];
-        byGroup[fid].push($input);
-    });
-
-    Object.keys(byGroup).forEach(function (fid) {
-        var arr = byGroup[fid];
-        var checkedCount = arr.filter(function ($i) { return $i.is(":checked"); }).length;
-        if (checkedCount > 0) return;
-
-        if (fid === "34") {
-            // Application fallback: WALL by default
-            var wall = arr.filter(function ($i) {
-                return String($i.val() || "").trim().toLowerCase() === "wall";
-            })[0];
-            if (wall) {
-                wall.prop("checked", true);
-            } else if (arr[0]) {
-                arr[0].prop("checked", true);
-            }
-            return;
-        }
-
-        // For non-application groups, fallback to "All selected" state.
-        arr.forEach(function ($i) { $i.prop("checked", true); });
-    });
 }
 
 function ensureApplicationSelectionForKey(key, preferred) {
@@ -300,6 +220,10 @@ function ensureApplicationSelectionForKey(key, preferred) {
         }).first();
         ($preferred.length ? $preferred : $apps.first()).prop("checked", true);
     }
+}
+
+function getPreferredApplicationForPanel(key) {
+    return String(key) === "2" ? "floor" : "wall";
 }
 function applyInitialStoredFilters(key) {
     var scope = $("#filter-section-" + key);
@@ -354,6 +278,7 @@ $(document).on("shown.bs.modal", '.modal[id^="filter-section-"]', function() {
 
     // ✅ APPLY STORED FILTER STATE
     applyInitialStoredFilters(key);
+    ensureApplicationSelectionForKey(key, getPreferredApplicationForPanel(key));
 
     refreshFilterVisualState(key);
 });
@@ -372,7 +297,7 @@ $(document).on("click", ".brush_icon[href='#menuPanel1'], .brush_icon[href='#men
     setTimeout(function() { autoApplyApplicationForPanel(key); }, 0);
 });
 
-// Default on landing: Application = WALL.
+// Default on landing: panel 1 = WALL, panel 2 = FLOOR.
 $(function () {
     // Retry briefly to handle async filter option rendering without flicker.
     var attempts = 0;
@@ -387,8 +312,7 @@ $(function () {
                 ready = false;
                 return;
             }
-            ensureApplicationSelectionForKey(key, "wall");
-            ensureAtLeastOneSelectionPerGroup(key);
+            ensureApplicationSelectionForKey(key, getPreferredApplicationForPanel(key));
             refreshFilterVisualState(key);
             applyFilter(key);
         });
@@ -398,3 +322,5 @@ $(function () {
         }
     }, 100);
 });
+
+
