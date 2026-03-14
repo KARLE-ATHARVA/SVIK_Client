@@ -21,16 +21,14 @@ function colorFilter(p_class,selColorArr){
 }
 
 function setImageContainer(){
-
 	$("#wrapper").height($(window).height());
 
-	var wW = $(window).width();
-	var hH = (wW*9)/16;
-	var ml = -wW/2;
+	var viewportWidth = $(window).width();
+	var viewportHeight = $(window).height();
 
 	$(".view").css({
-		height : hH + "px",
-		width  : wW + "px"
+		height : viewportHeight + "px",
+		width  : viewportWidth + "px"
 	});
 }
 

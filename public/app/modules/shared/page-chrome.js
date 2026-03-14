@@ -37,11 +37,17 @@
 <div class="btns_wrap">
     <div class="header_nav header_nav_xs">
         <!--<a class="btn pre_btn" id='addArea'>Add Area</a>-->
-        <a data-toggle="modal" class="btn pre_btn" data-target="#roomsModal">Select Room</a>
-        <a href="#" class="btn pre_btn" onclick="return openProductInfoModal(event);">Product Info</a>
+        <a data-toggle="modal" class="btn pre_btn" data-target="#roomsModal">
+            <span class="pre_btn_icon fa fa-th-large" aria-hidden="true"></span>
+            <span class="pre_btn_label">Select Room</span>
+        </a>
+        <a href="#" class="btn pre_btn" onclick="return openProductInfoModal(event);">
+            <span class="pre_btn_icon fa fa-info-circle" aria-hidden="true"></span>
+            <span class="pre_btn_label">Product Info</span>
+        </a>
     </div>
     <div class="right_side_btns">
-        <a href="#" data-toggle="modal" data-target="#modal_save">
+        <a href="#" class="save-options-toggle" onclick="return toggleSaveOptions(event);">
             <img src="${base}/save_icon.png" alt="">
         </a>
         <br class="mobile_br_hide">
@@ -53,13 +59,41 @@
             <img src="${base}/mail_icon.png" alt="">
         </a>
         <br class="mobile_br_hide">
-        <a href="#" class="share-toggle">
+        <a href="#" class="share-options-toggle" onclick="return toggleShareOptions(event);">
             <img src="${base}/share_icon.png" alt="">
         </a>
         <br class="mobile_br_hide">
         <a href="#" class="enter-full-screen">
             <img src="${base}/full_screen_icon.png" alt="">
         </a>
+    </div>
+    <div id="saveOptionsPanel" class="save-options-panel" aria-hidden="true">
+        <button type="button" class="save-option" onclick="saveDesignAsImage()">
+            <span class="save-icon fa fa-file-image-o" aria-hidden="true"></span>
+            <span>Save Image</span>
+        </button>
+        <button type="button" class="save-option" onclick="saveWithInfoPDF()">
+            <span class="save-icon fa fa-file-pdf-o" aria-hidden="true"></span>
+            <span>Save PDF</span>
+        </button>
+        <button type="button" class="save-option" onclick="saveDesignForLater()">
+            <span class="save-icon fa fa-bookmark-o" aria-hidden="true"></span>
+            <span>Save For Later</span>
+        </button>
+    </div>
+    <div id="shareOptionsPanel" class="share-options-panel" aria-hidden="true">
+        <button type="button" class="share-option" onclick="shareDesignOnFacebook()">
+            <img src="${base}/share_icon.png" class="share-icon" alt="">
+            <span>Facebook</span>
+        </button>
+        <button type="button" class="share-option" onclick="shareDesignOnTwitter()">
+            <img src="${base}/share_icon.png" class="share-icon" alt="">
+            <span>Twitter</span>
+        </button>
+        <button type="button" class="share-option" onclick="shareDesignOnGoogle()">
+            <img src="${base}/share_icon.png" class="share-icon" alt="">
+            <span>Google+</span>
+        </button>
     </div>
 </div>
 <!-- Product Info Modal -->

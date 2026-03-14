@@ -7,6 +7,9 @@ searchKeyPress = function(key, inp) {
             display: title.toLowerCase().indexOf(text.toLowerCase()) > -1 ? "inline-block" : "none"
         });
     });
+    if (typeof window.updateVisualizerTileResultsState === "function") {
+        window.updateVisualizerTileResultsState(key, "No products found");
+    }
 }
 
 function asc_sort(a, b) {

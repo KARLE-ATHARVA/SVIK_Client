@@ -69,8 +69,14 @@
             '  </a>' +
             '</div>' +
             '<div style="top:15px;right:15px;position:fixed;z-index:2147483647;pointer-events:auto;" class="header_nav hidden-xs">' +
-            '  <a data-toggle="modal" class="btn pre_btn" data-target="#roomsModal">Select Room</a>' +
-            '  <a href="#" class="btn pre_btn" onclick="return openProductInfoModal(event);">Product Info</a>' +
+            '  <a data-toggle="modal" class="btn pre_btn" data-target="#roomsModal">' +
+            '    <span class="pre_btn_icon fa fa-th-large" aria-hidden="true"></span>' +
+            '    <span class="pre_btn_label">Select Room</span>' +
+            '  </a>' +
+            '  <a href="#" class="btn pre_btn" onclick="return openProductInfoModal(event);">' +
+            '    <span class="pre_btn_icon fa fa-info-circle" aria-hidden="true"></span>' +
+            '    <span class="pre_btn_label">Product Info</span>' +
+            '  </a>' +
             '</div>';
     };
 

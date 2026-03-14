@@ -1,9 +1,13 @@
 <form action="" autocomplete="off" onsubmit="return false;">
-    <div class="top_btns">
-        <button type="button" class="btn btn-default btn-sm btn-block custom_default_btn" data-toggle="modal" data-target="#filter-section-1">Filters</button>
+    <div class="top_btns top_btns_primary">
         <button type="button" class="btn btn-default btn-sm btn-block custom_default_btn" data-toggle="modal" data-target="#layouts-section-1">Select Layout</button>
         <button type="button" class="btn btn-default btn-sm btn-block custom_default_btn" data-toggle="modal" data-target="#grouts-section-1">Select Grout</button>
-        <button onclick="delete tile_datas['1'];delete tile_datas['1_'];render(vis_cvs);" type="button" class="btn btn-default btn-sm btn-block custom_default_btn">Clear Tiles</button>
+    </div>
+    <div class="top_btns top_btns_secondary">
+        <button type="button" class="btn btn-default btn-sm btn-block custom_default_btn filter-row-btn" data-toggle="modal" data-target="#filter-section-1">Filters</button>
+        <button onclick="delete tile_datas['1'];delete tile_datas['1_'];render(vis_cvs);" type="button" class="btn btn-default btn-sm btn-block custom_default_btn clear-tiles-icon-btn" title="Clear Tiles" aria-label="Clear Tiles">
+            <span class="btn-icon" aria-hidden="true">&#10227;</span>
+        </button>
         <button style='display:none;' type="button" class="btn btn-default btn-sm btn-block custom_default_btn" data-toggle="modal" data-target="#model-section-1">3D Model</button>
     </div>
     <div class="clearfix"></div>

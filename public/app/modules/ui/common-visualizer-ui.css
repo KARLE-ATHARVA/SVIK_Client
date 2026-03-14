@@ -253,6 +253,10 @@
     margin-bottom: 10px;
 }
 
+.custom_sidebar_tab_content .top_btns_secondary {
+    grid-template-columns: minmax(0, 1fr) 44px;
+}
+
 .custom_sidebar_tab_content .top_btns .custom_default_btn {
     width: 100%;
     max-width: 100%;
@@ -279,6 +283,25 @@
 
 .custom_sidebar_tab_content .top_btns .custom_default_btn.filter-icon-btn {
     gap: 8px;
+}
+
+.custom_sidebar_tab_content .top_btns .custom_default_btn.clear-tiles-icon-btn {
+    width: 44px;
+    min-width: 44px;
+    min-height: 42px;
+    padding: 10px;
+    font-size: 0;
+}
+
+.custom_sidebar_tab_content .top_btns .custom_default_btn.clear-tiles-icon-btn .btn-icon {
+    font-size: 20px;
+    line-height: 1;
+    color: #98a2b3;
+    transform: translateY(-1px);
+}
+
+.custom_sidebar_tab_content .top_btns .custom_default_btn.filter-row-btn {
+    width: 100%;
 }
 
 .custom_sidebar_tab_content .top_btns .custom_default_btn.filter-icon-btn .btn-icon {
@@ -947,6 +970,10 @@
         grid-template-columns: 1fr;
     }
 
+    .custom_sidebar_tab_content .top_btns_secondary {
+        grid-template-columns: minmax(0, 1fr) 44px;
+    }
+
     .custom_sidebar_tab_content .top_btns .custom_default_btn {
         font-size: 12px;
         padding: 8px 10px;
@@ -1025,6 +1052,13 @@ body.inner_page_bg {
 .prod-info-tabs .active a {
     background: var(--viz-primary) !important;
     color: #fff !important;
+}
+
+#modal_info .product_wrapper .img-responsive {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
 }
 
 .custom_default_btn {
@@ -1427,6 +1461,133 @@ body.inner_page_bg {
     filter: brightness(0) saturate(100%) invert(63%) sepia(86%) saturate(1428%) hue-rotate(359deg) brightness(100%) contrast(95%);
 }
 
+.save-options-panel,
+.share-options-panel {
+    position: fixed;
+    right: -240px;
+    width: 200px;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid var(--theme-panel-border);
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+    transition: right 0.3s ease;
+    z-index: 299999;
+    overflow: hidden;
+}
+
+.save-options-panel {
+    top: 220px;
+}
+
+.share-options-panel {
+    top: calc(50% + 26px);
+    transform: translateY(-50%);
+}
+
+.save-options-panel.active,
+.share-options-panel.active {
+    right: 70px;
+}
+
+.save-option,
+.share-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px;
+    border: 0;
+    border-bottom: 1px solid var(--theme-line);
+    background: transparent;
+    color: var(--theme-text);
+    cursor: pointer;
+    text-align: left;
+}
+
+.save-option:last-child,
+.share-option:last-child {
+    border-bottom: none;
+}
+
+.save-option:hover,
+.save-option:focus,
+.share-option:hover,
+.share-option:focus {
+    background: var(--theme-accent-soft);
+    outline: none;
+}
+
+.save-icon,
+.share-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    filter: brightness(0) saturate(100%) invert(14%) sepia(16%) saturate(1062%) hue-rotate(179deg) brightness(96%) contrast(93%);
+}
+
+.header_nav.hidden-xs a.pre_btn,
+.header_nav.header_nav_xs a.pre_btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    min-height: 48px !important;
+    padding: 0 12px 0 16px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 999px !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: 'UbuntuM' !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    box-shadow: 0 14px 30px -15px rgba(15, 23, 42, 0.4) !important;
+    letter-spacing: 0 !important;
+}
+
+.header_nav.hidden-xs a.pre_btn:hover,
+.header_nav.hidden-xs a.pre_btn:focus,
+.header_nav.header_nav_xs a.pre_btn:hover,
+.header_nav.header_nav_xs a.pre_btn:focus {
+    background: #f8fafc !important;
+    color: #000 !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22) !important;
+}
+
+.pre_btn_icon {
+    color: #111827 !important;
+    font-size: 19px !important;
+    line-height: 1 !important;
+}
+
+.pre_btn_label {
+    color: #111827 !important;
+    white-space: nowrap;
+    font-weight: 500 !important;
+}
+
+.pre_btn_badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    width: 30px;
+    height: 30px;
+    margin-left: 2px;
+    border-radius: 999px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    flex: 0 0 30px;
+}
+
 /* Keep top action buttons clickable above canvas/brush overlays */
 .header_wrap,
 .header_nav.hidden-xs,
@@ -1459,4 +1620,19 @@ body.inner_page_bg {
 /* Keep shared chrome stack above canvas/brush layers */
 #page {
     z-index: 300000 !important;
+}
+
+@media (max-width: 768px) {
+    .save-options-panel,
+    .share-options-panel {
+        top: auto;
+        bottom: 100px;
+        right: -240px;
+        transform: none;
+    }
+
+    .save-options-panel.active,
+    .share-options-panel.active {
+        right: 12px;
+    }
 }

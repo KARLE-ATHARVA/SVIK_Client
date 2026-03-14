@@ -2,10 +2,14 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function Newsletter() {
   const socialImages = [
-    "/insta-1.jpg", "/insta-2.jpg", "/insta-3.jpg", "/insta-4.jpg",
+    "/tiles/tile-1.jpg",
+    "/tiles/tile-2.jpg",
+    "/tiles/tile-3.jpg",
+    "/tiles/tile-1.jpg",
   ];
 
   return (
@@ -53,7 +57,12 @@ export default function Newsletter() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {socialImages.map((src, index) => (
               <div key={index} className="aspect-square relative overflow-hidden rounded-lg shadow-md">
-                 
+                <Image
+                  src={src}
+                  alt={`Tile ${index + 1}`}
+                  fill
+                  className="object-cover"
+                />
                 <div className="absolute inset-0 bg-slate-900/20 hover:bg-transparent transition duration-300 cursor-pointer"></div>
               </div>
             ))}

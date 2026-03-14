@@ -134,6 +134,239 @@ $(function(){
         }
     }
 
+    function slugifyFilenamePart(value, fallback) {
+        var text = String(value || fallback || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+        return text || String(fallback || "design");
+    }
+
+    function getCurrentRoomId() {
+        var match = String(window.location.pathname || "").match(/\/(\d+)(?:\.html)?$/);
+        return match ? match[1] : "";
+    }
+
+    function getCurrentRoomName() {
+        var roomLabel = $.trim($(".rooms-tabs li.active a").text() || "");
+        var roomId = getCurrentRoomId();
+        var parts = [];
+
+        if (roomLabel) {
+            parts.push(slugifyFilenamePart(roomLabel, "room"));
+        } else {
+            parts.push("room");
+        }
+
+        if (roomId) {
+            parts.push(roomId);
+        }
+
+        return parts.join("-");
+    }
+
+    function getSaveDateStamp() {
+        var now = new Date();
+        var year = now.getFullYear();
+        var month = String(now.getMonth() + 1).padStart(2, "0");
+        var day = String(now.getDate()).padStart(2, "0");
+        return year + "-" + month + "-" + day;
+    }
+
+    function getPdfFilename() {
+        return getCurrentRoomName() + "-" + getSaveDateStamp() + ".pdf";
+    }
+
+    function setSaveOptionsOpen(isOpen) {
+        var panel = document.getElementById("saveOptionsPanel");
+        var toggle = document.querySelector(".save-options-toggle");
+        if (!panel) return;
+
+        panel.classList.toggle("active", !!isOpen);
+        panel.setAttribute("aria-hidden", isOpen ? "false" : "true");
+
+        if (toggle) {
+            toggle.classList.toggle("is-active", !!isOpen);
+            toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        }
+    }
+
+    function setShareOptionsOpen(isOpen) {
+        var panel = document.getElementById("shareOptionsPanel");
+        var toggle = document.querySelector(".share-options-toggle");
+        if (!panel) return;
+
+        panel.classList.toggle("active", !!isOpen);
+        panel.setAttribute("aria-hidden", isOpen ? "false" : "true");
+
+        if (toggle) {
+            toggle.classList.toggle("is-active", !!isOpen);
+            toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        }
+    }
+
+    function openSharePopup(service) {
+        var imageUrl = createDesignShareLink() || window.location.href;
+        var encodedUrl = encodeURIComponent(imageUrl);
+        var url = "";
+
+        switch (service) {
+        case "facebook":
+            url = "https://www.facebook.com/sharer/sharer.php?u=";
+            break;
+        case "twitter":
+            url = "https://twitter.com/intent/tweet?url=";
+            break;
+        case "google":
+            url = "https://plus.google.com/share?url=";
+            break;
+        default:
+            return;
+        }
+
+        setShareOptionsOpen(false);
+        window.open(url + encodedUrl, "sharer", "width=626,height=436");
+    }
+
+    function saveDesignByType(as) {
+        if (as == "link") {
+            var link = createDesignShareLink();
+
+            $('button[data-dismiss="modal"]').click();
+            setSaveOptionsOpen(false);
+            $("<div title='Design has been saved'><style>.no-close .ui-dialog-titlebar-close {display: none }</style>Copy & Save <a style='text-decoration:underline;' href='" + link + "' target='_blank'>this link</a>.</div>").appendTo(document.body).dialog({
+                modal: true,
+                dialogClass: 'no-close',
+                buttons: {
+                    Close: function() {
+                        $(this).dialog("close").remove();
+                    }
+                }
+            });
+            return;
+        }
+
+        var infoHtml = '',
+            dt = vis_cvs.toDataURL_('image/jpeg'),
+            l = document.createElement("a");
+
+        switch (as) {
+        case "image":
+            l.download = "Design.jpg";
+            break;
+
+        case "info-pdf":
+            $('#preloader2').show();
+            setSaveOptionsOpen(false);
+            saveDesignInfoPdf(function() {
+                $('#preloader2').hide();
+            });
+            return;
+
+        case "info":
+            $('#modal_info .tabs-content-wrapper').each(function(index, content) {
+                var title = $('#modal_info [role=tab]').eq(index).text();
+                content = $(content).clone();
+                content.find('img').each(function() {
+                    var cvs = document.createElement('canvas');
+                    cvs.width = 100;
+                    cvs.height = this.height / this.width * 100;
+                    cvs.getContext('2d').drawImage(this, 0, 0, cvs.width, cvs.height);
+                    this.src = cvs.toDataURL('image/png');
+                });
+                infoHtml += '<section><h2>' + title + '</h2><div class="info-content">' + content.html() + '</div></section>';
+            });
+
+            var htdata = ['<!DOCTYPE html><html><head><title>' + $.trim($(".resp-tab-active").text()) + ' Design</title></head>',
+                '<style>' +
+                '*,::after,::before{-moz-box-sizing:border-box;box-sizing:border-box}body{font-family:Helvetica neue,Helvetica,Arial,sans-serif}.room-image{border:4px solid #0f73ae}section{margin-top:2em}h2{background-color:#0f73ae;color:#fff;padding:15px;margin:0;border-top-left-radius:15px;border-top-right-radius:15px}.info-content{padding:1em;border-bottom-left-radius:15px;border-bottom-right-radius:15px;border:2px solid #0f73ae}.row::after,.row::before{display:table;content:" "}.row::after{clear:both}.product_wrapper{margin:15px 15px 0}.col-xs-3{float:left;width:25%;padding-right:15px;padding-left:15px}.img-responsive{display:block;max-width:100%;height:auto;vertical-align:middle}.col-xs-9{float:left;width:75%;padding-right:15px;padding-left:15px}.selected_product_name{color:#bc211e;font-weight:700;padding-bottom:5px;text-transform:uppercase}p{margin:0}label{display:inline-block;max-width:100%;margin-bottom:5px;font-weight:700}' +
+                '</style>',
+                '<body style="background-color:white;"><img class="room-image" src="' + dt + '" style="max-width: 100%;"><div id="infoTab">' + infoHtml + '</div><span style="display:none;">%addonjs%</span></body></html>'
+            ].join("");
+
+            dt = new Blob([htdata], {type: 'text/html'});
+            dt = URL.createObjectURL(dt);
+            l.download = "Design.html";
+            break;
+        }
+
+        l.href = dt;
+        l.style.display = 'none';
+        document.body.appendChild(l);
+        l.click();
+        document.body.removeChild(l);
+        setSaveOptionsOpen(false);
+    }
+
+    window.toggleSaveOptions = function(evt) {
+        if (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+
+        var panel = document.getElementById("saveOptionsPanel");
+        if (!panel) return false;
+
+        setSaveOptionsOpen(!panel.classList.contains("active"));
+        return false;
+    };
+
+    window.closeSaveOptions = function() {
+        setSaveOptionsOpen(false);
+    };
+
+    window.toggleShareOptions = function(evt) {
+        if (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+
+        var panel = document.getElementById("shareOptionsPanel");
+        if (!panel) return false;
+
+        setShareOptionsOpen(!panel.classList.contains("active"));
+        return false;
+    };
+
+    window.closeShareOptions = function() {
+        setShareOptionsOpen(false);
+    };
+
+    window.saveDesignAsImage = function() {
+        saveDesignByType("image");
+    };
+
+    window.saveWithInfoPDF = function() {
+        saveDesignByType("info-pdf");
+    };
+
+    window.saveDesignForLater = function() {
+        saveDesignByType("link");
+    };
+
+    window.shareDesignOnFacebook = function() {
+        openSharePopup("facebook");
+    };
+
+    window.shareDesignOnTwitter = function() {
+        openSharePopup("twitter");
+    };
+
+    window.shareDesignOnGoogle = function() {
+        openSharePopup("google");
+    };
+
+    $(document).on("click", function(e) {
+        var $target = $(e.target);
+        if (!$target.closest("#saveOptionsPanel, .save-options-toggle").length) {
+            setSaveOptionsOpen(false);
+        }
+        if (!$target.closest("#shareOptionsPanel, .share-options-toggle").length) {
+            setShareOptionsOpen(false);
+        }
+    });
+
 
     $("#mailform").validate({
         rules: {
@@ -262,8 +495,7 @@ $(function(){
 
         $(".share-toggle").click(function(e) {
             e.preventDefault();
-            imageUrl = createDesignShareLink();
-            $('#modal_share').modal('show');
+            setShareOptionsOpen(true);
         });
     }());
 
@@ -332,15 +564,34 @@ $(function(){
 
     $('.enter-full-screen').click(function(e) {
         e.preventDefault();
-        elem = document.querySelector('.canvas-wrap');
+
+        var isFullscreen = document.fullscreenElement ||
+            document.msFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.webkitFullscreenElement;
+
+        if (isFullscreen) {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+            return;
+        }
+
+        var elem = document.body;
         if (elem.requestFullscreen) {
-          elem.requestFullscreen();
+            elem.requestFullscreen();
         } else if (elem.msRequestFullscreen) {
-          elem.msRequestFullscreen();
+            elem.msRequestFullscreen();
         } else if (elem.mozRequestFullScreen) {
-          elem.mozRequestFullScreen();
+            elem.mozRequestFullScreen();
         } else if (elem.webkitRequestFullscreen) {
-          elem.webkitRequestFullscreen();
+            elem.webkitRequestFullscreen();
         }
     });
 
@@ -505,77 +756,7 @@ $(function(){
     }
 
     $(".save-design").click(function() {
-
-        if(this.dataset.as=="link")
-        {
-            var link=createDesignShareLink();
-
-            $('button[data-dismiss="modal"]').click();
-            $( "<div title='Design has been saved'><style>.no-close .ui-dialog-titlebar-close {display: none }</style>Copy & Save <a style='text-decoration:underline;' href='"+link+"' target='_blank'>this link</a>.</div>" ).appendTo(document.body).dialog({
-                modal: true,
-                dialogClass: 'no-close',
-                buttons: {
-                  Close: function() {
-                    $( this ).dialog( "close" ).remove();
-                  }
-                }
-              });
-
-        }
-        else
-        {
-            var infoHtml = '',
-                dt = vis_cvs.toDataURL_('image/jpeg');
-                l = document.createElement("a");
-
-            switch(this.dataset.as) {
-            case "image":
-                l.download="Design.jpg";
-                break;
-
-            case "info-pdf":
-                $('#preloader2').show();
-                saveDesignInfoPdf(function() {
-                    $('#preloader2').hide();
-                });
-                return;
-
-            case "info":
-                $('#modal_info .tabs-content-wrapper').each(function(index, content) {
-                    var title = $('#modal_info [role=tab]').eq(index).text();
-                    content = $(content).clone();
-                    content.find('img').each(function() {
-                        var cvs = document.createElement('canvas');
-                        cvs.width = 100;
-                        cvs.height = this.height / this.width * 100;
-                        cvs.getContext('2d').drawImage(this, 0, 0, cvs.width, cvs.height);
-                        this.src = cvs.toDataURL('image/png');
-                    });
-                    infoHtml += '<section><h2>' + title + '</h2><div class="info-content">' + content.html() + '</div></section>';
-                });
-
-                var htdata=['<!DOCTYPE html><html><head><title>' + $.trim($(".resp-tab-active").text()) + ' Design</title></head>',
-                    '<style>' +
-                    '*,::after,::before{-moz-box-sizing:border-box;box-sizing:border-box}body{font-family:Helvetica neue,Helvetica,Arial,sans-serif}.room-image{border:4px solid #0f73ae}section{margin-top:2em}h2{background-color:#0f73ae;color:#fff;padding:15px;margin:0;border-top-left-radius:15px;border-top-right-radius:15px}.info-content{padding:1em;border-bottom-left-radius:15px;border-bottom-right-radius:15px;border:2px solid #0f73ae}.row::after,.row::before{display:table;content:" "}.row::after{clear:both}.product_wrapper{margin:15px 15px 0}.col-xs-3{float:left;width:25%;padding-right:15px;padding-left:15px}.img-responsive{display:block;max-width:100%;height:auto;vertical-align:middle}.col-xs-9{float:left;width:75%;padding-right:15px;padding-left:15px}.selected_product_name{color:#bc211e;font-weight:700;padding-bottom:5px;text-transform:uppercase}p{margin:0}label{display:inline-block;max-width:100%;margin-bottom:5px;font-weight:700}' +
-                    '</style>',
-                    '<body style="background-color:white;"><img class="room-image" src="' + dt + '" style="max-width: 100%;"><div id="infoTab">' + infoHtml + '</div><span style="display:none;">%addonjs%</span></body></html>'
-                ].join("");
-
-                dt = new Blob([htdata], {type: 'text/html'});
-                dt = URL.createObjectURL(dt);
-                l.download="Design.html";
-
-                break;
-            }
-
-            l.href=dt;
-            l.style.display='none';
-            document.body.appendChild(l);
-            l.click();
-            document.body.removeChild(l);
-
-        }
-
+        saveDesignByType(this.dataset.as);
     });
 
     setClickTimeout=function(es,to)
@@ -805,7 +986,7 @@ $(function(){
             var metaBase = $('meta[name="api-base"]').attr("content");
             if (metaBase && String(metaBase).trim()) base = String(metaBase).trim();
         }
-        if (!base) base = "https://localhost:44357";
+        if (!base) base = "https://localhost:5109/";
         if (!base) base = window.location.origin || "";
         return base.replace(/\/+$/, "");
     }
@@ -822,8 +1003,8 @@ $(function(){
         var candidates = [
             base + "/Generate?" + query,
             base + "/api/ProductQr/Generate?" + query,
-            "https://localhost:44357/Generate?" + query,
-            "https://localhost:44357/api/ProductQr/Generate?" + query
+            "https://localhost:5109/Generate?" + query,
+            "https://localhost:5109/api/ProductQr/Generate?" + query
         ];
 
         function tryFetch(index) {
@@ -1140,7 +1321,7 @@ $(function(){
             pdf.setFontSize(10);
             pdf.setFontStyle("normal");
             pdf.text("No applied tiles found for wall/floor.", margin, 136);
-            pdf.save("Design-with-info.pdf");
+            pdf.save(getPdfFilename());
             if (typeof onDone === "function") onDone();
             return;
         }
@@ -1154,7 +1335,7 @@ $(function(){
 
         function nextCard() {
             if (idx >= cards.length) {
-                pdf.save("Design-with-info.pdf");
+                pdf.save(getPdfFilename());
                 if (typeof onDone === "function") onDone();
                 return;
             }
@@ -1182,7 +1363,7 @@ $(function(){
 
 
         printDoc.addHTML(dom,function() {
-                printDoc.save("Design.pdf");
+                printDoc.save(getPdfFilename());
 
                 $(".temporary").remove();
         });
@@ -1633,8 +1814,8 @@ function selectTile(tiles) {
 function getDirectUserActivityUrl() {
     var baseFromStorage = "";
     try { baseFromStorage = (window.localStorage && localStorage.getItem("visualizer_api_base")) || ""; } catch (e) {}
-    var base = String(baseFromStorage || "https://localhost:44357/").trim();
-    if (!base) base = "https://localhost:44357/";
+    var base = String(baseFromStorage || "https://localhost:5109/").trim();
+    if (!base) base = "https://localhost:5109/";
     if (base.charAt(base.length - 1) !== "/") base += "/";
     return base + "AddUserActivity";
 }
