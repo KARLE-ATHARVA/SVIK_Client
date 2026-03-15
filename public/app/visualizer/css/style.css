@@ -52,7 +52,7 @@ html, body {
 body {
   width: 100%;
   overflow-x: hidden;
-  overflow-y: auto; 
+  overflow-y: hidden;
   background-color: #f8f8f8;
   font-family: 'UbuntuR';
 }
@@ -642,6 +642,21 @@ body {
     z-index: 101;
     height: auto;
   }
+ #cont_for_vis_cvs
+  {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+  }
+ #vis_cvs,
+ #line_cvs
+  {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: block;
+    transform: translate(-50%, -50%);
+  }
  #inverted-contain
   { 
             height: 100%;
@@ -650,13 +665,13 @@ body {
             bottom: 0;
             left: 0;
             right: 0;
-            position: absolute;
+            position: fixed;
             z-index: 100;
         }
         .panzoom-parent
         {
           width: 100%;
-           
+          height: 100%;
         }
          .panzoom
          {

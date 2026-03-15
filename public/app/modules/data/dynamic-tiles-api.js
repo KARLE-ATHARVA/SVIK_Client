@@ -354,10 +354,7 @@
         var $group = $modal.find('[data-filter-id="' + filterId + '"]').first().closest(".form-group");
         if (!$group.length || !(values instanceof Array) || !values.length) return;
 
-        var html = "" +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"true\")'>All</a>, " +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"false\")'>None</a>, " +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"!$\")'>Invert</a><hr/>";
+        var html = "<hr/>";
 
         values.forEach(function(v) {
             var val = esc(v);
@@ -380,10 +377,7 @@
         var $targetInput = $modal.find('[data-filter-id="' + filterId + '"]').first();
         var $group = $targetInput.length ? $targetInput.closest(".form-group") : $();
 
-        var optionHtml = "" +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"true\")'>All</a>, " +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"false\")'>None</a>, " +
-            "<a href='javascript:filter_select($(\"input[data-filter-id=" + filterId + "]\"),\"!$\")'>Invert</a><hr/>";
+        var optionHtml = "<hr/>";
 
         values.forEach(function(v) {
             var val = esc(v);
@@ -457,7 +451,7 @@
         try {
             fromStorage = global.localStorage && localStorage.getItem("visualizer_api_base");
         } catch (e) {}
-        return normalizeApiBase(fromOpts || fromGlobal || fromStorage || fromPublicEnv || "https://localhost:44357/");
+        return normalizeApiBase(fromOpts || fromGlobal || fromStorage || fromPublicEnv || "http://localhost:5109/");
     }
 
     function getPreferredFilters() {
@@ -900,6 +894,9 @@
         var active = $panel.find(".sidebar-fav-toggle").hasClass("is-active");
         if (!active) {
             $panel.find(".tile-wrap").show();
+            if (typeof global.updateVisualizerTileResultsState === "function") {
+                global.updateVisualizerTileResultsState(panel, "No products found");
+            }
             return;
         }
 
@@ -908,6 +905,9 @@
             var id = String($(this).attr("data-fav-id") || "");
             $(this).toggle(favs.indexOf(id) >= 0);
         });
+        if (typeof global.updateVisualizerTileResultsState === "function") {
+            global.updateVisualizerTileResultsState(panel, "No products found");
+        }
     }
 
     function bindSidebarEvents() {

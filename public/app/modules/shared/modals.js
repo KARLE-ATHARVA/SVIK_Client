@@ -183,86 +183,66 @@
                     <div class="form-group">
                         <label for="filter-23" class="col-sm-3 control-label">Size</label>
                         <div class="col-sm-9">
-                            <a href='javascript:filter_select($("input[data-filter-id=23]"),"true")'>All</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=23]"),"false")'>None</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=23]"),"!$")'>Invert</a>
                             <hr/>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='300x450mm'/>300x450mm
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='300x450mm'/>300x450mm
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='300x600mm'/>300x600mm
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='300x600mm'/>300x600mm
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='300x900mm'/>300x900mm
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='300x900mm'/>300x900mm
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='200x200mm'/>200x200mm
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='200x200mm'/>200x200mm
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='Others'/>Others
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="23" data-min=0 data-max=1 value='Others'/>Others
                             </span>
                         </div>
                     </div>
                     <div class="form-group gray_bg">
                         <label for="filter-25" class="col-sm-3 control-label">Finish</label>
                         <div class="col-sm-9">
-                            <a href='javascript:filter_select($("input[data-filter-id=25]"),"true")'>All</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=25]"),"false")'>None</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=25]"),"!$")'>Invert</a>
                             <hr/>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Glossy'/>Glossy
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Glossy'/>Glossy
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Matt'/>Matt
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Matt'/>Matt
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Elevation'/>Elevation
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Elevation'/>Elevation
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Random'/>Random
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Random'/>Random
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Others'/>Others
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="25" data-min=0 data-max=1 value='Others'/>Others
                             </span>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="filter-27" class="col-sm-3 control-label">Product Type</label>
                         <div class="col-sm-9">
-                            <a href='javascript:filter_select($("input[data-filter-id=27]"),"true")'>All</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=27]"),"false")'>None</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=27]"),"!$")'>Invert</a>
                             <hr/>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="27" data-min=0 data-max=1 value='Tiles'/>Tiles
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="27" data-min=0 data-max=1 value='Tiles'/>Tiles
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="27" data-min=0 data-max=1 value='Wallpapers'/>Wallpapers
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="27" data-min=0 data-max=1 value='Wallpapers'/>Wallpapers
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="27" data-min=0 data-max=1 value='Paint Color'/>Paint Color
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="27" data-min=0 data-max=1 value='Paint Color'/>Paint Color
                             </span>
                         </div>
                     </div>
                     <div class="form-group gray_bg">
                         <label for="filter-31" class="col-sm-3 control-label">Sanita wall</label>
                         <div class="col-sm-9">
-                            <a href='javascript:filter_select($("input[data-filter-id=31]"),"true")'>All</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=31]"),"false")'>None</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=31]"),"!$")'>Invert</a>
                             <hr/>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="31" data-min=0 data-max=1 value='wall'/>wall
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="31" data-min=0 data-max=1 value='wall'/>wall
                             </span>
                         </div>
                     </div>
@@ -360,92 +340,72 @@
                     <div class="form-group">
                         <label for="filter-24" class="col-sm-3 control-label">Size</label>
                         <div class="col-sm-9">
-                            <a href='javascript:filter_select($("input[data-filter-id=24]"),"true")'>All</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=24]"),"false")'>None</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=24]"),"!$")'>Invert</a>
                             <hr/>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="24" data-min=0 data-max=1 value='300x300mm'/>300x300mm
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="24" data-min=0 data-max=1 value='300x300mm'/>300x300mm
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="24" data-min=0 data-max=1 value='400x400mm'/>400x400mm
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="24" data-min=0 data-max=1 value='400x400mm'/>400x400mm
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="24" data-min=0 data-max=1 value='600x600mm'/>600x600mm
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="24" data-min=0 data-max=1 value='600x600mm'/>600x600mm
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="24" data-min=0 data-max=1 value='Others'/>Others
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="24" data-min=0 data-max=1 value='Others'/>Others
                             </span>
                         </div>
                     </div>
                     <div class="form-group gray_bg">
                         <label for="filter-26" class="col-sm-3 control-label">Finish</label>
                         <div class="col-sm-9">
-                            <a href='javascript:filter_select($("input[data-filter-id=26]"),"true")'>All</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=26]"),"false")'>None</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=26]"),"!$")'>Invert</a>
                             <hr/>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Glossy'/>Glossy
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Glossy'/>Glossy
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Matt'/>Matt
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Matt'/>Matt
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Rustic'/>Rustic
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Rustic'/>Rustic
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Wooden'/>Wooden
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Wooden'/>Wooden
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Marble'/>Marble
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Marble'/>Marble
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Random'/>Random
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Random'/>Random
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Others'/>Others
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="26" data-min=0 data-max=1 value='Others'/>Others
                             </span>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="filter-28" class="col-sm-3 control-label">Product Type</label>
                         <div class="col-sm-9">
-                            <a href='javascript:filter_select($("input[data-filter-id=28]"),"true")'>All</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=28]"),"false")'>None</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=28]"),"!$")'>Invert</a>
                             <hr/>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="28" data-min=0 data-max=1 value='Tiles'/>Tiles
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="28" data-min=0 data-max=1 value='Tiles'/>Tiles
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="28" data-min=0 data-max=1 value='Carpets'/>Carpets
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="28" data-min=0 data-max=1 value='Carpets'/>Carpets
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="28" data-min=0 data-max=1 value='Wooden Flooring'/>Wooden Flooring
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="28" data-min=0 data-max=1 value='Wooden Flooring'/>Wooden Flooring
                             </span>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="28" data-min=0 data-max=1 value='Marbles'/>Marbles
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="28" data-min=0 data-max=1 value='Marbles'/>Marbles
                             </span>
                         </div>
                     </div>
                     <div class="form-group gray_bg">
                         <label for="filter-32" class="col-sm-3 control-label">Sanita Floor</label>
                         <div class="col-sm-9">
-                            <a href='javascript:filter_select($("input[data-filter-id=32]"),"true")'>All</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=32]"),"false")'>None</a>
-                            ,
-                                            <a href='javascript:filter_select($("input[data-filter-id=32]"),"!$")'>Invert</a>
                             <hr/>
                             <span style='display:inline-block; padding:8px 15px; width: 45%;'>
-                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' checked data-for="filter" data-filter-type="option" data-filter-id="32" data-min=0 data-max=1 value='Floor'/>Floor
+                                <input style='display:inline-block;width:auto;margin-right: 7px;' type='checkbox' data-for="filter" data-filter-type="option" data-filter-id="32" data-min=0 data-max=1 value='Floor'/>Floor
                             </span>
                         </div>
                     </div>
