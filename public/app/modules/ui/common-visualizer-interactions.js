@@ -189,6 +189,156 @@ $(function() {
 
     var last_dragdraw_epoch = 0;
 
+    function pickSceneSideFromCanvasPoint(x, y) {
+        if (indexer_data == null) return null;
+
+        var w = vis_cvs.width;
+        var h = vis_cvs.height;
+        var j = (y * w + x) * 4;
+        var clr = [indexer_data[j++], indexer_data[j++], indexer_data[j]];
+
+        if (clr[0] === 0 && clr[1] === 0 && clr[2] === 0) return null;
+
+        var sk = clr[2];
+        if (sk >= scene_data.length) {
+            var k = Math.floor(128 / scene_data.length);
+            var sk_ = sk;
+            for (var i = 0; i < scene_data.length; i++) {
+                if (sk <= 255 - k * i) sk_ = i;
+                else break;
+            }
+            sk = sk_;
+        }
+
+        return scene_data[sk] || null;
+    }
+
+    function getCanvasPointFromClient(evt) {
+        var rect = vis_cvs.getBoundingClientRect();
+        var ow = vis_cvs.offsetWidth || rect.width || 1;
+        var oh = vis_cvs.offsetHeight || rect.height || 1;
+        var x = (evt.clientX - rect.left) * (vis_cvs.width / ow);
+        var y = (evt.clientY - rect.top) * (vis_cvs.height / oh);
+        return {
+            x: Math.floor(x),
+            y: Math.floor(y)
+        };
+    }
+
+    function attachPointerDragFallback() {
+        if (!option_side_draggable) return;
+        if (!vis_cvs) return;
+
+        var pointerActive = false;
+        var pointerId = null;
+        var startClientX = 0;
+        var startClientY = 0;
+        var startX = 0;
+        var startY = 0;
+
+        vis_cvs.style.touchAction = "none";
+
+        var onPointerDown = function(e) {
+            if (pointerActive) return;
+
+            var pt = getCanvasPointFromClient(e);
+            var s = pickSceneSideFromCanvasPoint(pt.x, pt.y);
+            if (!s) return;
+
+            dragging_side = s;
+            s[10001] = s[1];
+            s[10002] = s[2];
+
+            pointerActive = true;
+            pointerId = e.pointerId || "touch";
+            startClientX = e.clientX;
+            startClientY = e.clientY;
+            startX = s[10001];
+            startY = s[10002];
+
+            dont_click = true;
+            $(body).css({ "cursor": "move" });
+            if (vis_cvs.setPointerCapture && e.pointerId != null) {
+                try { vis_cvs.setPointerCapture(e.pointerId); } catch (err) {}
+            }
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            e.stopPropagation();
+            e.preventDefault();
+        };
+
+        var onPointerMove = function(e) {
+            if (!pointerActive) return;
+            if (e.pointerId != null && pointerId != null && e.pointerId !== pointerId) return;
+            if (!dragging_side) return;
+
+            var deltaX = e.clientX - startClientX;
+            var deltaY = e.clientY - startClientY;
+            dragging_side[1] = startX + deltaX / 33;
+            dragging_side[2] = startY - deltaY / 33;
+
+            if (Date.now() - last_dragdraw_epoch > 50) {
+                render(vis_cvs);
+                last_dragdraw_epoch = Date.now();
+            }
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            e.stopPropagation();
+            e.preventDefault();
+        };
+
+        var endPointerDrag = function(e) {
+            if (!pointerActive) return;
+            if (e.pointerId != null && pointerId != null && e.pointerId !== pointerId) return;
+
+            pointerActive = false;
+            pointerId = null;
+            $(body).css({ "cursor": "default" });
+            render(vis_cvs);
+            dont_click = false;
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            e.stopPropagation();
+            e.preventDefault();
+        };
+
+        if (window.PointerEvent) {
+            vis_cvs.addEventListener("pointerdown", onPointerDown, { passive: false });
+            window.addEventListener("pointermove", onPointerMove, { passive: false });
+            window.addEventListener("pointerup", endPointerDrag, { passive: false });
+            window.addEventListener("pointercancel", endPointerDrag, { passive: false });
+            return;
+        }
+
+        var touchStart = function(e) {
+            if (!e.touches || !e.touches.length) return;
+            onPointerDown(e.touches[0]);
+        };
+        var touchMove = function(e) {
+            if (!e.touches || !e.touches.length) return;
+            onPointerMove(e.touches[0]);
+        };
+        var touchEnd = function(e) {
+            endPointerDrag(e.changedTouches && e.changedTouches[0] ? e.changedTouches[0] : e);
+        };
+        var mouseDown = function(e) {
+            onPointerDown(e);
+        };
+        var mouseMove = function(e) {
+            onPointerMove(e);
+        };
+        var mouseUp = function(e) {
+            endPointerDrag(e);
+        };
+
+        vis_cvs.addEventListener("touchstart", touchStart, { passive: false });
+        window.addEventListener("touchmove", touchMove, { passive: false });
+        window.addEventListener("touchend", touchEnd, { passive: false });
+        window.addEventListener("touchcancel", touchEnd, { passive: false });
+        vis_cvs.addEventListener("mousedown", mouseDown, { passive: false });
+        window.addEventListener("mousemove", mouseMove, { passive: false });
+        window.addEventListener("mouseup", mouseUp, { passive: false });
+    }
+
+    attachPointerDragFallback();
+
     $(".tiles-list").each(function() {
         $("li", this).sort(asc_sort).appendTo(this);
     });
