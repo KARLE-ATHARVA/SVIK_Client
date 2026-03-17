@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Plus, Heart } from "lucide-react";
@@ -11,16 +12,18 @@ type ProductCardProps = {
   };
   isFavourite: boolean;
   onToggleFavourite: (id: string | number) => void;
+  onApply?: () => void; // Add this prop
 };
 
 export default function ProductCard({
   product,
   isFavourite,
-  onToggleFavourite
+  onToggleFavourite,
+  onApply
 }: ProductCardProps) {
   return (
-    <div className="group rounded-3xl bg-white p-3 transition hover:shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
-      
+    <div className="group rounded-3xl bg-white p-3 transition hover:shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]"
+      onClick={() => onApply?.()}>
       {/* Image */}
       <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-100">
         <img
@@ -54,7 +57,13 @@ export default function ProductCard({
 
         {/* Apply Overlay */}
         <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/40 transition flex items-center justify-center">
-          <button className="opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition bg-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onApply) onApply();
+            }}
+            className="opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition bg-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+          >
             <Plus size={14} className="text-amber-500" />
             Apply
           </button>

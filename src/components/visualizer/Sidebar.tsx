@@ -1,26 +1,13 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import {
-  Search,
-  LayoutGrid,
-  List,
-  SlidersHorizontal,
-  Loader2,
-  RefreshCw,
-  Heart,
-  LogOut,
-  User,
-} from "lucide-react";
+import { Search, Loader2, SlidersHorizontal, LayoutGrid, List, RotateCcw, Grid, Droplets } from "lucide-react";
 import ProductCard from "./ProductCard";
 import AuthModal from "./AuthModal";
 import { ASSET_BASE } from "@/lib/constants";
 import { isLoggedIn, logout } from "@/lib/auth";
-import {
-  addFavoriteAPI,
-  removeFavoriteAPI,
-  listFavoritesAPI,
-} from "@/lib/favorites";
+import { addFavoriteAPI, removeFavoriteAPI, listFavoritesAPI } from "@/lib/favorites";
 import {
   fetchFilterAvailableOptions,
   fetchFilterOptions,
@@ -39,6 +26,7 @@ type Product = {
   name: string;
   image: string;
   size: string;
+  skuCode: string;
 };
 
 const EMPTY_FILTERS: TileFilterSelections = {
@@ -61,33 +49,22 @@ function resolveOptionValue(raw: string | null, options: string[]): string | nul
   if (!raw) return null;
   const trimmed = raw.trim();
   if (!trimmed) return null;
-
   const direct = options.find((option) => option === trimmed);
   if (direct) return direct;
-
-  const fallback = options.find(
-    (option) => option.toLowerCase() === trimmed.toLowerCase()
-  );
-
+  const fallback = options.find((option) => option.toLowerCase() === trimmed.toLowerCase());
   return fallback ?? null;
 }
 
 function getInitialFiltersFromStorage(options: TileFilterOptions): TileFilterSelections {
   const initial = sanitizeFilterSelections(EMPTY_FILTERS);
-
   try {
     const storedApp = localStorage.getItem("selected_application");
     const storedColor = localStorage.getItem("selected_color");
-
     const resolvedApp = resolveOptionValue(storedApp, options.applications);
     const resolvedColor = resolveOptionValue(storedColor, options.colors);
-
     if (resolvedApp) initial.appNames = [resolvedApp];
     if (resolvedColor) initial.colorNames = [resolvedColor];
-  } catch {
-    // Ignore storage read errors.
-  }
-
+  } catch {}
   return initial;
 }
 
@@ -98,25 +75,20 @@ function syncPreferenceStorage(filters: TileFilterSelections): void {
     } else {
       localStorage.removeItem("selected_application");
     }
-
     if (filters.colorNames.length === 1) {
       localStorage.setItem("selected_color", filters.colorNames[0]);
     } else {
       localStorage.removeItem("selected_color");
     }
-  } catch {
-    // Ignore storage write errors.
-  }
+  } catch {}
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
-
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(value), delayMs);
     return () => window.clearTimeout(timer);
   }, [value, delayMs]);
-
   return debounced;
 }
 
@@ -125,10 +97,7 @@ function areStringArraysEqual(left: string[], right: string[]): boolean {
   return left.every((value, index) => value === right[index]);
 }
 
-function areFilterSelectionsEqual(
-  left: TileFilterSelections,
-  right: TileFilterSelections
-): boolean {
+function areFilterSelectionsEqual(left: TileFilterSelections, right: TileFilterSelections): boolean {
   return (
     areStringArraysEqual(left.catNames, right.catNames) &&
     areStringArraysEqual(left.appNames, right.appNames) &&
@@ -138,10 +107,7 @@ function areFilterSelectionsEqual(
   );
 }
 
-function pruneSelectionsToAvailableOptions(
-  filters: TileFilterSelections,
-  options: TileFilterOptions
-): TileFilterSelections {
+function pruneSelectionsToAvailableOptions(filters: TileFilterSelections, options: TileFilterOptions): TileFilterSelections {
   const categories = new Set(options.categories);
   const applications = new Set(options.applications);
   const finishes = new Set(options.finishes);
@@ -160,12 +126,13 @@ function pruneSelectionsToAvailableOptions(
 function mapTilesToProducts(rows: TileListItem[]): Product[] {
   const assetBase = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
-
   return rows.map((item) => ({
     id: item.tile_id,
     name: String(item.sku_name ?? ""),
-    image: `${normalizedAssetBase}media/thumb/${String(item.sku_code ?? "")}.jpg`,
+    // image: `${normalizedAssetBase}media/thumb/${String(item.sku_code ?? "")}.jpg`,
+    image: `https://vyr.svikinfotech.in/assets/media/thumb/${item.sku_code}.jpg`,
     size: String(item.size_name ?? ""),
+    skuCode: String(item.sku_code ?? ""),
   }));
 }
 
@@ -188,9 +155,6 @@ export default function Sidebar() {
   const lastAvailableQueryKey = useRef("");
   const availableOptionsAbortRef = useRef<AbortController | null>(null);
 
-  /**
-   * Fetches favorites from backend and syncs local favorite ids.
-   */
   const syncFavoritesFromServer = useCallback(async () => {
     if (!isLoggedIn()) return;
     try {
@@ -240,6 +204,43 @@ export default function Sidebar() {
     setFavourites([]);
   };
 
+  // const handleProductApply = (product: Product) => {
+  //   const tile = {
+  //     id: product.id,
+  //     name: product.name,
+  //     image: product.image,
+  //   };
+  //   if (typeof window !== "undefined") {
+  //     localStorage.setItem("selected_tile", JSON.stringify(tile));
+  //     localStorage.setItem("selected_tile_size", product.size);
+  //   }
+  // };
+//   const handleProductApply = (product: Product) => {
+//   const tile = { id: product.id, name: product.name, image: product.image };
+//   localStorage.setItem("selected_tile", JSON.stringify(tile));
+//   localStorage.setItem("selected_tile_size", product.size);
+  
+//   // ✅ ADD THIS — triggers Preview3D to pick up the new tile
+//   window.dispatchEvent(new StorageEvent("storage", {
+//     key: "selected_tile",
+//     newValue: JSON.stringify(tile),
+//   }));
+// };
+const handleProductApply = (product: Product) => {
+  const tile = { id: product.id, name: product.name, image: product.image,skuCode: product.skuCode };
+  localStorage.setItem("selected_tile", JSON.stringify(tile));
+  localStorage.setItem("selected_tile_size", product.size);
+
+  // ✅ Preload image so it's cached when Preview3D renders it
+  const img = new Image();
+  img.src = `/api/tile-image?url=${encodeURIComponent(product.image)}`;
+
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "selected_tile",
+    newValue: JSON.stringify(tile),
+  }));
+};
+
   const fetchTilesAndOptions = useCallback(
     async (nextFilters: TileFilterSelections, options: { closePanel?: boolean } = {}) => {
       if (!currentSpace) return;
@@ -248,7 +249,6 @@ export default function Sidebar() {
       const request = { spaceName: currentSpace, ...sanitized };
       const queryKey = buildFilterRequestKey(request);
 
-      // Skip duplicate apply submissions to reduce unnecessary API traffic.
       if (queryKey === lastAppliedQueryKey.current) {
         if (options.closePanel) setShowFilters(false);
         return;
@@ -299,28 +299,20 @@ export default function Sidebar() {
     [currentSpace]
   );
 
-  // Initial data load for selected space.
   useEffect(() => {
     if (!currentSpace) return;
-
     let isMounted = true;
     setLoading(true);
 
     fetchFilterOptions(currentSpace)
       .then(async (options) => {
         if (!isMounted) return;
-
         const initialFilters = getInitialFiltersFromStorage(options);
-        const request = {
-          spaceName: currentSpace,
-          ...initialFilters,
-        };
-
+        const request = { spaceName: currentSpace, ...initialFilters };
         const [tileRows, available] = await Promise.all([
           fetchFilterTileList(request),
           fetchFilterAvailableOptions(request),
         ]);
-
         if (!isMounted) return;
 
         setFilterOptions(available);
@@ -339,12 +331,9 @@ export default function Sidebar() {
         if (isMounted) setLoading(false);
       });
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [currentSpace]);
 
-  // Debounced dynamic available options update while user is changing selections.
   useEffect(() => {
     if (!showFilters || !currentSpace) return;
 
@@ -354,9 +343,7 @@ export default function Sidebar() {
     };
     const queryKey = buildFilterRequestKey(request);
 
-    if (queryKey === lastAvailableQueryKey.current) {
-      return;
-    }
+    if (queryKey === lastAvailableQueryKey.current) return;
 
     if (availableOptionsAbortRef.current) {
       availableOptionsAbortRef.current.abort();
@@ -380,9 +367,7 @@ export default function Sidebar() {
         }
       });
 
-    return () => {
-      controller.abort();
-    };
+    return () => { controller.abort(); };
   }, [debouncedTempFilters, currentSpace, showFilters]);
 
   const handleApplyFilters = useCallback(() => {
@@ -402,16 +387,10 @@ export default function Sidebar() {
       const exists = list.includes(value);
 
       if (key === "colorNames") {
-        return {
-          ...prev,
-          colorNames: exists ? [] : [value],
-        };
+        return { ...prev, colorNames: exists ? [] : [value] };
       }
 
-      return {
-        ...prev,
-        [key]: exists ? list.filter((v) => v !== value) : [...list, value],
-      };
+      return { ...prev, [key]: exists ? list.filter((v) => v !== value) : [...list, value] };
     });
   };
 
@@ -422,7 +401,8 @@ export default function Sidebar() {
 
   return (
     <div className="h-full flex flex-col bg-transparent relative">
-      <div className="px-6 pt-4 pb-2 flex justify-between items-center shrink-0">
+      {/* HEADER */}
+      <div className="px-6 pt-6 pb-3 flex justify-between items-center shrink-0">
         <div className="flex flex-col">
           <h2 className="text-xl tracking-[0.35em] uppercase text-slate-900">
             Ti<span className="font-bold">Vi</span>
@@ -432,23 +412,25 @@ export default function Sidebar() {
           </p>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFavourites((prev) => !prev)}
+            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-400"
+            title="Favourites"
+          >
+            <span className="text-lg">♡</span>
+          </button>
           {isUserLoggedIn ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-[9px] font-bold uppercase text-slate-600">
-                <User size={12} className="text-amber-500" /> Account
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-full hover:bg-red-50 text-red-500 transition-colors"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-full bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest"
+            >
+              Logout
+            </button>
           ) : (
             <button
               onClick={() => setShowAuthModal(true)}
-              className="px-4 py-2 rounded-full bg-slate-900 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-amber-600 transition-all"
+              className="px-4 py-2 rounded-full bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest"
             >
               Login
             </button>
@@ -456,45 +438,43 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className="px-6 space-y-4 shrink-0 mt-4">
+      {/* SEARCH */}
+      <div className="px-6 mt-3">
         <div className="relative">
           <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
           <input
-            placeholder={`Search in ${currentSpace}...`}
-            className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white shadow-sm text-[11px] uppercase font-semibold outline-none"
+            placeholder={`Search by tile names`}
+            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white shadow-sm text-[11px] uppercase font-semibold outline-none"
           />
-        </div>
-
-        <div className="flex justify-between items-center gap-3">
-          <button
-            onClick={() => setShowFavourites((prev) => !prev)}
-            className={`p-3 rounded-xl border transition shadow-sm ${
-              showFavourites ? "bg-red-500 text-white border-red-500" : "bg-white text-slate-400 border-slate-200"
-            }`}
-          >
-            <Heart size={16} />
-          </button>
-
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all"
-          >
-            <SlidersHorizontal size={14} /> {showFilters ? "Close" : "Filters"}
-          </button>
-
-          <button onClick={() => setGrid(!grid)} className="p-3 rounded-xl border bg-white text-slate-400">
-            {grid ? <List size={16} /> : <LayoutGrid size={16} />}
-          </button>
-
-          <button onClick={resetFilters} className="p-3 rounded-xl border bg-white text-slate-400">
-            <RefreshCw size={16} />
-          </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden relative">
+      {/* ACTION BUTTONS (old UI layout) */}
+      <div className="px-6 mt-4 grid grid-cols-2 gap-3">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="py-3 rounded-2xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+        >
+          <SlidersHorizontal size={14} /> Filters
+        </button>
+        {/* <button className="py-3 rounded-2xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+          <Grid size={14} /> Select Layout
+        </button> */}
+        {/* <button className="py-3 rounded-2xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+          <Droplets size={14} /> Select Grout
+        </button> */}
+        <button
+          onClick={resetFilters}
+          className="py-3 rounded-2xl border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+        >
+          <RotateCcw size={14} /> Clear Tiles
+        </button>
+      </div>
+
+      {/* PRODUCTS */}
+      <div className="flex-1 overflow-hidden relative mt-4">
         <div
-          className={`h-full overflow-y-auto px-6 py-8 transition-opacity duration-300 ${
+          className={`h-full overflow-y-auto px-6 py-6 transition-opacity duration-300 ${
             showFilters ? "opacity-10 pointer-events-none" : "opacity-100"
           }`}
         >
@@ -506,7 +486,7 @@ export default function Sidebar() {
           ) : visibleProducts.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-slate-400">
-                No tiles found
+                No products available
               </p>
             </div>
           ) : (
@@ -535,6 +515,7 @@ export default function Sidebar() {
                       console.error("Favorite toggle failed:", err);
                     }
                   }}
+                  onApply={() => handleProductApply(p)}
                 />
               ))}
             </div>
