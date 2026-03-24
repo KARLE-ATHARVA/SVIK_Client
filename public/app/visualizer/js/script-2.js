@@ -966,29 +966,40 @@ $(function(){
         return readTileLink(tile);
     }
 
-    function getQrGenerateBase() {
+    function readApiBase() {
         var base = "";
-        if (typeof window.VISUALIZER_API_BASE === "string" && window.VISUALIZER_API_BASE.trim()) {
-            base = window.VISUALIZER_API_BASE.trim();
-        } else {
+        if (typeof window.NEXT_PUBLIC_API_BASE === "string" && window.NEXT_PUBLIC_API_BASE.trim()) {
+            base = window.NEXT_PUBLIC_API_BASE.trim();
+        }
+        if (!base) {
             try {
-                var stored = localStorage.getItem("visualizer_api_base");
-                if (stored && stored.trim()) base = stored.trim();
+                if (window.parent && window.parent !== window) {
+                    var parentBase = window.parent.NEXT_PUBLIC_API_BASE || window.parent.VISUALIZER_API_BASE || "";
+                    if (typeof parentBase === "string" && parentBase.trim()) base = parentBase.trim();
+                }
             } catch (e) {}
         }
-        if (!base && typeof window.NEXT_PUBLIC_API_BASE === "string" && window.NEXT_PUBLIC_API_BASE.trim()) {
-            base = window.NEXT_PUBLIC_API_BASE.trim();
+        if (!base && typeof window.VISUALIZER_API_BASE === "string" && window.VISUALIZER_API_BASE.trim()) {
+            base = window.VISUALIZER_API_BASE.trim();
         }
         if (!base && typeof window.API_BASE === "string" && window.API_BASE.trim()) {
             base = window.API_BASE.trim();
         }
         if (!base) {
+            try {
+                var stored = localStorage.getItem("visualizer_api_base");
+                if (stored && stored.trim()) base = stored.trim();
+            } catch (e) {}
+        }
+        if (!base) {
             var metaBase = $('meta[name="api-base"]').attr("content");
             if (metaBase && String(metaBase).trim()) base = String(metaBase).trim();
         }
-        if (!base) base = "https://localhost:5109/";
-        if (!base) base = window.location.origin || "";
-        return base.replace(/\/+$/, "");
+        return base ? base.replace(/\/+$/, "") : "";
+    }
+
+    function getQrGenerateBase() {
+        return readApiBase();
     }
 
     function fetchGeneratedProductUrl(tile, done) {
@@ -1000,11 +1011,13 @@ $(function(){
 
         var query = "skuCode=" + encodeURIComponent(skuCode);
         var base = getQrGenerateBase();
+        if (!base) {
+            done("");
+            return;
+        }
         var candidates = [
             base + "/Generate?" + query,
-            base + "/api/ProductQr/Generate?" + query,
-            "https://localhost:5109/Generate?" + query,
-            "https://localhost:5109/api/ProductQr/Generate?" + query
+            base + "/api/ProductQr/Generate?" + query
         ];
 
         function tryFetch(index) {
@@ -1812,10 +1825,8 @@ function selectTile(tiles) {
 }
 
 function getDirectUserActivityUrl() {
-    var baseFromStorage = "";
-    try { baseFromStorage = (window.localStorage && localStorage.getItem("visualizer_api_base")) || ""; } catch (e) {}
-    var base = String(baseFromStorage || "https://localhost:5109/").trim();
-    if (!base) base = "https://localhost:5109/";
+    var base = readApiBase();
+    if (!base) return "";
     if (base.charAt(base.length - 1) !== "/") base += "/";
     return base + "AddUserActivity";
 }
@@ -1858,7 +1869,10 @@ function logUserActivity(tile) {
         Block: false
     };
 
-    fetch(getDirectUserActivityUrl(), {
+    var activityUrl = getDirectUserActivityUrl();
+    if (!activityUrl) return;
+
+    fetch(activityUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),

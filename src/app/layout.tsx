@@ -9,9 +9,26 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const publicEnv = {
+    NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE || "",
+    NEXT_PUBLIC_ASSET_BASE: process.env.NEXT_PUBLIC_ASSET_BASE || "",
+  };
+
   return (
     <html lang="en">
       <body>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: [
+              "window.NEXT_PUBLIC_API_BASE = " +
+                JSON.stringify(publicEnv.NEXT_PUBLIC_API_BASE) +
+                ";",
+              "window.NEXT_PUBLIC_ASSET_BASE = " +
+                JSON.stringify(publicEnv.NEXT_PUBLIC_ASSET_BASE) +
+                ";",
+            ].join("\n"),
+          }}
+        />
         {children}
         <GlobalCartShortcut />
       </body>

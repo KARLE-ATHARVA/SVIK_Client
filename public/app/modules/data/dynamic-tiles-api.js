@@ -447,11 +447,17 @@
         var fromOpts = opts && opts.apiBase;
         var fromGlobal = global.VISUALIZER_API_BASE;
         var fromPublicEnv = global.NEXT_PUBLIC_API_BASE;
+        var fromParentEnv = "";
+        try {
+            if (global.parent && global.parent !== global) {
+                fromParentEnv = global.parent.NEXT_PUBLIC_API_BASE || global.parent.VISUALIZER_API_BASE || "";
+            }
+        } catch (e) {}
         var fromStorage = "";
         try {
             fromStorage = global.localStorage && localStorage.getItem("visualizer_api_base");
         } catch (e) {}
-        return normalizeApiBase(fromOpts || fromGlobal || fromStorage || fromPublicEnv || "http://localhost:5109/");
+        return normalizeApiBase(fromOpts || fromPublicEnv || fromParentEnv || fromGlobal || fromStorage || "");
     }
 
     function getPreferredFilters() {
