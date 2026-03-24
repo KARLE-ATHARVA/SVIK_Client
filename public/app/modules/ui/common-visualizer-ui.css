@@ -580,7 +580,7 @@
 }
 
 .custom_sidebar_tab_content .tile-state-loading {
-    color: #0e4645;
+    color: #1f2937;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -595,8 +595,8 @@
     width: 16px;
     height: 16px;
     border-radius: 999px;
-    border: 2px solid #cbd5e1;
-    border-top-color: #0e4645;
+    border: 2px solid #e2e8f0;
+    border-top-color: #f59e0b;
     animation: tile-spin 0.8s linear infinite;
 }
 
