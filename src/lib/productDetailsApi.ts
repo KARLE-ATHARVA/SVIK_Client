@@ -26,8 +26,10 @@ function resolveBase(): string {
 
 function resolveAssetBase(): string {
   const base = String(ASSET_BASE ?? "").trim();
-  if (base) return base.endsWith("/") ? base : `${base}/`;
-  return "https://vyr.svikinfotech.in/assets/";
+  if (!base) {
+    throw new Error("NEXT_PUBLIC_ASSET_BASE is missing");
+  }
+  return base.endsWith("/") ? base : `${base}/`;
 }
 
 export async function fetchProductDetails(routeKey: string): Promise<ProductDetails | null> {

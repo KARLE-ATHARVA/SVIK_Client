@@ -16,7 +16,7 @@ type ShowcaseTile = {
 };
 
 function mapTiles(rows: TileListItem[]): ShowcaseTile[] {
-  const assetBase = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
+  const assetBase = String(ASSET_BASE ?? "").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
 
   return rows.map((item) => {

@@ -94,8 +94,7 @@
         try {
             fromStorage = global.localStorage && localStorage.getItem("visualizer_asset_base");
         } catch (e) {}
-        var base = String(fromGlobal || fromStorage || fromPublicEnv || "https://vyr.svikinfotech.in/assets/").trim();
-        if (!base) base = "https://vyr.svikinfotech.in/assets/";
+        var base = String(fromGlobal || fromStorage || fromPublicEnv || "").trim();
         if (base.slice(-1) !== "/") base += "/";
         return base;
     }

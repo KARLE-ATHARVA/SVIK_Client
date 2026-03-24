@@ -1168,9 +1168,7 @@ $(function(){
         }
 
         var providers = [
-            "https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=" + encodeURIComponent(link),
-            "https://quickchart.io/qr?size=220&margin=0&text=" + encodeURIComponent(link),
-            "https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=" + encodeURIComponent(link)
+            "/api/qr-code?size=220&data=" + encodeURIComponent(link)
         ];
 
         function tryProvider(index) {
@@ -1178,8 +1176,7 @@ $(function(){
                 done(null);
                 return;
             }
-            var proxied = "/api/tile-image?url=" + encodeURIComponent(providers[index]);
-            loadImageForPdf(proxied, function(qrImgData) {
+            loadImageForPdf(providers[index], function(qrImgData) {
                 if (qrImgData && qrImgData.dataUrl) {
                     done(qrImgData.dataUrl);
                 } else {

@@ -53,7 +53,7 @@ const QUICK_PROMPTS = [
 const CHATBOT_WIDTH = "w-[min(94vw,380px)] sm:w-[380px]";
 
 function getAssetBase() {
-  const base = process.env.NEXT_PUBLIC_ASSET_BASE || "https://vyr.svikinfotech.in/assets/";
+  const base = process.env.NEXT_PUBLIC_ASSET_BASE || "";
   return base.endsWith("/") ? base : `${base}/`;
 }
 

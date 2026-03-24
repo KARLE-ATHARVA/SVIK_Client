@@ -158,7 +158,7 @@ function pruneSelectionsToAvailableOptions(
 }
 
 function mapTilesToProducts(rows: TileListItem[]): Product[] {
-  const assetBase = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
+  const assetBase = String(ASSET_BASE ?? "").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
 
   return rows.map((item) => ({
