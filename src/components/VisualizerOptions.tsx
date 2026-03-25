@@ -2,9 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaBath, FaBed, FaCouch, FaHeart, FaHome, FaUtensils } from "react-icons/fa";
+import {
+  FaBath,
+  FaBed,
+  FaCouch,
+  FaHeart,
+  FaHome,
+  FaUtensils,
+} from "react-icons/fa";
 import StyleFilterOptions from "./StyleFilterOptions";
-import { useSearchParams } from "next/navigation";
+
+type Props = {
+  onComplete: (roomId: number) => void;
+};
 
 type RoomCategory = {
   key: string;
@@ -22,14 +32,11 @@ const CATEGORIES: RoomCategory[] = [
   { key: "saved", label: "Saved", icon: FaHeart, roomIds: [] },
 ];
 
-export default function VisualizerOptions() {
-  const searchParams = useSearchParams();
-  const initialCategory = (searchParams.get("category") || "").toLowerCase();
-  const validInitialCategory = CATEGORIES.some((c) => c.key === initialCategory) ? initialCategory : "";
-
-  const [showPicker, setShowPicker] = useState(validInitialCategory !== "");
+export default function VisualizerOptions({ onComplete }: Props) {
+  
+  const [showPicker, setShowPicker] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>(validInitialCategory);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
 
   const active = useMemo(
@@ -39,9 +46,7 @@ export default function VisualizerOptions() {
 
   const handleCategorySelect = (spaceKey: string) => {
     setSelectedCategory(spaceKey);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("selected_space_type", spaceKey.toLowerCase());
-    }
+    localStorage.setItem("selected_space_type", spaceKey.toLowerCase());
     setShowPicker(true);
     setShowFilters(false);
     setSelectedRoomId(null);
@@ -55,6 +60,8 @@ export default function VisualizerOptions() {
   return (
     <div className="w-full h-full flex flex-col justify-center">
       <AnimatePresence mode="wait">
+        
+        {/* STEP 1: CATEGORY SELECTION */}
         {!showPicker ? (
           <motion.div
             key="room-selection"
@@ -62,103 +69,81 @@ export default function VisualizerOptions() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 15 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="w-full"
           >
             <div className="mb-8">
-              <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Select Your Space</h3>
+              <h3 className="text-2xl font-bold text-slate-900">
+                Select Your Space
+              </h3>
               <div className="w-8 h-[2px] bg-amber-500 mt-2" />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {CATEGORIES.map((item, index) => (
                 <motion.div
                   key={index}
                   onClick={() => handleCategorySelect(item.key)}
-                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 1)" }}
-                  className="group cursor-pointer bg-white/60 backdrop-blur-md rounded-2xl border border-slate-200/50 p-6 flex flex-col items-center justify-center gap-3 transition-all duration-500 hover:shadow-xl hover:border-amber-500/40"
+                  className="cursor-pointer bg-white rounded-2xl p-6 flex flex-col items-center gap-3 hover:shadow-lg"
                 >
-                  <div className="p-3 rounded-full bg-slate-50 group-hover:bg-amber-50 transition-colors duration-500">
-                    <item.icon className="text-xl text-slate-400 group-hover:text-amber-600 transition-colors duration-500" />
-                  </div>
-                  <span className="text-[13px] font-bold text-slate-600 group-hover:text-slate-900 transition-colors duration-500 text-center">
+                  <item.icon className="text-xl text-slate-400" />
+                  <span className="text-sm font-semibold text-slate-600">
                     {item.label}
                   </span>
                 </motion.div>
               ))}
             </div>
-
-            <div className="mt-12 flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-              <span className="w-8 h-[1px] bg-amber-500" />
-              <span>Step 01: Choose a Room to Begin</span>
-            </div>
           </motion.div>
         ) : showFilters && selectedRoomId !== null ? (
+
+          /* STEP 3: FILTER SCREEN */
           <StyleFilterOptions
             key={`filters-${selectedRoomId}`}
             onBack={() => setShowFilters(false)}
-            onComplete={() => {}}
-            targetPath={`/${selectedRoomId}`}
+            onComplete={() => {
+              if (selectedRoomId) {
+                onComplete(selectedRoomId); // ✅ FINAL TRIGGER
+              }
+            }}
             spaceType={selectedCategory}
           />
+
         ) : (
+
+          /* STEP 2: ROOM SELECTION */
           <motion.div
             key="room-thumbnails"
             initial={{ opacity: 0, x: 15 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -15 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="w-full h-full flex flex-col"
+            transition={{ duration: 0.35 }}
+            className="flex flex-col"
           >
-            <div className="flex items-start justify-between shrink-0 pt-2 mb-6">
-              <div className="space-y-1">
-                <h3 className="text-3xl font-light text-slate-900 tracking-tight">
-                  Select <span className="font-bold text-slate-900 capitalize">{active.key}</span> Room
-                </h3>
-                <div className="w-12 h-[2px] bg-amber-500 rounded-full" />
-              </div>
+            <div className="flex justify-between mb-6">
+              <h3 className="text-2xl font-bold">
+                Select {active.label}
+              </h3>
 
               <button
                 onClick={() => setShowPicker(false)}
-                className="group flex items-center gap-3 text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-all uppercase tracking-[0.2em]"
+                className="text-sm text-gray-500"
               >
-                <span className="w-8 h-[1px] bg-slate-200 group-hover:w-12 group-hover:bg-amber-500 transition-all duration-500" />
-                Back to Rooms
+                Back
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto pr-1">
-              {active.roomIds.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-8 text-center text-sm font-semibold text-slate-500">
-                  No saved rooms yet.
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
-                {active.roomIds.map((roomId, index) => (
-                  <motion.button
-                    type="button"
-                    key={`${active.key}-${roomId}`}
-                    onClick={() => handleRoomSelect(roomId)}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: index * 0.02 }}
-                    className="group block rounded-2xl border border-slate-200 bg-white/90 p-2 hover:border-amber-400 hover:shadow-md text-left"
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100">
-                      <img
-                        src={`/app/images/room_background_${roomId}_thumb.png`}
-                        alt={`Room ${roomId} background`}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                      <img
-                        src={`/app/images/room_foreground_${roomId}_thumb.png`}
-                        alt={`Room ${roomId} foreground`}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    </div>
-                  </motion.button>
-                ))}
-                </div>
-              )}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {active.roomIds.map((roomId) => (
+                <button
+                  key={roomId}
+                  onClick={() => handleRoomSelect(roomId)}
+                  className="rounded-xl overflow-hidden border hover:border-amber-400"
+                >
+                  <img
+                    src={`/app/images/room_background_${roomId}_thumb.png`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
             </div>
           </motion.div>
         )}

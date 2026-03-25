@@ -2,12 +2,28 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useState } from "react";
 import VisualizerIntro from "./VisualizerIntro";
 import VisualizerOptions from "./VisualizerOptions";
 
 const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export default function VisualizerLayout() {
+  const [roomId, setRoomId] = useState<number | null>(null);
+
+  // ✅ If room selected → show iframe
+  if (roomId !== null) {
+    return (
+      <iframe
+        src={`/app/${roomId}.html#`}
+        style={{
+          width: "100%",
+          height: "100vh",
+          border: "none",
+        }}
+      />
+    );
+  }
   return (
     <section className="h-screen w-full relative bg-[#f8f8f6] overflow-hidden flex items-center justify-center p-4 lg:p-8">
       
@@ -34,7 +50,7 @@ export default function VisualizerLayout() {
           transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT }}
           className="col-span-12 lg:col-span-8 bg-slate-900/5 backdrop-blur-sm rounded-[32px] p-6 lg:p-10 border border-white/50 shadow-inner flex flex-col justify-center overflow-hidden"
         >
-          <VisualizerOptions />
+        <VisualizerOptions onComplete={setRoomId} />
         </motion.div>
       </div>
     </section>

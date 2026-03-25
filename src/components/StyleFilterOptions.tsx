@@ -3,7 +3,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { FiChevronRight, FiCheck } from "react-icons/fi";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ASSET_BASE } from "@/lib/constants";
 
 const applications = ["Floor", "Wall"];
@@ -18,40 +17,28 @@ const colors = [
 type StyleFilterOptionsProps = {
   onBack: () => void;
   onComplete: () => void;
-  targetPath?: string;
   spaceType?: string;
 };
 
 export default function StyleFilterOptions({
   onBack,
   onComplete,
-  targetPath = "/visualizerScreen",
   spaceType,
 }: StyleFilterOptionsProps) {
+
   const [selectedApp, setSelectedApp] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
-    const storedApp = localStorage.getItem("selected_application");
-    if (!storedApp) return null;
-    return (
-      applications.find(
-        (app) => app.toLowerCase() === storedApp.toLowerCase()
-      ) ?? null
-    );
+    return localStorage.getItem("selected_application");
   });
+
   const [selectedColor, setSelectedColor] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
-    const storedColor = localStorage.getItem("selected_color");
-    if (!storedColor) return null;
-    return (
-      colors.find(
-        (color) => color.name.toLowerCase() === storedColor.toLowerCase()
-      )?.name ?? null
-    );
+    return localStorage.getItem("selected_color");
   });
-  const router = useRouter();
 
+  // ✅ FINAL FIXED FUNCTION
   const handleProceed = () => {
-    onComplete();
+    // 🔥 Save everything (same as before)
     const assetBase = String(ASSET_BASE ?? "").trim();
     if (assetBase) {
       localStorage.setItem("visualizer_asset_base", assetBase);
@@ -61,7 +48,6 @@ export default function StyleFilterOptions({
       localStorage.setItem("selected_space_type", spaceType.toLowerCase());
     }
 
-    // Keep storage in sync with current UI selection.
     if (selectedApp) {
       localStorage.setItem("selected_application", selectedApp);
     } else {
@@ -74,7 +60,8 @@ export default function StyleFilterOptions({
       localStorage.removeItem("selected_color");
     }
 
-    router.push(targetPath);
+    // 🔥 IMPORTANT: NO ROUTING
+    onComplete();
   };
 
   const handleSkip = () => {
@@ -82,12 +69,16 @@ export default function StyleFilterOptions({
     if (assetBase) {
       localStorage.setItem("visualizer_asset_base", assetBase);
     }
+
     if (spaceType) {
       localStorage.setItem("selected_space_type", spaceType.toLowerCase());
     }
+
     localStorage.removeItem("selected_application");
     localStorage.removeItem("selected_color");
-    router.push(targetPath);
+
+    // 🔥 IMPORTANT: NO ROUTING
+    onComplete();
   };
 
   return (
@@ -116,18 +107,19 @@ export default function StyleFilterOptions({
 
           <button
             onClick={onBack}
-            className="group flex items-center gap-3 text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-all uppercase tracking-[0.2em]"
+            className="group flex items-center gap-3 text-[10px] font-bold text-slate-400 hover:text-slate-900 uppercase tracking-[0.2em]"
           >
-            <span className="w-6 h-[1px] bg-slate-200 group-hover:w-10 group-hover:bg-amber-500 transition-all" />
             Back
           </button>
         </div>
       </header>
 
+      {/* QUESTIONS */}
       <div className="flex-grow flex flex-col justify-evenly py-2">
-        {/* QUESTION 1 */}
+
+        {/* Q1 */}
         <section className="space-y-3">
-          <p className="text-[8px] font-black text-amber-500 uppercase tracking-[0.4em] text-center">
+          <p className="text-[8px] font-black text-amber-500 uppercase text-center">
             Question 01
           </p>
 
@@ -142,7 +134,7 @@ export default function StyleFilterOptions({
                 onClick={() =>
                   setSelectedApp(selectedApp === app ? null : app)
                 }
-                className={`px-6 py-2.5 rounded-xl border-2 text-[10px] font-bold uppercase transition-all ${
+                className={`px-6 py-2.5 rounded-xl border-2 text-[10px] font-bold uppercase ${
                   selectedApp === app
                     ? "border-amber-500 bg-amber-50 text-amber-700"
                     : "border-slate-100 text-slate-500 bg-white"
@@ -154,9 +146,9 @@ export default function StyleFilterOptions({
           </div>
         </section>
 
-        {/* QUESTION 2 */}
+        {/* Q2 */}
         <section className="space-y-3">
-          <p className="text-[8px] font-black text-amber-500 uppercase tracking-[0.4em] text-center">
+          <p className="text-[8px] font-black text-amber-500 uppercase text-center">
             Question 02
           </p>
 
@@ -174,38 +166,13 @@ export default function StyleFilterOptions({
                     )
                   }
                   style={{ backgroundColor: color.hex }}
-                  className={`relative w-10 h-10 rounded-full border-4 transition-all ${
+                  className={`w-10 h-10 rounded-full border-4 ${
                     selectedColor === color.name
-                      ? "border-amber-500 scale-110 shadow-lg"
+                      ? "border-amber-500"
                       : "border-white"
                   }`}
-                >
-                  <AnimatePresence>
-                    {selectedColor === color.name && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                      >
-                        <FiCheck
-                          className={
-                            color.name === "Blue"
-                              ? "text-white"
-                              : "text-slate-900"
-                          }
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </button>
-
-                <span
-                  className={`text-[8px] font-bold uppercase ${
-                    selectedColor === color.name
-                      ? "text-amber-600"
-                      : "text-slate-400"
-                  }`}
-                >
+                />
+                <span className="text-[8px] font-bold uppercase">
                   {color.name}
                 </span>
               </div>
@@ -213,18 +180,15 @@ export default function StyleFilterOptions({
           </div>
         </section>
 
-        {/* PROCEED BUTTON */}
+        {/* PROCEED */}
         <div className="flex justify-center mt-2">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleProceed}
-            className="group flex items-center gap-4 bg-slate-900 text-white px-8 py-3.5 rounded-full"
+            className="bg-slate-900 text-white px-8 py-3.5 rounded-full"
           >
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
-              Proceed to Visualizer
-            </span>
-            <FiChevronRight />
+            Proceed to Visualizer
           </motion.button>
         </div>
       </div>
