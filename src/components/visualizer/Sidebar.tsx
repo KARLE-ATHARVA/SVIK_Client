@@ -57,6 +57,25 @@ const EMPTY_OPTIONS: TileFilterOptions = {
   colors: [],
 };
 
+function normalizeSpaceName(rawSpace: string | null | undefined): string {
+  const normalized = String(rawSpace ?? "").trim().toLowerCase();
+
+  switch (normalized) {
+    case "kitchen":
+      return "Kitchen";
+    case "living":
+    case "living room":
+    case "living_room":
+      return "Living Room";
+    case "bedroom":
+      return "Bedroom";
+    case "bathroom":
+      return "Bathroom";
+    default:
+      return "Kitchen";
+  }
+}
+
 function resolveOptionValue(raw: string | null, options: string[]): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -206,7 +225,7 @@ export default function Sidebar() {
     const loggedIn = isLoggedIn();
     setIsUserLoggedIn(loggedIn);
 
-    const savedSpace = localStorage.getItem("selected_space_type") || "Kitchen";
+    const savedSpace = normalizeSpaceName(localStorage.getItem("selected_space_type"));
     setCurrentSpace(savedSpace);
 
     if (loggedIn) {

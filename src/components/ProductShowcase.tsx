@@ -3,8 +3,8 @@
 import { motion, useAnimation, type Variants } from "framer-motion";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { FiChevronRight } from "react-icons/fi";
-import { useRouter } from "next/navigation";
 import { ASSET_BASE } from "@/lib/constants";
 import { fetchFilterTileList, type TileListItem } from "@/lib/filterApi";
 
@@ -14,6 +14,25 @@ type ShowcaseTile = {
   image: string;
   subtitle: string;
 };
+
+function normalizeSpaceName(rawSpace: string | null | undefined): string {
+  const normalized = String(rawSpace ?? "").trim().toLowerCase();
+
+  switch (normalized) {
+    case "kitchen":
+      return "Kitchen";
+    case "living":
+    case "living room":
+    case "living_room":
+      return "Living Room";
+    case "bedroom":
+      return "Bedroom";
+    case "bathroom":
+      return "Bathroom";
+    default:
+      return "Kitchen";
+  }
+}
 
 function mapTiles(rows: TileListItem[]): ShowcaseTile[] {
   const assetBase = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
@@ -64,14 +83,13 @@ const textVariants: Variants = {
 };
 
 export default function ProductShowcase() {
-  const router = useRouter();
   const controls = useAnimation();
   const [tiles, setTiles] = useState<ShowcaseTile[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
-    const selectedSpace = localStorage.getItem("selected_space_type") || "Kitchen";
+    const selectedSpace = normalizeSpaceName(localStorage.getItem("selected_space_type"));
 
     fetchFilterTileList({
       spaceName: selectedSpace,
@@ -196,15 +214,15 @@ export default function ProductShowcase() {
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mt-10 flex justify-center"
         >
-          <button
-            onClick={() => router.push("/products")}
+          <Link
+            href="/products"
             className="px-8 py-4 bg-amber-600 hover:bg-amber-700 
                        text-white font-semibold rounded-full 
                        shadow-xl transition flex items-center gap-2"
           >
             Show More
             <FiChevronRight size={20} />
-          </button>
+          </Link>
         </motion.div>
 
         <motion.div

@@ -652,6 +652,15 @@
         var $ = global.jQuery;
         AUTH_MODAL_READY = true;
 
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+        }
+
+        function isValidMobile(mobile) {
+            var digitsOnly = String(mobile || "").replace(/\D/g, "");
+            return /^\d{10,15}$/.test(digitsOnly);
+        }
+
         var modalHtml =
             "<div id='authPopupOverlay' class='auth-popup-overlay' style='display:none;'>" +
                 "<div class='auth-popup-card'>" +
@@ -747,8 +756,16 @@
                 showError("Please enter email and password.");
                 return;
             }
+            if (!isValidEmail(email)) {
+                showError("Please enter a valid email address.");
+                return;
+            }
             if (mode === "signup" && (!name || !mobile)) {
                 showError("Please enter name and mobile.");
+                return;
+            }
+            if (mode === "signup" && !isValidMobile(mobile)) {
+                showError("Please enter a valid mobile number.");
                 return;
             }
 

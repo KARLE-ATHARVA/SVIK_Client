@@ -150,20 +150,11 @@ $(function(){
 
     function getCurrentRoomName() {
         var roomLabel = $.trim($(".rooms-tabs li.active a").text() || "");
-        var roomId = getCurrentRoomId();
-        var parts = [];
-
         if (roomLabel) {
-            parts.push(slugifyFilenamePart(roomLabel, "room"));
-        } else {
-            parts.push("room");
+            return slugifyFilenamePart(roomLabel, "room");
         }
 
-        if (roomId) {
-            parts.push(roomId);
-        }
-
-        return parts.join("-");
+        return "room";
     }
 
     function getSaveDateStamp() {
@@ -176,6 +167,10 @@ $(function(){
 
     function getPdfFilename() {
         return getCurrentRoomName() + "-" + getSaveDateStamp() + ".pdf";
+    }
+
+    function getSaveFilename(extension) {
+        return getCurrentRoomName() + "-" + getSaveDateStamp() + "." + extension;
     }
 
     function setSaveOptionsOpen(isOpen) {
@@ -253,7 +248,7 @@ $(function(){
 
         switch (as) {
         case "image":
-            l.download = "Design.jpg";
+            l.download = getSaveFilename("jpg");
             break;
 
         case "info-pdf":
@@ -287,7 +282,7 @@ $(function(){
 
             dt = new Blob([htdata], {type: 'text/html'});
             dt = URL.createObjectURL(dt);
-            l.download = "Design.html";
+            l.download = getSaveFilename("html");
             break;
         }
 

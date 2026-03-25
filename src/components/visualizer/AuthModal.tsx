@@ -4,6 +4,7 @@ import { useState } from "react";
 import axios from "axios";
 import { X, Eye, EyeOff } from "lucide-react";
 import { API_BASE } from "@/lib/constants";
+import { isValidMobile, validateAuthForm } from "@/lib/authValidation";
 
 interface Props {
   open: boolean;
@@ -21,24 +22,36 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
   
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   if (!open) return null;
 
   const handleSubmit = async () => {
-    if (!email || !password) return alert("Please fill in email and password.");
-    if (mode === "signup" && (!name || !mobile)) return alert("Please fill in name and mobile number.");
+    const validationError = validateAuthForm({
+      mode,
+      email,
+      password,
+      name,
+      mobile,
+    });
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     setLoading(true);
+    setError("");
     try {
       const endpoint = mode === "login" ? "/cust_login" : "/cust_signup";
       
       const payload = mode === "login" 
-        ? { email, password } 
+        ? { email: email.trim(), password } 
         : { 
-            name, 
-            email, 
-            profession, 
-            mobile, 
+            name: name.trim(), 
+            email: email.trim(), 
+            profession: profession.trim() || "Customer", 
+            mobile: mobile.trim(), 
             password 
           };
 
@@ -46,22 +59,26 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
 
       if (mode === "login") {
         if (res.data.pgatoken) {
-          // Changed to sessionStorage for automatic logout when tab closes
           sessionStorage.setItem("pgatoken", res.data.pgatoken);
           onSuccess();
           onClose();
         } else {
-          alert("Login failed: " + (res.data || "Invalid credentials"));
+          setError("Login failed. Please check your credentials.");
         }
       } else {
-        if (res.data === "success") {
-          alert("Account created successfully! Please login.");
+        if (res.data === "success" || res.data?.success) {
+          setError("Account created successfully! Please login.");
           setMode("login");
+          setPassword("");
+        } else {
+          setError("Signup response received. Please try login.");
+          setMode("login");
+          setPassword("");
         }
       }
     } catch (err: any) {
       console.error(err);
-      alert(err?.response?.data || "Authentication error occurred.");
+      setError(err?.response?.data || "Authentication error occurred.");
     } finally {
       setLoading(false);
     }
@@ -88,7 +105,11 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
                   placeholder="Enter Name"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-amber-500"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (error) setError("");
+                  }}
+                  autoComplete="name"
                 />
               </div>
               <div className="flex gap-3">
@@ -109,7 +130,13 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
                     placeholder="Mobile No"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-amber-500"
                     value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
+                    onChange={(e) => {
+                      setMobile(e.target.value);
+                      if (error) setError("");
+                    }}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    aria-invalid={mode === "signup" && !!mobile && !isValidMobile(mobile)}
                   />
                 </div>
               </div>
@@ -123,7 +150,11 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
               placeholder="email@example.com"
               className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-amber-500"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError("");
+              }}
+              autoComplete="email"
             />
           </div>
 
@@ -134,7 +165,11 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
               placeholder="Password"
               className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-amber-500"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError("");
+              }}
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
             />
             <button 
               type="button"
@@ -144,6 +179,12 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+
+          {error ? (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
 
           <button
             onClick={handleSubmit}
@@ -157,7 +198,10 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
             {mode === "login" ? "Don't have an account? " : "Already have an account? "}
             <button 
               type="button"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
+              onClick={() => {
+                setMode(mode === "login" ? "signup" : "login");
+                setError("");
+              }}
               className="text-blue-600 font-bold hover:underline"
             >
               {mode === "login" ? "Create Account" : "Login"}
