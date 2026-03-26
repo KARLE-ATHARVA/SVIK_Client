@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaBath,
@@ -14,6 +14,13 @@ import StyleFilterOptions from "./StyleFilterOptions";
 
 type Props = {
   onComplete: (roomId: number) => void;
+};
+
+type SavedRoom = {
+  id: number;
+  preview_image: string;
+  redirect_url: string;
+  created_at: string;
 };
 
 type RoomCategory = {
@@ -39,10 +46,45 @@ export default function VisualizerOptions({ onComplete }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
 
+  const [savedRooms, setSavedRooms] = useState<SavedRoom[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+
   const active = useMemo(
     () => CATEGORIES.find((c) => c.key === selectedCategory) ?? CATEGORIES[0],
     [selectedCategory]
   );
+
+  // 🔥 FETCH SAVED ROOMS
+  useEffect(() => {
+    const fetchSaved = async () => {
+      const token = sessionStorage.getItem("pgatoken");
+      if (!token) return;
+
+      try {
+        setLoadingSaved(true);
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE}saved_rooms/list`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Failed");
+
+        const data = await res.json();
+        setSavedRooms(data || []);
+      } catch (err) {
+        console.error("Saved fetch error:", err);
+      } finally {
+        setLoadingSaved(false);
+      }
+    };
+
+    fetchSaved();
+  }, []);
 
   const handleCategorySelect = (spaceKey: string) => {
     setSelectedCategory(spaceKey);
@@ -57,23 +99,24 @@ export default function VisualizerOptions({ onComplete }: Props) {
     setShowFilters(true);
   };
 
+  const handleSavedClick = (url: string) => {
+    window.location.href = url;
+  };
+
   return (
     <div className="w-full h-full flex flex-col justify-center">
       <AnimatePresence mode="wait">
-        
-        {/* STEP 1: CATEGORY SELECTION */}
+
+        {/* STEP 1 */}
         {!showPicker ? (
           <motion.div
             key="room-selection"
             initial={{ opacity: 0, x: -15 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 15 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
           >
             <div className="mb-8">
-              <h3 className="text-2xl font-bold text-slate-900">
-                Select Your Space
-              </h3>
+              <h3 className="text-2xl font-bold">Select Your Space</h3>
               <div className="w-8 h-[2px] bg-amber-500 mt-2" />
             </div>
 
@@ -94,29 +137,18 @@ export default function VisualizerOptions({ onComplete }: Props) {
           </motion.div>
         ) : showFilters && selectedRoomId !== null ? (
 
-          /* STEP 3: FILTER SCREEN */
           <StyleFilterOptions
             key={`filters-${selectedRoomId}`}
             onBack={() => setShowFilters(false)}
             onComplete={() => {
-              if (selectedRoomId) {
-                onComplete(selectedRoomId); // ✅ FINAL TRIGGER
-              }
+              if (selectedRoomId) onComplete(selectedRoomId);
             }}
             spaceType={selectedCategory}
           />
 
         ) : (
 
-          /* STEP 2: ROOM SELECTION */
-          <motion.div
-            key="room-thumbnails"
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -15 }}
-            transition={{ duration: 0.35 }}
-            className="flex flex-col"
-          >
+          <motion.div key="room-thumbnails" className="flex flex-col">
             <div className="flex justify-between mb-6">
               <h3 className="text-2xl font-bold">
                 Select {active.label}
@@ -130,21 +162,58 @@ export default function VisualizerOptions({ onComplete }: Props) {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {active.roomIds.map((roomId) => (
-                <button
-                  key={roomId}
-                  onClick={() => handleRoomSelect(roomId)}
-                  className="rounded-xl overflow-hidden border hover:border-amber-400"
-                >
-                  <img
-                    src={`/app/images/room_background_${roomId}_thumb.png`}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+            {/* 🔥 SAVED CATEGORY LOGIC */}
+            {active.key === "saved" ? (
+              loadingSaved ? (
+                <p>Loading...</p>
+              ) : savedRooms.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {savedRooms.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSavedClick(item.redirect_url)}
+                      className="rounded-xl overflow-hidden border hover:border-amber-400"
+                    >
+                      <img
+                        src={item.preview_image}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                // 🔥 FALLBACK (IMPORTANT)
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[6, 20, 21, 22, 30, 33, 47].map((roomId) => (
+                    <button
+                      key={roomId}
+                      onClick={() => handleRoomSelect(roomId)}
+                      className="rounded-xl overflow-hidden border hover:border-amber-400"
+                    >
+                      <img
+                        src={`/app/images/room_background_${roomId}_thumb.png`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {active.roomIds.map((roomId) => (
+                  <button
+                    key={roomId}
+                    onClick={() => handleRoomSelect(roomId)}
+                    className="rounded-xl overflow-hidden border hover:border-amber-400"
+                  >
+                    <img
+                      src={`/app/images/room_background_${roomId}_thumb.png`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

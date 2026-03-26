@@ -211,19 +211,23 @@ $(function(){
     }
     function createDesignShareLink() {
         try {
-            var data = JSON.stringify(buildDesignPayload());
-            var encoded = btoa(data);
+            var payload = buildDesignPayload();
+            var data = JSON.stringify(payload);
 
-            // ✅ extract roomId from current path
+            var designId = generateDesignId(data);
+            var encoded = btoa(unescape(encodeURIComponent(data)));
+
             var match = window.location.pathname.match(/\/(\d+)(?:\.html)?$/);
             var roomId = match ? match[1] : "";
 
-            // ✅ ALWAYS return clean visualiser URL
-            return window.location.origin + "/visualiser#room=" + roomId + "&design=" + encoded;
+            return {
+                link: window.location.origin + "/visualiser#room=" + roomId + "&design=" + encoded,
+                designId: designId
+            };
 
         } catch (e) {
             console.error("Link generation failed", e);
-            return window.location.origin + "/visualiser";
+            return null;
         }
     }
 
@@ -436,58 +440,61 @@ $(function(){
 
     window.saveDesignForLater = function () {
         try {
-            // ✅ 1. Generate shareable link
-            var link = createDesignShareLink();
+            // ✅ 1. Generate payload + link (source of truth)
+            var payloadData = buildDesignPayload();
+            var dataString = JSON.stringify(payloadData);
 
-            if (!link || typeof link !== "string") {
+            // 🔥 STABLE DESIGN ID (CORE FIX)
+            var designId = btoa(unescape(encodeURIComponent(dataString)))
+                .replace(/[^a-zA-Z0-9]/g, "")
+                .slice(0, 50);
+
+            var encoded = btoa(unescape(encodeURIComponent(dataString)));
+
+            // ✅ extract roomId
+            var match = window.location.pathname.match(/\/(\d+)(?:\.html)?$/);
+            var roomId = match ? match[1] : "";
+
+            var link = window.location.origin + "/visualiser#room=" + roomId + "&design=" + encoded;
+
+            if (!link) {
                 throw new Error("Invalid design link generated");
             }
 
-            // ✅ 2. Capture preview image (optimized)
+            // ✅ 2. Capture preview image
             var image = "";
             try {
-                image = vis_cvs.toDataURL_("image/jpeg", 0.7); // compressed for performance
+                image = vis_cvs.toDataURL_("image/jpeg", 0.7);
             } catch (imgErr) {
-                console.warn("Image capture failed, proceeding without preview", imgErr);
+                console.warn("Image capture failed", imgErr);
             }
 
-            // ✅ 3. Prepare payload
+            // ✅ 3. Send FULL payload (IMPORTANT CHANGE)
             var payload = {
                 type: "SAVE_DESIGN",
                 payload: {
                     link: link,
+                    designId: designId, // 🔥 NEW
                     image: image || null,
-                    timestamp: Date.now() // useful for future tracking
+                    timestamp: Date.now()
                 }
             };
 
-            // ✅ 4. Send to parent (React) if inside iframe
+            // ✅ 4. Send to React
             if (window.parent && window.parent !== window) {
                 window.parent.postMessage(payload, "*");
-
-                console.log("[Visualizer] Design sent to parent", payload);
             } else {
-                // ⚠️ Fallback (non-iframe usage)
-                console.warn("[Visualizer] Not inside iframe. Using fallback.");
-
-                try {
-                    navigator.clipboard.writeText(link);
-                    alert("Design link copied to clipboard!");
-                } catch (clipboardErr) {
-                    alert("Copy this link manually:\n" + link);
-                }
+                navigator.clipboard.writeText(link);
+                alert("Design link copied!");
             }
 
-            // ✅ 5. Close save panel (UX cleanup)
             if (typeof setSaveOptionsOpen === "function") {
                 setSaveOptionsOpen(false);
             }
 
         } catch (e) {
-            console.error("[Visualizer] Save for later failed", e);
-
-            // ❌ User fallback
-            alert("Something went wrong while saving. Please try again.");
+            console.error("[Visualizer] Save failed", e);
+            alert("Something went wrong while saving.");
         }
     };
 
