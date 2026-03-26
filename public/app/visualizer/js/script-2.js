@@ -42,13 +42,11 @@ $(window).load(function() {
 });
 
 $(function(){
+    if (typeof $ === "function") {
+        $("body").addClass("has-highlight-btn");
+    }
     function isRoom6Page() {
-        try {
-            var path = (window.location && window.location.pathname) ? window.location.pathname : "";
-            return /(?:^|\/)6\.html(?:$|\?|\#)/.test(path);
-        } catch (e) {
-            return false;
-        }
+        return true;
     }
 
     $(document).on("click", ".highlight-area-btn", function(e) {
@@ -62,6 +60,7 @@ $(function(){
             window.__highlightPending = false;
             window.__highlightShape = null;
             window.__highlightLastShape = null;
+            window.__highlightAllowRetile = false;
             if (typeof window.hideHighlightOverlay === "function") {
                 window.hideHighlightOverlay();
             }
@@ -133,7 +132,114 @@ $(function(){
         canvas.style.height = rect.height + "px";
     }
 
-    function drawTileInShape(ctx, canvas, tile, shapePoints) {
+    function createHighlightBrushEl(index) {
+        var el = document.createElement("button");
+        el.type = "button";
+        el.textContent = "✎";
+        el.setAttribute("data-highlight-index", String(index));
+        el.style.position = "absolute";
+        el.style.width = "24px";
+        el.style.height = "24px";
+        el.style.borderRadius = "50%";
+        el.style.border = "1px solid #0e4645";
+            el.style.background = "#fff";
+            el.style.color = "#0e4645";
+            el.style.fontSize = "14px";
+            el.style.lineHeight = "22px";
+            el.style.textAlign = "center";
+            el.style.padding = "0";
+            el.style.cursor = "pointer";
+            el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.18)";
+            el.style.zIndex = "120";
+        el.style.display = "none";
+        var host = document.getElementById("cont_for_vis_cvs") || document.body;
+        if (host && host !== document.body) {
+            try {
+                var computed = window.getComputedStyle(host);
+                if (computed && computed.position === "static") {
+                    host.style.position = "relative";
+                }
+            } catch (e) {}
+        }
+        host.appendChild(el);
+        el.addEventListener("click", function(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (!window.__highlightSelections || !window.__highlightSelections.length) return;
+            var idx = Number(el.getAttribute("data-highlight-index"));
+            if (!isFinite(idx)) return;
+            var sel = window.__highlightSelections[idx];
+            if (!sel || !sel.shape) return;
+            window.__highlightModeActive = true;
+            window.__highlightAllowRetile = true;
+            window.__highlightLastShape = cloneObj(sel.shape);
+            window.__highlightActiveSelectionIndex = idx;
+            window.__highlightPending = false;
+            if (typeof showLeftMenu === "function") {
+                var panel = 1;
+                var target = Number(window.__targetTileType || window.__wallTargetTileType || 1);
+                if (target === 2) panel = 2;
+                showLeftMenu(panel);
+            }
+        }, true);
+        return el;
+    }
+
+    function updateHighlightBrushUI() {
+        if (!isRoom6Page()) return;
+        if (!window.__highlightSelections || !window.__highlightSelections.length || !window.vis_cvs) {
+            if (window.__highlightBrushEls) {
+                window.__highlightBrushEls.forEach(function(el) { if (el) el.style.display = "none"; });
+            }
+            return;
+        }
+        window.__highlightBrushEls = window.__highlightBrushEls || [];
+        var rect = vis_cvs.getBoundingClientRect();
+        var baseW = (window.line_cvs && line_cvs.width) ? line_cvs.width : vis_cvs.width;
+        var baseH = (window.line_cvs && line_cvs.height) ? line_cvs.height : vis_cvs.height;
+        var scaleX = rect.width / baseW;
+        var scaleY = rect.height / baseH;
+        window.__highlightSelections.forEach(function(sel, idx) {
+            var el = window.__highlightBrushEls[idx];
+            if (!el) {
+                el = createHighlightBrushEl(idx);
+                window.__highlightBrushEls[idx] = el;
+            }
+            el.setAttribute("data-highlight-index", String(idx));
+            if (!sel || !sel.shape || !sel.shape.length) {
+                el.style.display = "none";
+                return;
+            }
+            var bounds = sel.shape.reduce(function(acc, p) {
+                var px = p[0] * scaleX;
+                var py = p[1] * scaleY;
+                acc.minX = Math.min(acc.minX, px);
+                acc.maxX = Math.max(acc.maxX, px);
+                acc.minY = Math.min(acc.minY, py);
+                acc.maxY = Math.max(acc.maxY, py);
+                return acc;
+            }, { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+            if (!isFinite(bounds.minX) || !isFinite(bounds.minY)) {
+                el.style.display = "none";
+                return;
+            }
+            var host = el.parentNode;
+            var hostRect = host && host.getBoundingClientRect ? host.getBoundingClientRect() : null;
+            var left = rect.left + bounds.maxX - 12;
+            var top = rect.top + bounds.minY - 12;
+            if (hostRect) {
+                left -= hostRect.left;
+                top -= hostRect.top;
+            }
+            el.style.left = Math.max(0, left) + "px";
+            el.style.top = Math.max(0, top) + "px";
+            el.style.display = "block";
+        });
+    }
+
+    function drawTileInShape(ctx, canvas, tile, shapePoints, selectionIndex, version) {
         if (!tile || !shapePoints || !shapePoints.length) return;
         var src = "";
         if (typeof getTileImageSrc === "function") {
@@ -144,9 +250,39 @@ $(function(){
         }
         if (!src) return;
 
+        window.__highlightImageCache = window.__highlightImageCache || {};
+        window.__highlightImageLoading = window.__highlightImageLoading || {};
+        var cached = window.__highlightImageCache[src];
+        if (cached && cached.complete) {
+            var img = cached;
+            if (typeof selectionIndex === "number") {
+                if (!window.__highlightSelectionVersion || window.__highlightSelectionVersion[selectionIndex] !== version) {
+                    return;
+                }
+            }
+            drawImageNow(img);
+            return;
+        }
+        if (window.__highlightImageLoading[src]) return;
         var img = new Image();
         img.crossOrigin = "anonymous";
+        window.__highlightImageLoading[src] = true;
         img.onload = function() {
+            window.__highlightImageCache[src] = img;
+            window.__highlightImageLoading[src] = false;
+            if (typeof selectionIndex === "number") {
+                if (!window.__highlightSelectionVersion || window.__highlightSelectionVersion[selectionIndex] !== version) {
+                    return;
+                }
+            }
+            drawImageNow(img);
+        };
+        img.onerror = function() {
+            window.__highlightImageLoading[src] = false;
+        };
+        img.src = src;
+
+        function drawImageNow(imgEl) {
             var baseW = (window.line_cvs && line_cvs.width) ? line_cvs.width : canvas.width;
             var baseH = (window.line_cvs && line_cvs.height) ? line_cvs.height : canvas.height;
             var scaleX = canvas.width / baseW;
@@ -164,25 +300,33 @@ $(function(){
             }
 
             ctx.beginPath();
+            var scaled = [];
             for (var k = 0; k < shapePoints.length; k++) {
-                ctx.lineTo(shapePoints[k][0] * scaleX, shapePoints[k][1] * scaleY);
+                var px = shapePoints[k][0] * scaleX;
+                var py = shapePoints[k][1] * scaleY;
+                scaled.push([px, py]);
+                ctx.lineTo(px, py);
             }
             ctx.closePath();
             ctx.clip();
 
-            var pattern = ctx.createPattern(img, "repeat");
-            if (pattern) {
-                ctx.fillStyle = pattern;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
+            var bounds = scaled.reduce(function(acc, p) {
+                acc.minX = Math.min(acc.minX, p[0]);
+                acc.maxX = Math.max(acc.maxX, p[0]);
+                acc.minY = Math.min(acc.minY, p[1]);
+                acc.maxY = Math.max(acc.maxY, p[1]);
+                return acc;
+            }, { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+            var bw = Math.max(1, bounds.maxX - bounds.minX);
+            var bh = Math.max(1, bounds.maxY - bounds.minY);
+            ctx.drawImage(imgEl, bounds.minX, bounds.minY, bw, bh);
             if (window.scene_foreground_mask_img) {
                 ctx.globalCompositeOperation = "destination-out";
                 ctx.drawImage(scene_foreground_mask_img, 0, 0, canvas.width, canvas.height);
                 ctx.globalCompositeOperation = "source-over";
             }
             ctx.restore();
-        };
-        img.src = src;
+        }
     }
 
     function redrawHighlightTileOverlay() {
@@ -192,11 +336,13 @@ $(function(){
         var ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (!window.__highlightSelections || !window.__highlightSelections.length) return;
-        window.__highlightSelections.forEach(function(sel) {
+        window.__highlightSelections.forEach(function(sel, idx) {
             if (sel && sel.tile && sel.shape) {
-                drawTileInShape(ctx, canvas, sel.tile, sel.shape);
+                var version = (window.__highlightSelectionVersion && window.__highlightSelectionVersion[idx]) || 0;
+                drawTileInShape(ctx, canvas, sel.tile, sel.shape, idx, version);
             }
         });
+        updateHighlightBrushUI();
     }
 
     function findSceneMask(tileType) {
@@ -213,6 +359,7 @@ $(function(){
         if (!isRoom6Page()) return;
         if (!window.vis_cvs || !tile || !shapePoints || !shapePoints.length) return;
         window.__highlightSelections = window.__highlightSelections || [];
+        window.__highlightSelectionVersion = window.__highlightSelectionVersion || [];
         var idx = (typeof selectionIndex === "number" && isFinite(selectionIndex)) ? selectionIndex : -1;
         if (idx < 0) {
             idx = window.__highlightSelections.length;
@@ -221,8 +368,16 @@ $(function(){
             tile: tile,
             shape: cloneObj(shapePoints)
         };
+        window.__highlightSelectionVersion[idx] = (window.__highlightSelectionVersion[idx] || 0) + 1;
         redrawHighlightTileOverlay();
     };
+
+    if (window && window.addEventListener) {
+        window.addEventListener("resize", function() {
+            if (!isRoom6Page()) return;
+            updateHighlightBrushUI();
+        });
+    }
 
     // Ensure shape-based selections are actually rendered.
     (function wrapRenderForShapes() {
@@ -247,6 +402,7 @@ $(function(){
             return;
         }
         window.__highlightModeActive = true;
+        window.__highlightAllowRetile = true;
 
         var $overlay = $("#highlight-overlay");
         if (!$overlay.length) {
@@ -292,6 +448,28 @@ $(function(){
         function getSceneMaskPoints() {
             if (!targetScene || !targetScene[11] || !targetScene[11].length) return null;
             return targetScene[11];
+        }
+
+        function isAxisAlignedRect(points) {
+            if (!points || points.length < 4) return true;
+            var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            points.forEach(function(p) {
+                minX = Math.min(minX, p[0]);
+                maxX = Math.max(maxX, p[0]);
+                minY = Math.min(minY, p[1]);
+                maxY = Math.max(maxY, p[1]);
+            });
+            for (var i = 0; i < points.length; i++) {
+                var x = points[i][0], y = points[i][1];
+                var onX = (Math.abs(x - minX) < 0.001) || (Math.abs(x - maxX) < 0.001);
+                var onY = (Math.abs(y - minY) < 0.001) || (Math.abs(y - maxY) < 0.001);
+                if (!(onX && onY)) return false;
+            }
+            return true;
+        }
+
+        function shouldSkewToMask() {
+            return isFloorTarget;
         }
 
         function normalizeMaskPoints(points) {
@@ -364,7 +542,7 @@ $(function(){
         function drawRect(a, b) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (!a || !b) return;
-            if (isFloorTarget) {
+            if (shouldSkewToMask()) {
                 var mask = getSceneMaskPoints();
                 if (mask && mask.length) {
                     var maskScreen = mask.map(function(p) {
@@ -442,7 +620,7 @@ $(function(){
             var v3 = toVisCoords(Math.max(rectStart.x, end.x), Math.max(rectStart.y, end.y));
             var v4 = toVisCoords(Math.min(rectStart.x, end.x), Math.max(rectStart.y, end.y));
 
-            if (isFloorTarget) {
+            if (shouldSkewToMask()) {
                 var maskPts = getSceneMaskPoints();
                 if (maskPts && maskPts.length) {
                     var quadPoints = mapRectToQuad(
@@ -1158,6 +1336,31 @@ $(function(){
         }
         if (typeof $ === "function") {
             $(".tile-type-input").prop("checked", false).closest(".tile-wrap").removeClass("no-match");
+        }
+        if (window.__highlightSelections) {
+            window.__highlightSelections.length = 0;
+        }
+        if (window.__highlightSelectionVersion) {
+            window.__highlightSelectionVersion.length = 0;
+        }
+        window.__highlightLastShape = null;
+        window.__highlightShape = null;
+        window.__highlightPending = false;
+        window.__highlightModeActive = false;
+        window.__highlightAllowRetile = false;
+        window.__highlightActiveSelectionIndex = null;
+        if (window.__highlightBrushEls && window.__highlightBrushEls.length) {
+            window.__highlightBrushEls.forEach(function(el) {
+                if (el && el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            });
+            window.__highlightBrushEls.length = 0;
+        }
+        var overlayCanvas = document.getElementById("highlight-tile-overlay");
+        if (overlayCanvas) {
+            var octx = overlayCanvas.getContext("2d");
+            octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         }
         if (typeof window.scheduleRender === "function") {
             scheduleRender();
@@ -2378,7 +2581,7 @@ function selectTile(tiles) {
         window.__highlightPendingIndex = null;
         return;
     }
-    if (window.__highlightModeActive && window.__highlightLastShape && window.__highlightLastShape.length) {
+    if (window.__highlightModeActive && window.__highlightAllowRetile && window.__highlightLastShape && window.__highlightLastShape.length) {
         if (typeof window.applyHighlightTileOverlay === "function") {
             var idx = (typeof window.__highlightActiveSelectionIndex === "number")
                 ? window.__highlightActiveSelectionIndex

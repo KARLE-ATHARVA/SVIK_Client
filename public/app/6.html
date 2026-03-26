@@ -219,23 +219,7 @@ $(function(){
     $("#commonLayoutModalsContainer").load("/app/modules/partials/common-layout-modals.html");
 
 
-    function ensureHighlightButton($nav) {
-        if (!$nav.length || $nav.find(".highlight-area-btn").length) return;
-        var btn = "<a href=\"#\" class=\"btn pre_btn highlight-area-btn\" onclick=\"if(window.startHighlightArea){startHighlightArea();} return false;\">" +
-            "<span class=\"pre_btn_icon fa fa-pencil-square-o\" aria-hidden=\"true\"></span>" +
-            "<span class=\"pre_btn_label\">Highlighter Tile</span>" +
-            "</a>";
-        var $product = $nav.find(".pre_btn").eq(1);
-        if ($product.length) {
-            $product.after(btn);
-        } else {
-            $nav.find(".pre_btn").last().after(btn);
-        }
-        $("body").addClass("has-highlight-btn");
-    }
-
-    ensureHighlightButton($(".header_nav.hidden-xs"));
-    ensureHighlightButton($(".header_nav.header_nav_xs"));
+    $("body").addClass("has-highlight-btn");
 
 });
 </script>

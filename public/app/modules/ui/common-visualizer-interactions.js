@@ -383,9 +383,23 @@ $(function() {
         var side = Number($(this).attr("data-side-target"));
         if (!side) return;
 
+        if (window && window.__highlightModeActive) {
+            window.__highlightModeActive = false;
+            window.__highlightActiveSelectionIndex = null;
+            window.__highlightAllowRetile = false;
+        }
         window.__targetTileType = side;
         if (window.__wallTileTypes && window.__wallTileTypes.indexOf(side) !== -1 && typeof switchActiveWall === "function") {
             switchActiveWall(side);
+        }
+    });
+
+    // Any brush icon click should exit highlight mode to avoid overriding wall/floor painting.
+    $(document).on("click", ".brush_icon", function() {
+        if (window && window.__highlightModeActive) {
+            window.__highlightModeActive = false;
+            window.__highlightActiveSelectionIndex = null;
+            window.__highlightAllowRetile = false;
         }
     });
 
