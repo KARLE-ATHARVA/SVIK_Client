@@ -9,6 +9,7 @@ export const isLoggedIn = () => {
   return !!getToken();
 };
 
+
 export const logout = () => {
   if (typeof window !== "undefined") {
     sessionStorage.removeItem("pgatoken");

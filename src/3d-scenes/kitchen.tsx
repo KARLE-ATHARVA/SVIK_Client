@@ -53,16 +53,16 @@ export function buildKitchenScene({
   // ==============================================
   // Scene & Fog — same as living room
   // ==============================================
-  scene.background = new THREE.Color(0xe8ebe8);
-  scene.fog = new THREE.Fog(0xe8ebe8, 15, 30);
+  scene.background = new THREE.Color(0xffffff);
+  scene.fog = new THREE.Fog(0xffffff, 15, 30);
 
   // ==============================================
   // Lighting — same values as living room
   // ==============================================
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
 
-  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.0);
+  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.5);
   scene.add(hemisphereLight);
 
   // Straight down — no wall favoured over another
@@ -84,12 +84,12 @@ export function buildKitchenScene({
   scene.add(underLight);
 
   const tubeLightPL1 = new THREE.PointLight(0xfff8f0, 20, 28, 1.5);
-  tubeLightPL1.position.set(-3, 5.7, 0);
+  tubeLightPL1.position.set(-3, 5.4, 0);
   tubeLightPL1.castShadow = true;
   scene.add(tubeLightPL1);
 
   const tubeLightPL2 = new THREE.PointLight(0xfff8f0, 20, 28, 1.5);
-  tubeLightPL2.position.set(3, 5.7, 0);
+  tubeLightPL2.position.set(3, 5.4, 0);
   tubeLightPL2.castShadow = true;
   scene.add(tubeLightPL2);
 
@@ -97,7 +97,7 @@ export function buildKitchenScene({
     'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_1k.hdr',
     (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
-      scene.environment = hdr;
+      //scene.environment = hdr;
     }
   );
 
@@ -109,8 +109,8 @@ export function buildKitchenScene({
   const floorMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.65,
-    metalness: 0.05,
-    emissive: new THREE.Color(0xffffff),
+    metalness: 0.0,
+    emissive: new THREE.Color(0x000000),
     emissiveIntensity: 0.05,
   });
   onFloorMaterialReady(floorMat);
@@ -118,9 +118,9 @@ export function buildKitchenScene({
   // Walls — white, low emissive (same as living room)
   const makeWallMat = () => new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    roughness: 0.85,
-    metalness: 0.02,
-    emissive: new THREE.Color(0xffffff),
+    roughness: 0.65,
+    metalness: 0.0,
+    emissive: new THREE.Color(0x000000),
     emissiveIntensity: 0.05,
     side: THREE.DoubleSide,
   });
@@ -218,20 +218,20 @@ export function buildKitchenScene({
         new THREE.MeshStandardMaterial({ color: 0xb8b8bc, roughness: 0.4, metalness: 0.5 }));
       cap.position.set(0, -0.035, ez); g.add(cap);
     }
-    g.position.set(x, 5.98, 0);
+    g.position.set(x, 5.7, 0);
     scene.add(g);
     // Proxy sphere for clicking
     const proxy = new THREE.Mesh(
-      new THREE.SphereGeometry(0.7, 8, 8),
+      new THREE.SphereGeometry(1.2, 8, 8),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
     );
     proxy.name = tubeName;
-    proxy.position.set(x, 3.5, 0);
+    proxy.position.set(x, 5.5, 0);
     scene.add(proxy);
   }
 
-  createTubeLight(-3, tubeMat1, TUBE_LIGHT_NAMES.tube1);
-  createTubeLight( 3, tubeMat2, TUBE_LIGHT_NAMES.tube2);
+  createTubeLight(-4.2, tubeMat1, TUBE_LIGHT_NAMES.tube1);
+  createTubeLight( 4.2, tubeMat2, TUBE_LIGHT_NAMES.tube2);
 
   // ==============================================
   // Refrigerator — MOVABLE

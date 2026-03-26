@@ -1,3 +1,4 @@
+
 "use client";
 
 import { motion } from "framer-motion";
@@ -118,6 +119,7 @@ export default function Hero() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             {...fadeUp(0.5)}
+            onClick={() => router.push("/product-catalog")}
             className="px-6 py-4 bg-amber-600 text-white text-base font-semibold rounded-full shadow-2xl"
           >
             EXPLORE CATALOG →

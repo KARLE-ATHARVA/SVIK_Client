@@ -58,33 +58,44 @@ export function buildLivingRoomScene({
   // ==============================================
   // Scene & Fog — warm evening atmosphere
   // ==============================================
-  scene.background = new THREE.Color(0xe8ebe8);
-  scene.fog = new THREE.Fog(0xe8ebe8, 15, 30);
+  scene.background = new THREE.Color(0xffffff);
+  scene.fog = new THREE.Fog(0xffffff, 15, 30);
 
   // ==============================================
   // MATERIALS
   // ==============================================
 
-  // Floor — rich dark walnut parquet
+  // Floor — ready for tile overlay
   const floorMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.65,
     metalness: 0.0,
-    emissive: new THREE.Color(0xffffff),
+    // emissive: new THREE.Color(0xffffff),
+    emissive: new THREE.Color(0x000000),
     emissiveIntensity: 0.05,
   });
   onFloorMaterialReady(floorMat);
 
-  // All walls plain white — low emissive just enough to stay white on unlit side
+  // All walls plain white
+  // const makeWallMat = (col = 0xffffff) =>
+  //   new THREE.MeshStandardMaterial({
+  //     color: col,
+  //     roughness: 0.9,
+  //     metalness: 0.0,
+  //     // emissive: new THREE.Color(0xffffff),
+  //     emissive: new THREE.Color(0x000000),
+  //     emissiveIntensity: 0.05,
+  //     side: THREE.DoubleSide,
+  //   });
   const makeWallMat = (col = 0xffffff) =>
-    new THREE.MeshStandardMaterial({
-      color: col,
-      roughness: 0.9,
-      metalness: 0.0,
-      emissive: new THREE.Color(0xffffff),
-      emissiveIntensity: 0.05,
-      side: THREE.DoubleSide,
-    });
+  new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.65,   // ← match floor exactly
+    metalness: 0.0,
+    emissive: new THREE.Color(0x000000),
+    emissiveIntensity: 0.05,
+    side: THREE.DoubleSide,
+  });
 
   // Sofa — deep ocean velvet
   const sofaVelvet = new THREE.MeshStandardMaterial({
@@ -121,12 +132,6 @@ export function buildLivingRoomScene({
     roughness: 0.2,
     metalness: 0.9,
     envMapIntensity: 1.5,
-  });
-  const brushedSteelMat = new THREE.MeshStandardMaterial({
-    color: 0xd0d0d8,
-    roughness: 0.35,
-    metalness: 0.9,
-    envMapIntensity: 1.2,
   });
   const blackMetalMat = new THREE.MeshStandardMaterial({
     color: 0x1a1a1c,
@@ -166,7 +171,7 @@ export function buildLivingRoomScene({
     depthWrite: false,
   } as any);
 
-  // Lamp shades — emissive materials (refs returned for toggle)
+  // Lamp shades
   const floorShadeMat = new THREE.MeshStandardMaterial({
     color: 0xf5e6c8,
     roughness: 0.9,
@@ -257,7 +262,7 @@ export function buildLivingRoomScene({
     "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_1k.hdr",
     (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
-      scene.environment = hdr;
+      //scene.environment = hdr;
     }
   );
 
@@ -271,7 +276,6 @@ export function buildLivingRoomScene({
     tube2:   true,
   };
 
-  // Store default intensities
   const defaults = {
     floorLamp:   { light: 12,  shade: 2.0,  emissive: 0xff9922 as number },
     pendant:     { light: 15,  shade: 1.2,  emissive: 0xfff0d0 as number },
@@ -283,7 +287,7 @@ export function buildLivingRoomScene({
     if (name === LIVING_LIGHT_NAMES.floorShade) {
       lightStates.floor = !lightStates.floor;
       const on = lightStates.floor;
-      floorLampLight.intensity     = on ? defaults.floorLamp.light : 0;
+      floorLampLight.intensity        = on ? defaults.floorLamp.light : 0;
       floorShadeMat.emissiveIntensity = on ? defaults.floorLamp.shade : 0;
       floorShadeMat.emissive.set(on ? defaults.floorLamp.emissive : 0x000000);
       return true;
@@ -291,7 +295,7 @@ export function buildLivingRoomScene({
     if (name === LIVING_LIGHT_NAMES.pendantShade) {
       lightStates.pendant = !lightStates.pendant;
       const on = lightStates.pendant;
-      pendantLight.intensity          = on ? defaults.pendant.light : 0;
+      pendantLight.intensity            = on ? defaults.pendant.light : 0;
       pendantShadeMat.emissiveIntensity = on ? defaults.pendant.shade : 0;
       pendantShadeMat.emissive.set(on ? defaults.pendant.emissive : 0x000000);
       return true;
@@ -299,16 +303,16 @@ export function buildLivingRoomScene({
     if (name === LIVING_LIGHT_NAMES.tubeLight1) {
       lightStates.tube1 = !lightStates.tube1;
       const on = lightStates.tube1;
-      tubeLight1.intensity        = on ? defaults.tube1.light : 0;
-      tubeMat1.emissiveIntensity  = on ? defaults.tube1.emissive : 0;
+      tubeLight1.intensity       = on ? defaults.tube1.light : 0;
+      tubeMat1.emissiveIntensity = on ? defaults.tube1.emissive : 0;
       tubeMat1.emissive.set(on ? 0xfff8f0 : 0x000000);
       return true;
     }
     if (name === LIVING_LIGHT_NAMES.tubeLight2) {
       lightStates.tube2 = !lightStates.tube2;
       const on = lightStates.tube2;
-      tubeLight2.intensity        = on ? defaults.tube2.light : 0;
-      tubeMat2.emissiveIntensity  = on ? defaults.tube2.emissive : 0;
+      tubeLight2.intensity       = on ? defaults.tube2.light : 0;
+      tubeMat2.emissiveIntensity = on ? defaults.tube2.emissive : 0;
       tubeMat2.emissive.set(on ? 0xfff8f0 : 0x000000);
       return true;
     }
@@ -316,7 +320,7 @@ export function buildLivingRoomScene({
   }
 
   // ==============================================
-  // FLOOR — clean white (ready for tile overlay)
+  // FLOOR
   // ==============================================
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 16), floorMat);
   floor.rotation.x = -Math.PI / 2;
@@ -337,8 +341,6 @@ export function buildLivingRoomScene({
   backWall.name = SURFACE_NAMES.wallBack;
   scene.add(backWall);
 
-
-
   const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(16, 7), leftWallMat);
   leftWall.rotation.y = Math.PI / 2;
   leftWall.position.set(-10, 3.5, 0);
@@ -355,12 +357,10 @@ export function buildLivingRoomScene({
 
   onWallMaterialsReady([backWallMat, leftWallMat, rightWallMat]);
 
-  // Crown moulding along top of walls
+  // Crown moulding
   const crownMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.7 });
-  // Back wall crown
   const crownBack = new THREE.Mesh(new THREE.BoxGeometry(20, 0.12, 0.12), crownMat);
   crownBack.position.set(0, 6.94, -7.94); scene.add(crownBack);
-  // Left/Right crowns
   const crownL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 16), crownMat);
   crownL.position.set(-9.94, 6.94, 0); scene.add(crownL);
   const crownR = crownL.clone(); crownR.position.x = 9.94; scene.add(crownR);
@@ -382,7 +382,7 @@ export function buildLivingRoomScene({
   ceiling.position.y = 7;
   ceiling.receiveShadow = true;
   scene.add(ceiling);
-  // Subtle white coffer beams
+
   const cofferMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.8 });
   for (let x = -8; x <= 8; x += 4) {
     const beam = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 16), cofferMat);
@@ -394,7 +394,7 @@ export function buildLivingRoomScene({
   }
 
   // ==============================================
-  // WINDOWS — cinematic view
+  // WINDOWS
   // ==============================================
   const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.35, metalness: 0.75 });
   const curtainMat = new THREE.MeshStandardMaterial({
@@ -402,50 +402,83 @@ export function buildLivingRoomScene({
     transparent: true, opacity: 0.45, side: THREE.DoubleSide,
   });
 
+  // ── Window mask material ──────────────────────────────────────────────────
+  // Matches makeWallMat() exactly so the masked area blends with the wall.
+  // Placed in front of the wall plane, it covers the tile/texture overlay
+  // so tiles do NOT render inside window openings.
+  const windowMaskMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.9,
+    metalness: 0.0,
+    emissive: new THREE.Color(0xffffff),
+    emissiveIntensity: 0.05,
+    side: THREE.FrontSide,
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
   function makeWallWindow(wallX: number, zCenter: number, side: number) {
     const W = 1.4; const H = 1.8; const FT = 0.05;
     const OFF = side * 0.025;
     const centerY = 1.1 + H / 2;
     const g = new THREE.Group();
 
-    // Night sky
+    // ── TILE MASK ──────────────────────────────────────────────────────────
+    // An opaque wall-coloured plane sitting just in front of the wall mesh.
+    // It occludes the tile texture in this window region so tiles appear to
+    // stop at the window edges rather than continuing behind the frame.
+    // renderOrder 0 ensures everything else (sky, glass, frame) draws on top.
+    const maskPanel = new THREE.Mesh(
+      new THREE.PlaneGeometry(W + 0.6, H + 0.7),
+      windowMaskMat
+    );
+    maskPanel.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+    // 4 cm toward the room interior so it clears the wall surface z-fighting
+    maskPanel.position.set(side * 0.04, 0, 0);
+    maskPanel.renderOrder = 0;
+    g.add(maskPanel);
+    // ──────────────────────────────────────────────────────────────────────
+
+    // Night sky background
     const sky = new THREE.Mesh(
       new THREE.PlaneGeometry(W - FT * 2, H * 0.55),
       new THREE.MeshBasicMaterial({ color: 0x08102a, side: THREE.DoubleSide })
     );
     sky.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
     sky.position.set(OFF - side * 0.04, H * 0.225, 0);
+    sky.renderOrder = 1;
     g.add(sky);
 
-    // City lights / tree silhouettes
+    // City / tree silhouette
     const city = new THREE.Mesh(
       new THREE.PlaneGeometry(W - FT * 2, H * 0.45),
       new THREE.MeshBasicMaterial({ color: 0x1a2840, side: THREE.DoubleSide })
     );
     city.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
     city.position.set(OFF - side * 0.04, -H * 0.225, 0);
+    city.renderOrder = 1;
     g.add(city);
 
-    // City glow (point light behind glass)
+    // City glow point light
     const cityGlow = new THREE.PointLight(0x3060c0, 1.5, 5);
     cityGlow.position.set(OFF - side * 0.3, 0, 0);
     g.add(cityGlow);
 
-    // Glass
+    // Glass pane
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(W, H), glassMat);
     glass.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
     glass.position.set(OFF, 0, 0);
+    glass.renderOrder = 2;
     g.add(glass);
 
-    // Frame
+    // Window frame bars
     const makeBar = (bx: number, by: number, bz: number, px: number, py: number, pz: number) => {
       const bar = new THREE.Mesh(new THREE.BoxGeometry(bx, by, bz), frameMat);
       bar.position.set(px, py, pz); g.add(bar);
     };
-    makeBar(FT, FT, W + FT * 2, OFF,  H/2, 0);
-    makeBar(FT, FT, W + FT * 2, OFF, -H/2, 0);
-    makeBar(FT, H, FT,           OFF, 0, -W/2);
-    makeBar(FT, H, FT,           OFF, 0,  W/2);
+    makeBar(FT, FT, W + FT * 2, OFF,  H / 2, 0);
+    makeBar(FT, FT, W + FT * 2, OFF, -H / 2, 0);
+    makeBar(FT, H,  FT,          OFF, 0, -W / 2);
+    makeBar(FT, H,  FT,          OFF, 0,  W / 2);
     makeBar(FT, FT, W,           OFF, H * 0.08, 0);
 
     // Gold curtain rod
@@ -454,20 +487,20 @@ export function buildLivingRoomScene({
       goldMat
     );
     rod.rotation.z = Math.PI / 2;
-    rod.position.set(OFF + side * 0.06, H/2 + 0.22, 0);
+    rod.position.set(OFF + side * 0.06, H / 2 + 0.22, 0);
     g.add(rod);
-    for (const dz of [-(W + 1.0)/2, (W + 1.0)/2]) {
+    for (const dz of [-(W + 1.0) / 2, (W + 1.0) / 2]) {
       const fin = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), goldMat);
-      fin.position.set(OFF + side * 0.06, H/2 + 0.22, dz);
+      fin.position.set(OFF + side * 0.06, H / 2 + 0.22, dz);
       g.add(fin);
     }
 
-    // Curtain panels — rich drape
+    // Curtain panels
     for (const sign of [-1, 1]) {
       const curtGeo = new THREE.PlaneGeometry(0.38, H + 0.55);
       const curt = new THREE.Mesh(curtGeo, curtainMat);
       curt.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
-      curt.position.set(OFF + side * 0.04, 0.1, sign * (W/2 + 0.2));
+      curt.position.set(OFF + side * 0.04, 0.1, sign * (W / 2 + 0.2));
       g.add(curt);
     }
 
@@ -475,18 +508,17 @@ export function buildLivingRoomScene({
     scene.add(g);
   }
 
-  makeWallWindow(-10, -3.2, 1);
-  makeWallWindow(-10,  3.2, 1);
+  makeWallWindow(-10, -3.2,  1);
+  makeWallWindow(-10,  3.2,  1);
   makeWallWindow( 10, -3.2, -1);
   makeWallWindow( 10,  3.2, -1);
 
   // ==============================================
-  // TUBE LIGHT FIXTURES (ceiling) — slim recessed style
+  // TUBE LIGHT FIXTURES (ceiling)
   // ==============================================
   function makeTubeFixture(px: number, pz: number, diffMat: THREE.MeshStandardMaterial, lightName: string) {
     const g = new THREE.Group();
 
-    // Housing — slimmer, more refined
     const housing = new THREE.Mesh(
       new THREE.BoxGeometry(2.0, 0.06, 0.16),
       new THREE.MeshStandardMaterial({ color: 0xc8c8cc, roughness: 0.3, metalness: 0.75 })
@@ -515,7 +547,6 @@ export function buildLivingRoomScene({
     g.position.set(px, 6.97, pz);
     scene.add(g);
 
-    // Invisible proxy
     const proxy = new THREE.Mesh(
       new THREE.SphereGeometry(0.7, 8, 8),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
@@ -533,7 +564,6 @@ export function buildLivingRoomScene({
   // ==============================================
   const sofaGroup = new THREE.Group();
 
-  // Legs
   const legMat = blackMetalMat;
   function addSofaLeg(x: number, z: number) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.06), legMat);
@@ -541,39 +571,32 @@ export function buildLivingRoomScene({
     sofaGroup.add(leg);
   }
 
-  // Main section
   const seatMain = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.22, 1.1), sofaVelvet);
   seatMain.position.set(0, 0.29, 0); sofaGroup.add(seatMain);
-  // Seat padding
   const padMain = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.18, 1.0), sofaVelvet);
   padMain.position.set(0, 0.41, 0); sofaGroup.add(padMain);
-
   const backMain = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.85, 0.22), sofaVelvet);
   backMain.position.set(0, 0.8, -0.44); sofaGroup.add(backMain);
-
   const arm1 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 1.1), sofaVelvet);
   arm1.position.set(-1.69, 0.52, 0); sofaGroup.add(arm1);
   const arm2 = arm1.clone(); arm2.position.x = 1.69; sofaGroup.add(arm2);
 
-  // Cushions (3 on main)
   for (let i = -1; i <= 1; i++) {
     const c = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.24, 0.98), cushionMat);
     c.position.set(i * 1.1, 0.54, 0.02); c.castShadow = true; sofaGroup.add(c);
   }
-  // Back cushions
   for (let i = -1; i <= 1; i++) {
     const bc = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.55, 0.2), cushionMat);
     bc.position.set(i * 1.1, 0.82, -0.3); sofaGroup.add(bc);
   }
 
-  // Throw blanket draped over right arm
   const throwBlanket = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.8), throwMat);
   throwBlanket.position.set(1.5, 0.72, 0.1);
   throwBlanket.rotation.z = 0.3;
   sofaGroup.add(throwBlanket);
 
   addSofaLeg(-1.62, -0.48); addSofaLeg(1.62, -0.48);
-  addSofaLeg(-1.62, 0.48);  addSofaLeg(1.62, 0.48);
+  addSofaLeg(-1.62,  0.48); addSofaLeg(1.62,  0.48);
 
   sofaGroup.position.set(-4, 0, 3.2);
   sofaGroup.rotation.y = Math.PI;
@@ -607,12 +630,11 @@ export function buildLivingRoomScene({
   scene.add(chairGroup);
 
   // ==============================================
-  // COFFEE TABLE — marble top, brass legs
+  // COFFEE TABLE — marble top, brass pedestal
   // ==============================================
   const tableGroup = new THREE.Group();
   const tableTop = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.06, 48), marbletopMat);
   tableTop.position.y = 0.44; tableTop.castShadow = true; tableGroup.add(tableTop);
-  // Marble veining effect (thin raised lines)
   for (let i = 0; i < 3; i++) {
     const vein = new THREE.Mesh(
       new THREE.TorusGeometry(0.3 + i * 0.15, 0.005, 4, 32, Math.PI * 0.4),
@@ -623,34 +645,29 @@ export function buildLivingRoomScene({
     vein.position.y = 0.48;
     tableGroup.add(vein);
   }
-  // Pedestal base
   const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.18, 0.42, 24), goldMat);
   pedestal.position.y = 0.21; tableGroup.add(pedestal);
   const baseDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.04, 32), goldMat);
   baseDisc.position.y = 0.02; tableGroup.add(baseDisc);
-  // Glass shelf below
   const shelfGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.03, 48), glassMat);
   shelfGlass.position.y = 0.22; tableGroup.add(shelfGlass);
   tableGroup.position.set(-4, 0, 0.8);
   markMovable(tableGroup, 'furniture_coffee_table', 'Coffee Table');
   scene.add(tableGroup);
 
-  // Small decor on coffee table — added to tableGroup so they move with it
   const candleMat = new THREE.MeshStandardMaterial({ color: 0xf5eed0, roughness: 0.9 });
   for (const dx of [-0.25, 0, 0.25]) {
     const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.08 + Math.abs(dx) * 0.1, 10), candleMat);
-    candle.position.set(dx, 0.52, 0); tableGroup.add(candle); // ← local coords, tableGroup offset removed
+    candle.position.set(dx, 0.52, 0); tableGroup.add(candle);
     const flame = new THREE.Mesh(
       new THREE.SphereGeometry(0.018, 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xff9900 })
     );
     flame.position.set(dx, 0.61 + Math.abs(dx) * 0.05, 0); tableGroup.add(flame);
   }
-  // Candle glow light — also in tableGroup
   const candleLight = new THREE.PointLight(0xff8800, 2.5, 2.5);
   candleLight.position.set(0, 0.65, 0); tableGroup.add(candleLight);
 
-  // Coffee table book + small vase — in tableGroup
   const bookMat = new THREE.MeshStandardMaterial({ color: 0x2a4a6a, roughness: 0.8 });
   const coffeeBook = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.22), bookMat);
   coffeeBook.position.set(-0.2, 0.5, -0.1); tableGroup.add(coffeeBook);
@@ -664,43 +681,36 @@ export function buildLivingRoomScene({
   // TV UNIT — floating wall-mounted
   // ==============================================
   const tvGroup = new THREE.Group();
-  // Floating media console
   const console1 = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.5, 0.55), darkWoodMat);
   console1.position.set(0, 0.5, 0); tvGroup.add(console1);
-  // Hairpin brackets
   for (const x of [-1.8, 0, 1.8]) {
     const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.25, 0.04), blackMetalMat);
     bracket.position.set(x, 0.125, 0); tvGroup.add(bracket);
   }
-  // Drawer pulls
   for (const x of [-1.8, 0, 1.8]) {
     const pull = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 8), goldMat);
     pull.rotation.z = Math.PI / 2;
     pull.position.set(x, 0.5, 0.28); tvGroup.add(pull);
   }
-  // TV (larger, thinner)
   const tvFrame = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.7, 0.06), tvFrameMat);
   tvFrame.position.set(0, 1.85, -0.02); tvGroup.add(tvFrame);
   const tvScreen = new THREE.Mesh(new THREE.PlaneGeometry(2.85, 1.58), tvScreenMat);
   tvScreen.position.set(0, 1.85, 0.04); tvGroup.add(tvScreen);
-  // TV logo
   const tvLogo = new THREE.Mesh(
     new THREE.BoxGeometry(0.15, 0.015, 0.01),
     new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.6 })
   );
   tvLogo.position.set(0, 1.0, 0.04); tvGroup.add(tvLogo);
-
   tvGroup.position.set(-4, 0.25, -7.4);
   markMovable(tvGroup, 'furniture_tv', 'TV & Console');
   scene.add(tvGroup);
 
   // ==============================================
-  // BOOKSHELF — built-in style, with decor
+  // BOOKSHELF
   // ==============================================
   const bookshelf = new THREE.Group();
   const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(2.0, 3.2, 0.06), darkWoodMat);
   shelfBack.position.y = 1.6; bookshelf.add(shelfBack);
-
   for (let i = 0; i < 6; i++) {
     const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.05, 0.42), darkWoodMat);
     shelf.position.set(0, i * 0.6 + 0.02, 0.18); bookshelf.add(shelf);
@@ -709,8 +719,6 @@ export function buildLivingRoomScene({
     const side = new THREE.Mesh(new THREE.BoxGeometry(0.05, 3.2, 0.42), darkWoodMat);
     side.position.set(sx, 1.6, 0.18); bookshelf.add(side);
   }
-
-  // Books
   const bookColors2 = [0xc84040, 0x4060a0, 0x508040, 0xd09020, 0x804080, 0x206060, 0xe05030];
   for (let s = 0; s < 5; s++) {
     let x = -0.88;
@@ -726,7 +734,6 @@ export function buildLivingRoomScene({
       book.castShadow = true; bookshelf.add(book);
       x += w + 0.01;
     }
-    // Decor on some shelves
     if (s % 2 === 0) {
       const deco = new THREE.Mesh(
         new THREE.CylinderGeometry(0.055, 0.04, 0.2, 16),
@@ -735,7 +742,6 @@ export function buildLivingRoomScene({
       deco.position.set(0.75, s * 0.6 + 0.22, 0.18); bookshelf.add(deco);
     }
   }
-
   bookshelf.position.set(-8.7, 0, -5.5);
   bookshelf.rotation.y = Math.PI / 2;
   markMovable(bookshelf, 'furniture_bookshelf', 'Bookshelf');
@@ -754,7 +760,6 @@ export function buildLivingRoomScene({
     tleg.rotation.z = Math.sin(a) * 0.1;
     sideTableGroup.add(tleg);
   }
-  // Table lamp on side table
   const tlampPole = new THREE.Mesh(
     new THREE.CylinderGeometry(0.018, 0.018, 0.35, 12),
     goldMat
@@ -769,19 +774,15 @@ export function buildLivingRoomScene({
     })
   );
   tlampShade.position.y = 1.05; sideTableGroup.add(tlampShade);
-  // Table lamp light
   const tableLampLight = new THREE.PointLight(0xff8822, 8, 4.5);
   tableLampLight.position.y = 1.1;
   sideTableGroup.add(tableLampLight);
-
-  // Coaster + mug
   const coaster = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.008, 20),
     new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 }));
   coaster.position.y = 0.648; sideTableGroup.add(coaster);
   const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.035, 0.09, 16),
     new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.7 }));
   mug.position.y = 0.705; sideTableGroup.add(mug);
-
   sideTableGroup.position.set(-1, 0, 3.5);
   markMovable(sideTableGroup, 'furniture_side_table', 'Side Table');
   scene.add(sideTableGroup);
@@ -790,16 +791,10 @@ export function buildLivingRoomScene({
   // FLOOR LAMP — sculptural arc lamp
   // ==============================================
   const lampGroup = new THREE.Group();
-
-  // Weighted base
   const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.06, 32), darkWoodMat);
   lampBase.position.y = 0.03; lampGroup.add(lampBase);
-
-  // Marble weight disc
   const marbleWeight = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 32), marbletopMat);
   marbleWeight.position.y = 0.07; lampGroup.add(marbleWeight);
-
-  // Arc pole — curved via multiple segments
   const poleMat = blackMetalMat;
   for (let i = 0; i < 8; i++) {
     const t = i / 7;
@@ -808,8 +803,6 @@ export function buildLivingRoomScene({
     seg.rotation.z = -t * 0.5;
     lampGroup.add(seg);
   }
-
-  // Shade — drum style
   const arcShade = new THREE.Mesh(
     new THREE.CylinderGeometry(0.32, 0.28, 0.38, 32, 1, true),
     floorShadeMat
@@ -818,19 +811,15 @@ export function buildLivingRoomScene({
   arcShade.castShadow = true;
   arcShade.name = LIVING_LIGHT_NAMES.floorShade;
   lampGroup.add(arcShade);
-
-  // Inner diffuser
   const innerDiff = new THREE.Mesh(
     new THREE.CylinderGeometry(0.28, 0.24, 0.3, 32, 1, false),
     new THREE.MeshStandardMaterial({ color: 0xfff8e8, roughness: 0.9, transparent: true, opacity: 0.6 })
   );
   innerDiff.position.set(0.65, 2.05, 0); lampGroup.add(innerDiff);
-
   lampGroup.position.set(-7.2, 0, 3.5);
   markMovable(lampGroup, 'furniture_floor_lamp', 'Floor Lamp');
   scene.add(lampGroup);
 
-  // Invisible proxy for floor lamp shade — easy to click at world position
   const floorLampProxy = new THREE.Mesh(
     new THREE.SphereGeometry(0.55, 8, 8),
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
@@ -842,7 +831,6 @@ export function buildLivingRoomScene({
   // ==============================================
   // WALL ART — Gallery wall
   // ==============================================
-  // Large abstract painting
   const artFrameLarge = new THREE.Mesh(
     new THREE.BoxGeometry(2.0, 1.5, 0.06),
     new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 })
@@ -855,7 +843,6 @@ export function buildLivingRoomScene({
   );
   artCanvas1.position.set(3.5, 3.0, -7.88);
   scene.add(artCanvas1);
-  // Colour blocks on canvas
   for (const [cx, cy, col] of [[3.2, 3.2, 0xc84040], [3.8, 2.8, 0xe0a030], [3.5, 3.0, 0xf0f0f0]]) {
     const cb = new THREE.Mesh(
       new THREE.PlaneGeometry(0.35, 0.3),
@@ -864,14 +851,12 @@ export function buildLivingRoomScene({
     cb.position.set(cx as number, cy as number, -7.86);
     scene.add(cb);
   }
-  // Picture light above art
   const picLight = new THREE.SpotLight(0xffe8c0, 15, 3, Math.PI / 10, 0.5);
   picLight.position.set(3.5, 4.2, -7.5);
   picLight.target.position.set(3.5, 3.0, -7.9);
   scene.add(picLight);
   scene.add(picLight.target);
 
-  // Small framed photo
   const photoFrame = new THREE.Mesh(
     new THREE.BoxGeometry(0.7, 0.85, 0.04),
     new THREE.MeshStandardMaterial({ color: 0xb8860b, roughness: 0.3, metalness: 0.7 })
@@ -885,12 +870,10 @@ export function buildLivingRoomScene({
   photoCanvas.position.set(6.0, 2.8, -7.88);
   scene.add(photoCanvas);
 
-  // Mirror on right wall
   const mirrorRim = new THREE.Mesh(
     new THREE.TorusGeometry(0.65, 0.06, 12, 48),
     goldMat
   );
-  mirrorRim.rotation.y = 0;
   mirrorRim.position.set(7.5, 2.8, -7.92);
   scene.add(mirrorRim);
   const mirrorGlass = new THREE.Mesh(
@@ -899,7 +882,6 @@ export function buildLivingRoomScene({
       color: 0xd8e8f0, roughness: 0.0, metalness: 0.9, envMapIntensity: 2.0,
     })
   );
-  mirrorGlass.rotation.y = 0;
   mirrorGlass.position.set(7.5, 2.8, -7.89);
   scene.add(mirrorGlass);
 
@@ -907,31 +889,25 @@ export function buildLivingRoomScene({
   // PLANT — tall fiddle leaf fig
   // ==============================================
   const plantGroup = new THREE.Group();
-  // Pot — ceramic white
   const potMat = new THREE.MeshStandardMaterial({ color: 0xf0ece4, roughness: 0.75, metalness: 0.0 });
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.38, 24), potMat);
   pot.position.y = 0.19; plantGroup.add(pot);
   const potRim = new THREE.Mesh(new THREE.TorusGeometry(0.225, 0.015, 8, 32), potMat);
   potRim.rotation.x = Math.PI / 2;
   potRim.position.y = 0.38; plantGroup.add(potRim);
-  // Soil
   const soilMesh = new THREE.Mesh(
     new THREE.CircleGeometry(0.21, 24),
     new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.98 })
   );
   soilMesh.rotation.x = -Math.PI / 2; soilMesh.position.y = 0.385; plantGroup.add(soilMesh);
-
-  // Trunk
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 1.2, 12), lightWoodMat);
   trunk.position.y = 0.98; trunk.rotation.z = 0.05; plantGroup.add(trunk);
-
-  // Fiddle leaves
   const leafMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.75, side: THREE.DoubleSide });
   for (let i = 0; i < 9; i++) {
     const a = (i / 9) * Math.PI * 2;
     const h = 0.6 + Math.random() * 0.8;
     const leafGeo = new THREE.CircleGeometry(0.22, 12);
-    leafGeo.scale(0.68, 1.0, 1.0); // squash into ellipse-like oval
+    leafGeo.scale(0.68, 1.0, 1.0);
     const leaf = new THREE.Mesh(leafGeo, leafMat);
     leaf.position.set(Math.cos(a) * 0.2, 1.2 + h * 0.6, Math.sin(a) * 0.2);
     leaf.rotation.y = a;
@@ -943,11 +919,9 @@ export function buildLivingRoomScene({
   scene.add(plantGroup);
 
   // ==============================================
-  // ==============================================
-  // DINING AREA — original rectangular table + classic chairs
+  // DINING AREA
   // ==============================================
   const diningGroup = new THREE.Group();
-
   const diningTableTop = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.08, 1.8), lightWoodMat);
   diningTableTop.position.set(0, 0.75, 0); diningTableTop.castShadow = true; diningGroup.add(diningTableTop);
   for (const x of [-1.5, 1.5]) for (const z of [-0.75, 0.75]) {
@@ -979,7 +953,6 @@ export function buildLivingRoomScene({
     new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.6, metalness: 0.2 })
   );
   centerpiece.position.set(0, 0.92, -0.5); centerpiece.castShadow = true; diningGroup.add(centerpiece);
-
   diningGroup.position.set(5, 0, 0);
   markMovable(diningGroup, 'furniture_dining_set', 'Dining Set');
   scene.add(diningGroup);
@@ -1002,7 +975,6 @@ export function buildLivingRoomScene({
   pendantShade.name = LIVING_LIGHT_NAMES.pendantShade;
   scene.add(pendantShade);
 
-  // Invisible proxy for pendant — easy to click
   const pendantProxy = new THREE.Mesh(
     new THREE.SphereGeometry(0.55, 8, 8),
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
@@ -1012,20 +984,18 @@ export function buildLivingRoomScene({
   scene.add(pendantProxy);
 
   // ==============================================
-  // ROOM DIVIDER / CONSOLE behind sofa
+  // CONSOLE behind sofa
   // ==============================================
   const consoleGroup = new THREE.Group();
   const consoleTop = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.04, 0.4), marbletopMat);
   consoleTop.position.y = 0.86; consoleGroup.add(consoleTop);
   const consoleBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.82, 0.38), darkWoodMat);
   consoleBody.position.y = 0.41; consoleGroup.add(consoleBody);
-  // Gold X-detail on front
   const xBar1 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.04, 0.04), goldMat);
   xBar1.rotation.z = Math.atan2(0.7, 2.0); xBar1.position.set(0, 0.41, 0.2);
   consoleGroup.add(xBar1);
   const xBar2 = xBar1.clone(); xBar2.rotation.z = -Math.atan2(0.7, 2.0);
   consoleGroup.add(xBar2);
-  // Decor items on console
   const consoleLamp = new THREE.Mesh(
     new THREE.CylinderGeometry(0.06, 0.04, 0.3, 16),
     new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.2, metalness: 0.85 })
@@ -1036,14 +1006,13 @@ export function buildLivingRoomScene({
     new THREE.MeshStandardMaterial({ color: 0x3a6030, roughness: 0.85 })
   );
   consolePlant.position.set(0.7, 1.02, 0); consoleGroup.add(consolePlant);
-
   consoleGroup.position.set(-4, 0, 1.9);
   consoleGroup.rotation.y = Math.PI;
   markMovable(consoleGroup, 'furniture_console', 'Console Table');
   scene.add(consoleGroup);
 
   // ==============================================
-  // CEILING ROSE + chain for pendant (dining area)
+  // CEILING ROSE
   // ==============================================
   const ceilRose = new THREE.Mesh(
     new THREE.CylinderGeometry(0.12, 0.12, 0.04, 24),

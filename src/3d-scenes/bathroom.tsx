@@ -1,7 +1,7 @@
+
 import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
-// ─── Surface mesh names ───────────────────────────────────────────────────────
 export const SURFACE_NAMES = {
   floor:     'surface_floor',
   wallBack:  'surface_wall_back',
@@ -12,7 +12,6 @@ export const SURFACE_NAMES = {
 export type SurfaceName = typeof SURFACE_NAMES[keyof typeof SURFACE_NAMES];
 export const WALL_MAT_INDEX = { back: 0, left: 1, right: 2 } as const;
 
-// ─── Tube light names for raycasting ─────────────────────────────────────────
 export const TUBE_LIGHT_NAMES = {
   tube1: 'bath_tube_light_1',
   tube2: 'bath_tube_light_2',
@@ -25,7 +24,6 @@ export interface BathroomRefs {
   tubeMat2:        THREE.MeshStandardMaterial;
   ambientLight:    THREE.AmbientLight;
   hemisphereLight: THREE.HemisphereLight;
-  // ── NEW: movable furniture groups ──
   movables:        THREE.Group[];
 }
 
@@ -41,9 +39,7 @@ export function buildBathroomScene({
   onWallMaterialsReady,
 }: SceneBuilderProps): BathroomRefs {
 
-  // ── NEW: movables array + helper ─────────────────────────────────────────
   const movables: THREE.Group[] = [];
-
   const markMovable = (obj: THREE.Group, name: string, label: string) => {
     obj.userData.movable = true;
     obj.userData.label   = label;
@@ -52,46 +48,50 @@ export function buildBathroomScene({
   };
 
   // ==============================================
-  // Scene & Fog
+  // Scene & Fog — matched to kitchen
   // ==============================================
-  scene.background = new THREE.Color(0xd8e0e8);
-  scene.fog = new THREE.Fog(0xd8e0e8, 10, 25);
+  scene.background = new THREE.Color(0xffffff);
+  scene.fog = new THREE.Fog(0xffffff, 15, 30); // was (10, 25) — now matches kitchen
 
   // ==============================================
-  // Lighting
+  // Lighting — all values matched to kitchen
   // ==============================================
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+
+  // Kitchen: 0.6 — was 0.3
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
 
-  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xb8c5d6, 0.4);
+  // Kitchen: (sky, ground, 0.5) — was (sky, 0xb8c5d6, 0.4)
+  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.5);
   scene.add(hemisphereLight);
 
-  const sunLight = new THREE.DirectionalLight(0xfff5e6, 2.0);
-  sunLight.position.set(8, 12, 6);
+  // Kitchen: intensity 0.8, straight down at (0,15,0) — was 2.0 from (8,12,6)
+  const sunLight = new THREE.DirectionalLight(0xfff5e6, 0.8);
+  sunLight.position.set(0, 15, 0); // straight down, no wall bias
   sunLight.castShadow = true;
-  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.width  = 2048;
   sunLight.shadow.mapSize.height = 2048;
-  sunLight.shadow.camera.near = 0.5;
-  sunLight.shadow.camera.far = 30;
-  sunLight.shadow.camera.left = -8;
-  sunLight.shadow.camera.right = 8;
-  sunLight.shadow.camera.top = 8;
+  sunLight.shadow.camera.near   = 0.5;
+  sunLight.shadow.camera.far    = 30;
+  sunLight.shadow.camera.left   = -8;
+  sunLight.shadow.camera.right  =  8;
+  sunLight.shadow.camera.top    =  8;
   sunLight.shadow.camera.bottom = -8;
   sunLight.shadow.bias = -0.0001;
   scene.add(sunLight);
 
-  // Mirror accent light (always on)
-  const mirrorLight = new THREE.PointLight(0xffffff, 7, 5);
+  // Mirror accent light — reduced from 7 to 2 to stop blowing out the back wall
+  const mirrorLight = new THREE.PointLight(0xffffff, 2, 4);
   mirrorLight.position.set(-4.4, 3.8, -3.8);
   scene.add(mirrorLight);
 
-  // ── Tube light point lights (start ON) ──
-  const tubeLightPL1 = new THREE.PointLight(0xfff8f0, 18, 20, 1.6);
+  // Tube lights — matched to kitchen (20, distance 28, decay 1.5)
+  const tubeLightPL1 = new THREE.PointLight(0xfff8f0, 20, 28, 1.5);
   tubeLightPL1.position.set(-2, 4.92, -1.0);
   tubeLightPL1.castShadow = true;
   scene.add(tubeLightPL1);
 
-  const tubeLightPL2 = new THREE.PointLight(0xfff8f0, 18, 20, 1.6);
+  const tubeLightPL2 = new THREE.PointLight(0xfff8f0, 20, 28, 1.5);
   tubeLightPL2.position.set(2.5, 4.92, -1.0);
   tubeLightPL2.castShadow = true;
   scene.add(tubeLightPL2);
@@ -100,33 +100,33 @@ export function buildBathroomScene({
     'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_1k.hdr',
     (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
-      scene.environment = hdr;
+      //scene.environment = hdr;
     }
   );
 
   // ==============================================
   // Materials
   // ==============================================
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.15 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.0 });
   onFloorMaterialReady(floorMat);
 
   const makeWallMat = () => new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.5, metalness: 0.08, side: THREE.DoubleSide,
+    color: 0xffffff, roughness: 0.5, metalness: 0.0, side: THREE.DoubleSide,
   });
 
   const vanityMat    = new THREE.MeshStandardMaterial({ color: 0x6b5438, roughness: 0.65, metalness: 0.05 });
   const porcelainMat = new THREE.MeshStandardMaterial({ color: 0xfcfcfc, roughness: 0.12, metalness: 0.2 });
   const chromeMat    = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, metalness: 0.96, roughness: 0.08, envMapIntensity: 1.2 });
 
-  // Tube diffuser materials — glowing when ON
+  // Tube diffuser materials — emissiveIntensity matched to kitchen (3.0)
   const tubeMat1 = new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.5, metalness: 0.0,
-    emissive: 0xfff4e0, emissiveIntensity: 2.5,
+    color: 0xffffff, roughness: 0.15, metalness: 0.1,
+    emissive: new THREE.Color(0xfff8e8), emissiveIntensity: 3.0, // was 2.5
     transparent: true, opacity: 0.92,
   });
   const tubeMat2 = new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.5, metalness: 0.0,
-    emissive: 0xfff4e0, emissiveIntensity: 2.5,
+    color: 0xffffff, roughness: 0.15, metalness: 0.1,
+    emissive: new THREE.Color(0xfff8e8), emissiveIntensity: 3.0, // was 2.5
     transparent: true, opacity: 0.92,
   });
 
@@ -145,7 +145,6 @@ export function buildBathroomScene({
   const backWallMat  = makeWallMat();
   const leftWallMat  = makeWallMat();
   const rightWallMat = makeWallMat();
-  
 
   const backWall = new THREE.Mesh(new THREE.PlaneGeometry(12, 5), backWallMat);
   backWall.position.set(0, 2.5, -4.5);
@@ -256,7 +255,7 @@ export function buildBathroomScene({
   createTubeLight( 2.5, -1.0, tubeMat2, TUBE_LIGHT_NAMES.tube2, 'x');
 
   // ==============================================
-  // Vanity + Sink  ── wrapped in a movable group
+  // Vanity + Sink — movable group
   // ==============================================
   const vanityGroup = new THREE.Group();
 
@@ -318,7 +317,7 @@ export function buildBathroomScene({
   scene.add(vanityGroup);
 
   // ==============================================
-  // Mirror + light bar  ── movable group
+  // Mirror + light bar — movable group
   // ==============================================
   const mirrorGroup = new THREE.Group();
 
@@ -326,7 +325,6 @@ export function buildBathroomScene({
     new THREE.BoxGeometry(2.8, 2.0, 0.06),
     new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.3, metalness: 0.6 })
   );
-  mirrorFrame.position.set(0, 0, 0);
   mirrorFrame.castShadow = true;
   mirrorGroup.add(mirrorFrame);
 
@@ -339,7 +337,7 @@ export function buildBathroomScene({
 
   const lightBar = new THREE.Mesh(
     new THREE.BoxGeometry(2.6, 0.08, 0.12),
-    new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.2, metalness: 0.8, emissive: 0xffffff, emissiveIntensity: 0.4 })
+    new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.2, metalness: 0.8, emissive: new THREE.Color(0xffffff), emissiveIntensity: 0.4 })
   );
   lightBar.position.set(0, 1.12, 0.06);
   mirrorGroup.add(lightBar);
@@ -349,13 +347,12 @@ export function buildBathroomScene({
   scene.add(mirrorGroup);
 
   // ==============================================
-  // Towel holder + towel  ── movable group
+  // Towel holder + towel — movable group
   // ==============================================
   const towelGroup = new THREE.Group();
 
   const towelBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 16), chromeMat);
   towelBar.rotation.z = Math.PI / 2;
-  towelBar.position.set(0, 0, 0);
   towelBar.castShadow = true;
   towelGroup.add(towelBar);
 
@@ -377,7 +374,7 @@ export function buildBathroomScene({
   scene.add(towelGroup);
 
   // ==============================================
-  // Geyser  ── movable group
+  // Geyser — movable group
   // ==============================================
   const geyserGroup = new THREE.Group();
 
@@ -417,7 +414,7 @@ export function buildBathroomScene({
   scene.add(geyserGroup);
 
   // ==============================================
-  // Wall Mixer Tap  ── movable group
+  // Wall Mixer Tap — movable group
   // ==============================================
   const tapGroup = new THREE.Group();
 
@@ -439,7 +436,7 @@ export function buildBathroomScene({
   scene.add(tapGroup);
 
   // ==============================================
-  // Bucket  ── movable group
+  // Bucket — movable group
   // ==============================================
   const bucketGroup = new THREE.Group();
 
@@ -472,7 +469,7 @@ export function buildBathroomScene({
   scene.add(bucketGroup);
 
   // ==============================================
-  // Toilet  ── movable group
+  // Toilet — movable group
   // ==============================================
   const toiletGroup = new THREE.Group();
 
@@ -505,10 +502,10 @@ export function buildBathroomScene({
   scene.add(toiletGroup);
 
   // ==============================================
-  // Shower (right side)
+  // Shower (right side) — static
   // ==============================================
   const glassMat = new THREE.MeshStandardMaterial({
-    color: 0xc8dde8, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.35
+    color: 0xc8dde8, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.35,
   });
 
   const showerGlassSide = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), glassMat);

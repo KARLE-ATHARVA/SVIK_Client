@@ -129,8 +129,8 @@ function mapTilesToProducts(rows: TileListItem[]): Product[] {
   return rows.map((item) => ({
     id: item.tile_id,
     name: String(item.sku_name ?? ""),
-    // image: `${normalizedAssetBase}media/thumb/${String(item.sku_code ?? "")}.jpg`,
-    image: `https://vyr.svikinfotech.in/assets/media/thumb/${item.sku_code}.jpg`,
+    image: `${normalizedAssetBase}media/thumb/${String(item.sku_code ?? "")}.jpg`,
+    //image: `https://vyr.svikinfotech.in/assets/media/thumb/${item.sku_code}.jpg`,
     size: String(item.size_name ?? ""),
     skuCode: String(item.sku_code ?? ""),
   }));
