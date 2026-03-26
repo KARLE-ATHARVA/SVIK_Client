@@ -35,7 +35,7 @@ function normalizeSpaceName(rawSpace: string | null | undefined): string {
 }
 
 function mapTiles(rows: TileListItem[]): ShowcaseTile[] {
-  const assetBase = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
+  const assetBase = String(ASSET_BASE ?? "").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
 
   return rows.map((item) => {
@@ -169,7 +169,7 @@ export default function ProductShowcase() {
           ) : (
             <motion.div
               animate={controls}
-              className="flex space-x-8"
+              className="flex space-x-14"
               onMouseEnter={() => controls.stop()}
               onMouseLeave={() =>
                 controls.start({
@@ -187,12 +187,13 @@ export default function ProductShowcase() {
                   key={`${tile.id}-${index}`}
                   className="min-w-[280px] flex flex-col items-center group cursor-pointer"
                 >
-                  <div className="w-full h-80 relative overflow-hidden rounded-xl shadow-2xl mb-4">
+                  <div className="relative w-full overflow-hidden rounded-xl shadow-2xl mb-4 bg-white">
                     <Image
                       src={tile.image}
                       alt={tile.name}
-                      fill
-                      className="object-cover rounded-xl group-hover:scale-110 transition-all duration-500"
+                      width={900}
+                      height={700}
+                      className="h-auto w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                     />
                     <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
                   </div>
@@ -214,8 +215,8 @@ export default function ProductShowcase() {
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mt-10 flex justify-center"
         >
-          <Link
-            href="/products"
+          <button
+            onClick={() => router.push("/product-catalog")}
             className="px-8 py-4 bg-amber-600 hover:bg-amber-700 
                        text-white font-semibold rounded-full 
                        shadow-xl transition flex items-center gap-2"

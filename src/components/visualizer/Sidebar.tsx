@@ -177,7 +177,7 @@ function pruneSelectionsToAvailableOptions(
 }
 
 function mapTilesToProducts(rows: TileListItem[]): Product[] {
-  const assetBase = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
+  const assetBase = String(ASSET_BASE ?? "").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
 
   return rows.map((item) => ({
@@ -518,9 +518,28 @@ export default function Sidebar() {
           }`}
         >
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3">
-              <Loader2 className="animate-spin text-amber-500" size={24} />
-              <p className="text-[10px] uppercase font-bold text-slate-400">Loading Tiles</p>
+            <div role="status" aria-live="polite">
+              <div className="mb-5 flex items-center gap-2 text-[10px] uppercase font-bold text-slate-400">
+                <Loader2 className="animate-spin text-amber-500" size={16} />
+                Loading tiles
+              </div>
+              <div className={`grid gap-6 ${grid ? "grid-cols-2" : "grid-cols-1"}`}>
+                {Array.from({ length: grid ? 6 : 4 }).map((_, index) => (
+                  <div
+                    key={`loading-${index}`}
+                    className="rounded-3xl bg-white p-3 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.15)]"
+                  >
+                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-100">
+                      <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200/70 via-white to-amber-100/70" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(251,191,36,0.12),transparent_45%)]" />
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <div className="h-3 w-3/4 rounded-full bg-slate-200/80 animate-pulse" />
+                      <div className="h-2 w-1/2 rounded-full bg-slate-100 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : visibleProducts.length === 0 ? (
             <div className="flex items-center justify-center h-full">

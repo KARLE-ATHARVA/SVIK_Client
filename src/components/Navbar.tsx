@@ -1,11 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import { Search, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LogOut, Search, User } from "lucide-react";
 import CartNavButton from "@/components/cart/CartNavButton";
+import AuthModal from "@/components/visualizer/AuthModal";
+import { isLoggedIn, logout } from "@/lib/auth";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsUserLoggedIn(isLoggedIn());
+  }, []);
+
+  const handleLoginSuccess = () => {
+    setIsUserLoggedIn(true);
+    setShowAuthModal(false);
+  };
+
+  const handleUserClick = () => {
+    if (isUserLoggedIn) {
+      logout();
+      setIsUserLoggedIn(false);
+      return;
+    }
+    setShowAuthModal(true);
+  };
 
   const scrollToSection = (id: string) => {
     const section = document.getElementById(id);
@@ -70,8 +92,12 @@ export default function Navbar() {
             <Search size={16} />
           </button>
 
-          <button className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white transition hover:bg-black/80">
-            <User size={16} />
+          <button
+            onClick={handleUserClick}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white transition hover:bg-black/80"
+            title={isUserLoggedIn ? "Logout" : "Login"}
+          >
+            {isUserLoggedIn ? <LogOut size={16} /> : <User size={16} />}
           </button>
 
           <CartNavButton />
@@ -101,6 +127,12 @@ export default function Navbar() {
           </button>
         </div>
       </div>
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleLoginSuccess}
+      />
     </>
   );
 }

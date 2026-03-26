@@ -84,9 +84,12 @@ buildForegroundMask=function(roomImg,overlayImg)
         sctx.drawImage(img,0,0,w,h);
         var sd=sctx.getImageData(0,0,w,h);
         var od=octx.createImageData(w,h);
+        var minAlpha=(typeof window!=="undefined" && typeof window.SCENE_MASK_ALPHA_MIN==="number")
+            ? window.SCENE_MASK_ALPHA_MIN
+            : 12;
         for(var i=0;i<sd.data.length;i+=4){
             var a=sd.data[i+3];
-            if(a>12){
+            if(a>minAlpha){
                 od.data[i+3]=255;
             }
         }
