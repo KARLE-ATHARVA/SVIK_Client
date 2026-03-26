@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>Bandwidth-Aware Tile AR</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="ui">
+      <div class="pill">
+        <span class="label">Speed</span>
+        <span id="speed">-- Mbps</span>
+      </div>
+      <div class="pill">
+        <span class="label">Resolution</span>
+        <span id="resolution">low</span>
+      </div>
+      <button id="start-ar">Start AR</button>
+      <button id="download-logs" class="ghost">Download Research Logs</button>
+      <div id="status" aria-live="polite"></div>
+    </div>
+
+    <div id="prompt">Move your phone to detect a surface, then tap to place the tile.</div>
+
+    <div id="rating-modal" hidden>
+      <div class="modal-card">
+        <h2>Rate the Experience</h2>
+        <p>How would you rate the AR session?</p>
+        <div id="rating-buttons">
+          <button data-rating="1">1</button>
+          <button data-rating="2">2</button>
+          <button data-rating="3">3</button>
+          <button data-rating="4">4</button>
+          <button data-rating="5">5</button>
+        </div>
+        <button id="close-rating" class="ghost">Close</button>
+      </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
