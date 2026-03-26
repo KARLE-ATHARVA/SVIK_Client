@@ -291,6 +291,19 @@
     min-height: 42px;
     padding: 10px;
     font-size: 0;
+    position: relative;
+    overflow: visible;
+}
+
+.has-highlight-btn .header_nav.hidden-xs,
+.has-highlight-btn .header_nav.header_nav_xs {
+    flex-wrap: wrap;
+}
+
+.has-highlight-btn .header_nav .highlight-area-btn {
+    flex-basis: 100%;
+    margin-top: 6px;
+    order: 3;
 }
 
 .custom_sidebar_tab_content .top_btns .custom_default_btn.clear-tiles-icon-btn .btn-icon {
@@ -300,7 +313,43 @@
     transform: translateY(-1px);
 }
 
+.custom_sidebar_tab_content .top_btns .custom_default_btn.clear-tiles-icon-btn:hover .btn-icon,
+.custom_sidebar_tab_content .top_btns .custom_default_btn.clear-tiles-icon-btn:focus .btn-icon {
+    color: #0e4645;
+}
+
+.custom_sidebar_tab_content .top_btns .custom_default_btn.clear-tiles-icon-btn::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 46%;
+    top: calc(100% + 2px);
+    transform: translateX(-50%);
+    background: transparent;
+    color: #475569;
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    border-radius: 6px;
+    white-space: nowrap;
+    text-transform: none;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    box-shadow: none;
+    z-index: 20;
+}
+
+.custom_sidebar_tab_content .top_btns .custom_default_btn.clear-tiles-icon-btn:hover::after,
+.custom_sidebar_tab_content .top_btns .custom_default_btn.clear-tiles-icon-btn:focus::after {
+    opacity: 1;
+    visibility: visible;
+}
+
 .custom_sidebar_tab_content .top_btns .custom_default_btn.filter-row-btn {
+    width: 100%;
+}
+
+.custom_sidebar_tab_content .top_btns .custom_default_btn.highlight-area-btn {
     width: 100%;
 }
 
@@ -1588,38 +1637,53 @@ body.inner_page_bg {
     flex: 0 0 30px;
 }
 
-/* Keep top action buttons clickable above canvas/brush overlays */
-.header_wrap,
-.header_nav.hidden-xs,
-.header_nav.header_nav_xs {
-    position: relative !important;
+/* Let brushes receive clicks through empty chrome areas, but keep buttons usable */
+#page {
     z-index: 300000 !important;
+    pointer-events: none;
+}
+
+.header_wrap {
+    pointer-events: none !important;
+}
+
+.header_nav.hidden-xs,
+.header_nav.header_nav_xs,
+.btns_wrap {
     pointer-events: auto !important;
 }
 
 .header_nav.hidden-xs a.pre_btn,
-.header_nav.header_nav_xs a.pre_btn {
-    position: relative !important;
-    z-index: 300001 !important;
+.header_nav.header_nav_xs a.pre_btn,
+.btns_wrap .right_side_btns a,
+.btns_wrap .save-options-panel,
+.btns_wrap .save-options-panel *,
+.btns_wrap .share-options-panel,
+.btns_wrap .share-options-panel *,
+.cbp-spmenu,
+.right_toggle_btn,
+.modal,
+.modal *,
+.layout-type-label,
+.layout-type-label *,
+.layout-type-input,
+.grout-type-label,
+.grout-type-label *,
+.grout-type-input {
     pointer-events: auto !important;
-    cursor: pointer !important;
 }
 
-.btns_wrap {
-    position: relative !important;
-    z-index: 300000 !important;
-}
-
-.btns_wrap .header_nav,
-.btns_wrap .header_nav a,
-.btns_wrap .right_side_btns,
-.btns_wrap .right_side_btns a {
+.header_nav.hidden-xs,
+.header_nav.header_nav_xs {
     pointer-events: auto !important;
+    position: relative;
+    z-index: 300010;
 }
 
-/* Keep shared chrome stack above canvas/brush layers */
-#page {
-    z-index: 300000 !important;
+.header_nav .highlight-area-btn {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 300002;
 }
 
 @media (max-width: 768px) {
