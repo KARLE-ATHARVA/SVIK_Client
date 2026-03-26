@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       type: "png",
     });
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "content-type": "image/png",
         "cache-control": "public, max-age=3600",

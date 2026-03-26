@@ -3,7 +3,7 @@
 import { motion, useAnimation, type Variants } from "framer-motion";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FiChevronRight } from "react-icons/fi";
 import { ASSET_BASE } from "@/lib/constants";
 import { fetchFilterTileList, type TileListItem } from "@/lib/filterApi";
@@ -84,6 +84,7 @@ const textVariants: Variants = {
 
 export default function ProductShowcase() {
   const controls = useAnimation();
+  const router = useRouter();
   const [tiles, setTiles] = useState<ShowcaseTile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -223,7 +224,7 @@ export default function ProductShowcase() {
           >
             Show More
             <FiChevronRight size={20} />
-          </Link>
+          </button>
         </motion.div>
 
         <motion.div

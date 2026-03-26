@@ -4,7 +4,9 @@ export const CONCEPT_IMAGE_BASE_URL =
   process.env.NEXT_PUBLIC_CONCEPT_IMAGE_BASE_URL;
 
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE;
+  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export const ASSET_BASE =
-  process.env.NEXT_PUBLIC_ASSET_BASE;
+  process.env.NEXT_PUBLIC_ASSET_BASE ||
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL;
