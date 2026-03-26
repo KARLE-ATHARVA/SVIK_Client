@@ -42,6 +42,472 @@ $(window).load(function() {
 });
 
 $(function(){
+    function isRoom6Page() {
+        try {
+            var path = (window.location && window.location.pathname) ? window.location.pathname : "";
+            return /(?:^|\/)6\.html(?:$|\?|\#)/.test(path);
+        } catch (e) {
+            return false;
+        }
+    }
+
+    $(document).on("click", ".highlight-area-btn", function(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (!isRoom6Page()) return;
+        if (window.__highlightModeActive && !window.__highlightActive) {
+            window.__highlightModeActive = false;
+            window.__highlightPending = false;
+            window.__highlightShape = null;
+            window.__highlightLastShape = null;
+            if (typeof window.hideHighlightOverlay === "function") {
+                window.hideHighlightOverlay();
+            }
+            return;
+        }
+        if (typeof window.startHighlightArea === "function") {
+            window.startHighlightArea();
+        }
+    });
+
+    window.scheduleRender = (function() {
+        var pending = false;
+        return function() {
+            if (pending) return;
+            pending = true;
+            var run = function() {
+                pending = false;
+                if (typeof render === "function" && window.vis_cvs) {
+                    render(vis_cvs);
+                }
+            };
+            if (window.requestAnimationFrame) {
+                window.requestAnimationFrame(run);
+            } else {
+                setTimeout(run, 0);
+            }
+        };
+    })();
+
+    function getHighlightTileOverlay() {
+        var canvas = document.getElementById("highlight-tile-overlay");
+        if (!canvas) {
+            canvas = document.createElement("canvas");
+            canvas.id = "highlight-tile-overlay";
+            canvas.style.position = "absolute";
+            canvas.style.pointerEvents = "none";
+            canvas.style.zIndex = "50";
+            canvas.style.opacity = "1";
+            canvas.style.mixBlendMode = "normal";
+            var host = document.getElementById("cont_for_vis_cvs") || document.body;
+            if (host && host !== document.body) {
+                try {
+                    var computed = window.getComputedStyle(host);
+                    if (computed && computed.position === "static") {
+                        host.style.position = "relative";
+                    }
+                } catch (e) {}
+            }
+            host.appendChild(canvas);
+        }
+        return canvas;
+    }
+
+    function updateHighlightOverlayPlacement(canvas) {
+        if (!window.vis_cvs || !canvas) return;
+        var rect = vis_cvs.getBoundingClientRect();
+        var host = canvas.parentNode;
+        var hostRect = host && host.getBoundingClientRect ? host.getBoundingClientRect() : null;
+        canvas.width = vis_cvs.width;
+        canvas.height = vis_cvs.height;
+        if (hostRect) {
+            canvas.style.left = (rect.left - hostRect.left) + "px";
+            canvas.style.top = (rect.top - hostRect.top) + "px";
+        } else {
+            canvas.style.left = rect.left + "px";
+            canvas.style.top = rect.top + "px";
+        }
+        canvas.style.width = rect.width + "px";
+        canvas.style.height = rect.height + "px";
+    }
+
+    function drawTileInShape(ctx, canvas, tile, shapePoints) {
+        if (!tile || !shapePoints || !shapePoints.length) return;
+        var src = "";
+        if (typeof getTileImageSrc === "function") {
+            src = getTileImageSrc(tile);
+        }
+        if (!src) {
+            src = (typeof tile.image === "string") ? tile.image : (tile.image && tile.image.src ? tile.image.src : "");
+        }
+        if (!src) return;
+
+        var img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = function() {
+            var baseW = (window.line_cvs && line_cvs.width) ? line_cvs.width : canvas.width;
+            var baseH = (window.line_cvs && line_cvs.height) ? line_cvs.height : canvas.height;
+            var scaleX = canvas.width / baseW;
+            var scaleY = canvas.height / baseH;
+
+            ctx.save();
+            var maskPoints = findSceneMask(tile.tile_type || tile.tileType || tile.type);
+            if (maskPoints && maskPoints.length) {
+                ctx.beginPath();
+                for (var m = 0; m < maskPoints.length; m++) {
+                    ctx.lineTo(maskPoints[m][0] * scaleX, maskPoints[m][1] * scaleY);
+                }
+                ctx.closePath();
+                ctx.clip();
+            }
+
+            ctx.beginPath();
+            for (var k = 0; k < shapePoints.length; k++) {
+                ctx.lineTo(shapePoints[k][0] * scaleX, shapePoints[k][1] * scaleY);
+            }
+            ctx.closePath();
+            ctx.clip();
+
+            var pattern = ctx.createPattern(img, "repeat");
+            if (pattern) {
+                ctx.fillStyle = pattern;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            if (window.scene_foreground_mask_img) {
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.drawImage(scene_foreground_mask_img, 0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = "source-over";
+            }
+            ctx.restore();
+        };
+        img.src = src;
+    }
+
+    function redrawHighlightTileOverlay() {
+        if (!isRoom6Page()) return;
+        var canvas = getHighlightTileOverlay();
+        updateHighlightOverlayPlacement(canvas);
+        var ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!window.__highlightSelections || !window.__highlightSelections.length) return;
+        window.__highlightSelections.forEach(function(sel) {
+            if (sel && sel.tile && sel.shape) {
+                drawTileInShape(ctx, canvas, sel.tile, sel.shape);
+            }
+        });
+    }
+
+    function findSceneMask(tileType) {
+        if (!window.scene_data || !tileType) return null;
+        for (var i = 0; i < scene_data.length; i++) {
+            if (scene_data[i][0] == tileType) {
+                return scene_data[i][11];
+            }
+        }
+        return null;
+    }
+
+    window.applyHighlightTileOverlay = function(tile, shapePoints, selectionIndex) {
+        if (!isRoom6Page()) return;
+        if (!window.vis_cvs || !tile || !shapePoints || !shapePoints.length) return;
+        window.__highlightSelections = window.__highlightSelections || [];
+        var idx = (typeof selectionIndex === "number" && isFinite(selectionIndex)) ? selectionIndex : -1;
+        if (idx < 0) {
+            idx = window.__highlightSelections.length;
+        }
+        window.__highlightSelections[idx] = {
+            tile: tile,
+            shape: cloneObj(shapePoints)
+        };
+        redrawHighlightTileOverlay();
+    };
+
+    // Ensure shape-based selections are actually rendered.
+    (function wrapRenderForShapes() {
+        if (!isRoom6Page()) return;
+        if (window.__renderShapesWrapped) return;
+        if (typeof render !== "function") return;
+        var originalRender = render;
+        window.render = function(cvs) {
+            originalRender(cvs);
+            try {
+                if (typeof renderShapes === "function" && window.shapes && shapes.length) {
+                    renderShapes(cvs);
+                }
+            } catch (e) {}
+        };
+        window.__renderShapesWrapped = true;
+    })();
+
+    window.startHighlightArea = function() {
+        if (!isRoom6Page()) return;
+        if (!window.vis_cvs) {
+            return;
+        }
+        window.__highlightModeActive = true;
+
+        var $overlay = $("#highlight-overlay");
+        if (!$overlay.length) {
+            $overlay = $("<div id=\"highlight-overlay\"></div>").appendTo(document.body);
+            $overlay.css({
+                position: "fixed",
+                inset: 0,
+                zIndex: 500000,
+                cursor: "crosshair",
+                background: "transparent"
+            });
+            $overlay.append("<canvas id=\"highlight-cvs\"></canvas>");
+        }
+
+        var $canvas = $("#highlight-cvs");
+        var canvas = $canvas[0];
+        var ctx = canvas.getContext("2d");
+        var visRect = vis_cvs.getBoundingClientRect();
+        var targetType = Number(window.__targetTileType || window.__wallTargetTileType || 1);
+        var targetScene = null;
+        if (window.scene_data && scene_data.length) {
+            for (var si = 0; si < scene_data.length; si++) {
+                if (scene_data[si][0] == targetType) {
+                    targetScene = scene_data[si];
+                    break;
+                }
+            }
+        }
+        var targetName = targetScene && targetScene[176] ? String(targetScene[176]).toLowerCase() : "";
+        var isFloorTarget = targetType === 2 || targetName.indexOf("floor") !== -1;
+        var maskEl = document.getElementById("mask");
+        var maskRect = null;
+        if (maskEl && typeof maskEl.getBoundingClientRect === "function") {
+            maskRect = maskEl.getBoundingClientRect();
+            if (!maskRect || (!maskRect.width && !maskRect.height)) {
+                maskRect = null;
+            }
+        }
+        var baseRect = maskRect || visRect;
+        var targetW = (window.line_cvs && line_cvs.width) ? line_cvs.width : vis_cvs.width;
+        var targetH = (window.line_cvs && line_cvs.height) ? line_cvs.height : vis_cvs.height;
+
+        function getSceneMaskPoints() {
+            if (!targetScene || !targetScene[11] || !targetScene[11].length) return null;
+            return targetScene[11];
+        }
+
+        function normalizeMaskPoints(points) {
+            if (!points || points.length < 4) return null;
+            var sorted = points.slice().sort(function(a, b) {
+                if (a[1] === b[1]) return a[0] - b[0];
+                return a[1] - b[1];
+            });
+            var top = sorted.slice(0, 2).sort(function(a, b) { return a[0] - b[0]; });
+            var bottom = sorted.slice(sorted.length - 2).sort(function(a, b) { return a[0] - b[0]; });
+            return [top[0], top[1], bottom[1], bottom[0]];
+        }
+
+        function mapRectToQuad(rectA, rectB, quad) {
+            var minX = Math.min(rectA.x, rectB.x);
+            var maxX = Math.max(rectA.x, rectB.x);
+            var minY = Math.min(rectA.y, rectB.y);
+            var maxY = Math.max(rectA.y, rectB.y);
+            var rect = [
+                { x: minX, y: minY },
+                { x: maxX, y: minY },
+                { x: maxX, y: maxY },
+                { x: minX, y: maxY }
+            ];
+            var q = normalizeMaskPoints(quad);
+            if (!q) return rect;
+            var bounds = q.reduce(function(acc, p) {
+                acc.minX = Math.min(acc.minX, p[0]);
+                acc.maxX = Math.max(acc.maxX, p[0]);
+                acc.minY = Math.min(acc.minY, p[1]);
+                acc.maxY = Math.max(acc.maxY, p[1]);
+                return acc;
+            }, { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+            var w = bounds.maxX - bounds.minX || 1;
+            var h = bounds.maxY - bounds.minY || 1;
+            function lerp(a, b, t) { return a + (b - a) * t; }
+            function bilinear(u, v) {
+                var topL = q[0], topR = q[1], botR = q[2], botL = q[3];
+                var xTop = lerp(topL[0], topR[0], u);
+                var yTop = lerp(topL[1], topR[1], u);
+                var xBot = lerp(botL[0], botR[0], u);
+                var yBot = lerp(botL[1], botR[1], u);
+                return { x: lerp(xTop, xBot, v), y: lerp(yTop, yBot, v) };
+            }
+            return rect.map(function(p) {
+                var u = Math.max(0, Math.min(1, (p.x - bounds.minX) / w));
+                var v = Math.max(0, Math.min(1, (p.y - bounds.minY) / h));
+                return bilinear(u, v);
+            });
+        }
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        $overlay.show();
+        window.__highlightActive = true;
+        activeShape = null;
+
+        var rectStart = null;
+        var rectActive = false;
+
+        function toVisCoords(x, y) {
+            var vx = (x - baseRect.left) * (targetW / baseRect.width);
+            var vy = (y - baseRect.top) * (targetH / baseRect.height);
+            return {
+                x: Math.max(0, Math.min(targetW, vx)),
+                y: Math.max(0, Math.min(targetH, vy))
+            };
+        }
+
+        function drawRect(a, b) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!a || !b) return;
+            if (isFloorTarget) {
+                var mask = getSceneMaskPoints();
+                if (mask && mask.length) {
+                    var maskScreen = mask.map(function(p) {
+                        return [
+                            visRect.left + (p[0] / targetW) * visRect.width,
+                            visRect.top + (p[1] / targetH) * visRect.height
+                        ];
+                    });
+                    var quad = mapRectToQuad(a, b, maskScreen);
+                    ctx.fillStyle = "rgba(255,255,255,0.35)";
+                    ctx.strokeStyle = "#0e4645";
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 4]);
+                    ctx.beginPath();
+                    quad.forEach(function(pt, idx) {
+                        if (idx === 0) ctx.moveTo(pt.x, pt.y);
+                        else ctx.lineTo(pt.x, pt.y);
+                    });
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = "#0e4645";
+                    quad.forEach(function(pt) {
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    return;
+                }
+            }
+            var x1 = Math.min(a.x, b.x);
+            var y1 = Math.min(a.y, b.y);
+            var x2 = Math.max(a.x, b.x);
+            var y2 = Math.max(a.y, b.y);
+            ctx.fillStyle = "rgba(255,255,255,0.35)";
+            ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+            ctx.strokeStyle = "#0e4645";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.rect(x1, y1, x2 - x1, y2 - y1);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = "#0e4645";
+            [ [x1,y1], [x2,y1], [x2,y2], [x1,y2] ].forEach(function(p) {
+                ctx.beginPath();
+                ctx.arc(p[0], p[1], 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        $overlay.off(".highlightRect");
+        $(window).off(".highlightRect");
+
+        $overlay.on("mousedown.highlightRect", function(e) {
+            rectActive = true;
+            rectStart = { x: e.clientX, y: e.clientY };
+            drawRect(rectStart, rectStart);
+            e.preventDefault();
+        });
+        $overlay.on("mousemove.highlightRect", function(e) {
+            if (!rectActive) return;
+            drawRect(rectStart, { x: e.clientX, y: e.clientY });
+            e.preventDefault();
+        });
+        var finishRect = function(e) {
+            if (!rectActive) return;
+            rectActive = false;
+            var end = { x: e.clientX, y: e.clientY };
+            drawRect(rectStart, end);
+
+            var v1 = toVisCoords(Math.min(rectStart.x, end.x), Math.min(rectStart.y, end.y));
+            var v2 = toVisCoords(Math.max(rectStart.x, end.x), Math.min(rectStart.y, end.y));
+            var v3 = toVisCoords(Math.max(rectStart.x, end.x), Math.max(rectStart.y, end.y));
+            var v4 = toVisCoords(Math.min(rectStart.x, end.x), Math.max(rectStart.y, end.y));
+
+            if (isFloorTarget) {
+                var maskPts = getSceneMaskPoints();
+                if (maskPts && maskPts.length) {
+                    var quadPoints = mapRectToQuad(
+                        { x: v1.x, y: v1.y },
+                        { x: v3.x, y: v3.y },
+                        maskPts
+                    );
+                    activeShape = quadPoints.map(function(p) { return [p.x, p.y]; });
+                } else {
+                    activeShape = [
+                        [v1.x, v1.y],
+                        [v2.x, v1.y],
+                        [v3.x, v3.y],
+                        [v4.x, v4.y]
+                    ];
+                }
+            } else {
+                activeShape = [
+                    [v1.x, v1.y],
+                    [v2.x, v1.y],
+                    [v3.x, v3.y],
+                    [v4.x, v4.y]
+                ];
+            }
+
+            window.__highlightActive = false;
+            window.__highlightPending = true;
+            window.__highlightShape = cloneObj(activeShape);
+            window.__highlightLastShape = cloneObj(activeShape);
+            window.__highlightPendingIndex = (window.__highlightSelections ? window.__highlightSelections.length : 0);
+            $overlay.off(".highlightRect");
+            $(window).off(".highlightRect");
+            // Keep the white box visible, but allow clicking the tile menu.
+            drawRect(rectStart, end);
+            $overlay.css({ pointerEvents: "none" });
+
+            // Open the tile menu so user can pick a tile immediately.
+            try {
+                var panel = 1;
+                var target = Number(window.__targetTileType || window.__wallTargetTileType || 1);
+                if (target === 2) panel = 2;
+                if (typeof showLeftMenu === "function") {
+                    showLeftMenu(panel);
+                }
+                if (typeof classie !== "undefined") {
+                    classie.add(menuLeft, "cbp-spmenu-open");
+                }
+            } catch (err) {}
+            if (e && e.preventDefault) e.preventDefault();
+        };
+        $overlay.on("mouseup.highlightRect mouseleave.highlightRect", finishRect);
+        $(window).on("mouseup.highlightRect", finishRect);
+    };
+
+    window.hideHighlightOverlay = function() {
+        var $overlay = $("#highlight-overlay");
+        if ($overlay.length) {
+            $overlay.hide();
+            $overlay.css({ pointerEvents: "auto" });
+        }
+        window.__highlightPending = false;
+        window.__highlightActive = false;
+        window.__highlightShape = null;
+    };
+
     function resolveMailEndpoint() {
         if (typeof getSharedVisualizerMailEndpoint === "function") {
             return getSharedVisualizerMailEndpoint(send_mail_addr);
@@ -668,6 +1134,43 @@ $(function(){
         $(".user-action ul li").removeClass("active");
     });
 
+    window.clearAllTiles = function() {
+        if (window.tile_datas) {
+            Object.keys(tile_datas).forEach(function(key) {
+                delete tile_datas[key];
+            });
+        }
+        if (window.free_tiles) {
+            if (Array.isArray(free_tiles)) {
+                free_tiles.length = 0;
+            } else {
+                free_tiles = [];
+            }
+        }
+        if (window.free_tiles_cur) {
+            if (Array.isArray(free_tiles_cur)) {
+                free_tiles_cur.length = 0;
+            } else {
+                free_tiles_cur = [];
+            }
+        }
+        if (window.indexeds) {
+            if (Array.isArray(indexeds)) {
+                indexeds.length = 0;
+            } else {
+                indexeds = [];
+            }
+        }
+        if (typeof $ === "function") {
+            $(".tile-type-input").prop("checked", false).closest(".tile-wrap").removeClass("no-match");
+        }
+        if (typeof window.scheduleRender === "function") {
+            scheduleRender();
+        } else if (typeof render === "function" && window.vis_cvs) {
+            render(vis_cvs);
+        }
+    };
+
 
 
     $(document).on("change", ".layout-type-input", function(e) {
@@ -676,7 +1179,28 @@ $(function(){
 
         var tile_id=Number(this.getAttribute("data-tile-id"));
 
-        free_tiles[tile_id]=[];
+        window.__layoutByTileType = window.__layoutByTileType || {};
+        if (isFinite(tile_id)) {
+            window.__layoutByTileType[tile_id] = layout;
+        }
+
+        if (layout === "dragdrop") {
+            if (!free_tiles[tile_id] || !free_tiles[tile_id].length) {
+                if (tile_datas && tile_datas[tile_id] && tile_datas[tile_id].length) {
+                    free_tiles[tile_id] = tile_datas[tile_id].slice();
+                } else {
+                    free_tiles[tile_id] = [];
+                }
+            }
+            if (free_tiles[tile_id] && free_tiles[tile_id].length && free_tiles_cur) {
+                free_tiles_cur[tile_id] = free_tiles[tile_id][free_tiles[tile_id].length - 1];
+            }
+        }
+        if (typeof dont_click !== "undefined") {
+            // Enable canvas clicks only for free layout so users can place tiles manually.
+            dont_click = layout !== "dragdrop";
+        }
+        window.__freeLayoutActive = layout === "dragdrop";
 
         $('#menuPanel' + this.dataset.room)
             .find(".tile-type-input").each(function() {
@@ -695,9 +1219,17 @@ $(function(){
                 //     $(this).closest(".tiles-list").find(".tile-type-input").not(this).prop("checked", false);
                 // }
             });
-            $('#menuPanel' + this.dataset.room).find(".tile-type-input").filter(":checked").prop("checked", false);
-        dont_hide_leftmenu_on_tile_click_for_one_time=true;
-        checked.click();
+        if (layout !== "checkered") {
+            var $checked = $('#menuPanel' + this.dataset.room).find(".tile-type-input").filter(":checked");
+            if ($checked.length > 1) {
+                $checked.not($checked.first()).prop("checked", false);
+            }
+        }
+        if (typeof window.scheduleRender === "function") {
+            scheduleRender();
+        } else if (typeof render === "function" && window.vis_cvs) {
+            render(vis_cvs);
+        }
     });
 
     $(document).on("change", ".tile-type-input", function(e) {
@@ -711,13 +1243,34 @@ $(function(){
             $checkedCheckboxes = $allCheckboxes.filter(":checked"),
             thisCheckbox = this,
             tiles = [this.value];
+        var layoutMode = "grid";
+        try {
+            var tileMeta = (window.avail_tiles && avail_tiles[Number(this.value)]) ? avail_tiles[Number(this.value)] : null;
+            var tid = tileMeta && isFinite(tileMeta.tile_type) ? Number(tileMeta.tile_type) : null;
+            if (tid === null) {
+                var fallbackTid = Number(window.__targetTileType || window.__wallTargetTileType || 0);
+                if (isFinite(fallbackTid) && fallbackTid > 0) {
+                    tid = fallbackTid;
+                }
+            }
+            if (tid !== null && typeof $ === "function") {
+                layoutMode = $('.layout-type-input[data-tile-id=' + tid + ']:checked').val()
+                    || (window.__layoutByTileType && window.__layoutByTileType[tid])
+                    || "grid";
+            } else if (window.__layoutByTileType) {
+                var fb = Number(window.__targetTileType || window.__wallTargetTileType || 0);
+                if (isFinite(fb) && window.__layoutByTileType[fb]) {
+                    layoutMode = window.__layoutByTileType[fb];
+                }
+            }
+        } catch (e) {}
 
         if(!this.checked) {
             this.checked = true;
             return false;
         }
 
-        if(this.type === "radio") {
+        if(layoutMode !== "checkered") {
             $allCheckboxes.closest('.tile-wrap').removeClass('no-match');
         } else {
             if($(this).closest('.tile-wrap').hasClass('no-match')) {
@@ -740,11 +1293,19 @@ $(function(){
         });
         console.log_(tiles);
 
+        if (tiles && tiles.length) {
+            window.__lastSelectedTile = tiles[0];
+        }
+
         selectTile(tiles);
     });
 
     $(document).on("change", ".rotate-degree", function() {
-        render(vis_cvs);
+        if (typeof window.scheduleRender === "function") {
+            scheduleRender();
+        } else if (typeof render === "function" && window.vis_cvs) {
+            render(vis_cvs);
+        }
     });
 
     $('.close-popup-btn').click(function() {
@@ -794,7 +1355,11 @@ $(function(){
         {
             blend_mode=old_blend_mode;
 
-            render(vis_cvs);
+            if (typeof window.scheduleRender === "function") {
+                scheduleRender();
+            } else if (typeof render === "function" && window.vis_cvs) {
+                render(vis_cvs);
+            }
         }, to+=tos);
     }
 
@@ -1770,8 +2335,15 @@ function selectShape(id) {
     setShape(d.tile_type,d,function(data1){
         data1.shape = cloneObj(activeShape);
         shapes.push(data1);
-        render(vis_cvs);
+        if (typeof window.scheduleRender === "function") {
+            scheduleRender();
+        } else if (typeof render === "function" && window.vis_cvs) {
+            render(vis_cvs);
+        }
         clearMask();
+        if (window.__highlightPending && typeof window.hideHighlightOverlay === "function") {
+            hideHighlightOverlay();
+        }
     });
 
     updateInfo([d], true);
@@ -1793,6 +2365,33 @@ function setShape(tid, data, ondone) {
 
 
 function selectTile(tiles) {
+    if (window.__highlightPending && window.__highlightShape) {
+        var lastShape = cloneObj(window.__highlightShape);
+        if (typeof window.applyHighlightTileOverlay === "function") {
+            window.applyHighlightTileOverlay(tiles[0], lastShape, window.__highlightPendingIndex);
+        }
+        if (typeof window.hideHighlightOverlay === "function") {
+            window.hideHighlightOverlay();
+        }
+        window.__highlightPending = false;
+        window.__highlightShape = null;
+        window.__highlightLastShape = lastShape;
+        window.__highlightActiveSelectionIndex = (typeof window.__highlightPendingIndex === "number")
+            ? window.__highlightPendingIndex
+            : window.__highlightSelections.length - 1;
+        window.__highlightAllowRetile = true;
+        window.__highlightPendingIndex = null;
+        return;
+    }
+    if (window.__highlightModeActive && window.__highlightLastShape && window.__highlightLastShape.length) {
+        if (typeof window.applyHighlightTileOverlay === "function") {
+            var idx = (typeof window.__highlightActiveSelectionIndex === "number")
+                ? window.__highlightActiveSelectionIndex
+                : window.__highlightSelections.length - 1;
+            window.applyHighlightTileOverlay(tiles[0], window.__highlightLastShape, idx);
+        }
+        return;
+    }
     if(activeShape != null){
         selectShape(tiles[0].id);
     } else {
@@ -1809,7 +2408,11 @@ function selectTile(tiles) {
                 free_tiles_cur[tid]=td;
             }
 
-            render(vis_cvs);
+            if (typeof window.scheduleRender === "function") {
+                scheduleRender();
+            } else if (typeof render === "function" && window.vis_cvs) {
+                render(vis_cvs);
+            }
         });
         // d = tiles[0];
 

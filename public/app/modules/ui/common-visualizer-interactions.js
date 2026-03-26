@@ -38,6 +38,12 @@ $(function() {
             revert: true,
             helper: "<div>qua</div>",
             start: function() {
+                if (typeof window.__freeLayoutActive !== "undefined" && window.__freeLayoutActive) {
+                    if (typeof dont_click !== "undefined") {
+                        dont_click = false;
+                    }
+                    return false;
+                }
 
                 dragging_side = null;
 
@@ -94,6 +100,12 @@ $(function() {
             revert: true,
             helper: "none",
             start: function(e) {
+                if (typeof window.__freeLayoutActive !== "undefined" && window.__freeLayoutActive) {
+                    if (typeof dont_click !== "undefined") {
+                        dont_click = false;
+                    }
+                    return false;
+                }
 
                 dragging_side = null;
 
@@ -238,8 +250,22 @@ $(function() {
 
         vis_cvs.style.touchAction = "none";
 
+        function isFreeLayoutActive() {
+            if (window.__freeLayoutActive) return true;
+            var tid = window.__targetTileType || window.__wallTargetTileType;
+            if (!tid || typeof $ !== "function") return false;
+            var val = $('.layout-type-input[data-tile-id=' + tid + ']:checked').val();
+            return val === "dragdrop";
+        }
+
         var onPointerDown = function(e) {
             if (pointerActive) return;
+            if (isFreeLayoutActive()) {
+                if (typeof dont_click !== "undefined") {
+                    dont_click = false;
+                }
+                return;
+            }
 
             var pt = getCanvasPointFromClient(e);
             var s = pickSceneSideFromCanvasPoint(pt.x, pt.y);
@@ -352,6 +378,16 @@ $(function() {
             classie.add(menuLeft, 'cbp-spmenu-open');
         }
     }
+
+    $(document).on("click", ".js-wall-brush, .js-target-brush, .brush_icon[data-side-target]", function() {
+        var side = Number($(this).attr("data-side-target"));
+        if (!side) return;
+
+        window.__targetTileType = side;
+        if (window.__wallTileTypes && window.__wallTileTypes.indexOf(side) !== -1 && typeof switchActiveWall === "function") {
+            switchActiveWall(side);
+        }
+    });
 
 });
 
