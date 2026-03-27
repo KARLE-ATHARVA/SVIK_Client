@@ -85,6 +85,7 @@
         var fromGlobal = "";
         var fromPublicEnv = "";
         var fromStorage = "";
+        var fromParent = "";
         try {
             fromGlobal = typeof global.VISUALIZER_ASSET_BASE === "string" ? global.VISUALIZER_ASSET_BASE : "";
         } catch (e) {}
@@ -92,9 +93,12 @@
             fromPublicEnv = typeof global.NEXT_PUBLIC_ASSET_BASE === "string" ? global.NEXT_PUBLIC_ASSET_BASE : "";
         } catch (e) {}
         try {
+            fromParent = global.parent && (global.parent.NEXT_PUBLIC_ASSET_BASE || global.parent.VISUALIZER_ASSET_BASE) || "";
+        } catch (e) {}
+        try {
             fromStorage = global.localStorage && localStorage.getItem("visualizer_asset_base");
         } catch (e) {}
-        var base = String(fromGlobal || fromStorage || fromPublicEnv || "").trim();
+        var base = String(fromGlobal || fromStorage || fromPublicEnv || fromParent || "").trim();
         if (base.slice(-1) !== "/") base += "/";
         return base;
     }
@@ -122,7 +126,7 @@
     function ensureTopHeaderActions(roomId, spaceName) {
         if (!global.jQuery) return;
         var $ = global.jQuery;
-        var targetUrl = "/visualizer_old?category=" + encodeURIComponent(spaceName || detectSpaceName(roomId));
+        var targetUrl = "/visualizer?category=" + encodeURIComponent(spaceName || detectSpaceName(roomId));
 
         $("a[data-target='#roomsModal']").each(function() {
             var $a = $(this);

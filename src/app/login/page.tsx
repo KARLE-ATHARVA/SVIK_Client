@@ -20,7 +20,7 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = useMemo(
-    () => searchParams.get("returnUrl") || "/visualizer_old",
+    () => searchParams.get("returnUrl") || "/visualizer",
     [searchParams]
   );
 

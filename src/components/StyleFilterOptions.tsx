@@ -50,6 +50,14 @@ export default function StyleFilterOptions({
   });
   const router = useRouter();
 
+  const navigateTo = (path: string) => {
+    if (typeof window !== "undefined" && path.startsWith("/visualizer#")) {
+      window.location.assign(path);
+      return;
+    }
+    router.push(path);
+  };
+
   const handleProceed = () => {
     onComplete();
     const assetBase = String(ASSET_BASE ?? "").trim();
@@ -74,7 +82,7 @@ export default function StyleFilterOptions({
       localStorage.removeItem("selected_color");
     }
 
-    router.push(targetPath);
+    navigateTo(targetPath);
   };
 
   const handleSkip = () => {
@@ -87,7 +95,7 @@ export default function StyleFilterOptions({
     }
     localStorage.removeItem("selected_application");
     localStorage.removeItem("selected_color");
-    router.push(targetPath);
+    navigateTo(targetPath);
   };
 
   return (

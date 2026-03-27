@@ -2,6 +2,20 @@ var actualWdth;
 var menuLeft = document.getElementById('cbp-spmenu-s1'),
     showLeft = document.getElementById('showLeft'),
     body     = document.body;
+// Ensure asset base is available inside iframe
+try {
+    if (window.parent && window.parent !== window) {
+        var parentAsset = window.parent.NEXT_PUBLIC_ASSET_BASE || window.parent.VISUALIZER_ASSET_BASE || "";
+        if (typeof parentAsset === "string" && parentAsset.trim()) {
+            var base = parentAsset.trim();
+            if (base.slice(-1) !== "/") base += "/";
+            window.VISUALIZER_ASSET_BASE = base;
+            if (window.localStorage) {
+                localStorage.setItem("visualizer_asset_base", base);
+            }
+        }
+    }
+} catch (e) {}
 $(window).load(function() {
     $('#preloader').hide();
     $('#preloader2').hide();
@@ -768,11 +782,25 @@ $(function(){
         return payload;
     }
 
+    function getDesignPayloadBundle() {
+        var dataString = JSON.stringify(buildDesignPayload());
+        var encoded = btoa(unescape(encodeURIComponent(dataString)));
+        var designId = encoded.replace(/[^a-zA-Z0-9]/g, "").slice(0, 50);
+        return { dataString: dataString, encoded: encoded, designId: designId };
+    }
+
+    function getCurrentRoomId() {
+        var match = window.location.pathname.match(/\/(\d+)(?:\.html)?$/);
+        return match ? match[1] : "";
+    }
+
     function createDesignShareLink() {
         try {
-            var data = JSON.stringify(buildDesignPayload());
-            var encoded = btoa(data);
-            return window.location.href.split("#")[0] + "#design-data:" + encoded;
+            var bundle = getDesignPayloadBundle();
+            var origin = (window.parent && window.parent.location && window.parent.location.origin)
+                ? window.parent.location.origin
+                : window.location.origin;
+            return origin + "/visualizer?d=" + bundle.designId;
         } catch (e) {
             return window.location.href.split("#")[0];
         }
@@ -870,20 +898,55 @@ $(function(){
 
     function saveDesignByType(as) {
         if (as == "link") {
-            var link = createDesignShareLink();
+            try {
+                var bundle = getDesignPayloadBundle();
+                var encoded = bundle.encoded;
+                var designId = bundle.designId;
+                var roomId = getCurrentRoomId();
+                var origin = (window.parent && window.parent.location && window.parent.location.origin)
+                    ? window.parent.location.origin
+                    : window.location.origin;
+                var link = origin + "/visualizer?d=" + designId;
 
-            $('button[data-dismiss="modal"]').click();
-            setSaveOptionsOpen(false);
-            $("<div title='Design has been saved'><style>.no-close .ui-dialog-titlebar-close {display: none }</style>Copy & Save <a style='text-decoration:underline;' href='" + link + "' target='_blank'>this link</a>.</div>").appendTo(document.body).dialog({
-                modal: true,
-                dialogClass: 'no-close',
-                buttons: {
-                    Close: function() {
-                        $(this).dialog("close").remove();
-                    }
+                if (!link) {
+                    throw new Error("Invalid design link generated");
                 }
-            });
-            return;
+
+                var image = "";
+                try {
+                    image = vis_cvs.toDataURL_("image/jpeg", 0.7);
+                } catch (imgErr) {
+                    console.warn("Image capture failed", imgErr);
+                }
+
+                var payload = {
+                    type: "SAVE_DESIGN",
+                    payload: {
+                        link: link,
+                        designId: designId,
+                        roomId: roomId || null,
+                        designData: encoded,
+                        image: image || null,
+                        timestamp: Date.now()
+                    }
+                };
+
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(payload, "*");
+                } else {
+                    navigator.clipboard.writeText(link);
+                    alert("Design link copied!");
+                }
+
+                if (typeof setSaveOptionsOpen === "function") {
+                    setSaveOptionsOpen(false);
+                }
+                return;
+            } catch (err) {
+                console.error(err);
+                alert("Something went wrong while saving.");
+                return;
+            }
         }
 
         var infoHtml = '',
@@ -1549,19 +1612,19 @@ $(function(){
         indexeds=dd.indexeds;
 
 
-        setTimeout(function()
-        {
-            blend_mode=old_blend_mode;
+      setTimeout(function()
+      {
+          blend_mode=old_blend_mode;
 
-            if (typeof window.scheduleRender === "function") {
-                scheduleRender();
-            } else if (typeof render === "function" && window.vis_cvs) {
-                render(vis_cvs);
-            }
-        }, to+=tos);
-    }
+          if (typeof window.scheduleRender === "function") {
+              scheduleRender();
+          } else if (typeof render === "function" && window.vis_cvs) {
+              render(vis_cvs);
+          }
+      }, to+=tos);
+  }
 
-    function normalizeProductLink(url) {
+  function normalizeProductLink(url) {
         var raw = (url || "").toString().trim();
         if (!raw || raw === "-" || raw === "null" || raw === "undefined") return "";
         if (/^https?:\/\//i.test(raw)) return raw;

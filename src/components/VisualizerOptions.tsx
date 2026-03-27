@@ -169,7 +169,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaBath, FaBed, FaCouch, FaHeart, FaHome, FaUtensils } from "react-icons/fa";
 import StyleFilterOptions from "./StyleFilterOptions";
@@ -188,6 +188,13 @@ type RoomCategory = {
   has3D: boolean;
 };
 
+type SavedRoom = {
+  id: number;
+  preview_image: string;
+  redirect_url: string;
+  created_at?: string;
+};
+
 const CATEGORIES: RoomCategory[] = [
   { key: "living", label: "Living Rooms", icon: FaCouch, roomIds: [6, 20, 21, 22, 30, 33, 47], sceneType: "living_room", has3D: true },
   { key: "kitchen", label: "Kitchens", icon: FaUtensils, roomIds: [8, 26, 29, 34, 35, 45, 46], sceneType: "kitchen", has3D: true },
@@ -204,6 +211,8 @@ const THUMBNAIL_3D: Record<string, string> = {
   bathroom: bathroom3D.src,
 };
 
+const SAVED_FALLBACK_ROOMS = [6, 20, 21, 22, 30, 33, 47];
+
 export default function VisualizerOptions() {
   const searchParams = useSearchParams();
   const initialCategory = (searchParams.get("category") || "").toLowerCase();
@@ -213,11 +222,39 @@ export default function VisualizerOptions() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>(validInitialCategory);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  const [savedRooms, setSavedRooms] = useState<SavedRoom[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
 
   const active = useMemo(
     () => CATEGORIES.find((c) => c.key === selectedCategory) ?? CATEGORIES[0],
     [selectedCategory]
   );
+
+  useEffect(() => {
+    const fetchSaved = async () => {
+      const token = sessionStorage.getItem("pgatoken");
+      if (!token) return;
+
+      const apiBase = String(process.env.NEXT_PUBLIC_API_BASE ?? "").trim();
+      if (!apiBase) return;
+
+      try {
+        setLoadingSaved(true);
+        const res = await fetch(`${apiBase}saved_rooms/list`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to load saved rooms");
+        const data = await res.json();
+        setSavedRooms(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Saved rooms fetch error:", err);
+      } finally {
+        setLoadingSaved(false);
+      }
+    };
+
+    fetchSaved();
+  }, []);
 
   const handleCategorySelect = (spaceKey: string) => {
     setSelectedCategory(spaceKey);
@@ -232,6 +269,13 @@ export default function VisualizerOptions() {
   const handleRoomSelect = (roomId: number) => {
     setSelectedRoomId(roomId);
     setShowFilters(true);
+  };
+
+  const handleSavedClick = (url: string) => {
+    const normalized = url
+      .replace("/visualizer_old", "/visualizer")
+      .replace("/visualiser", "/visualizer");
+    window.location.href = normalized;
   };
 
   // const handle3DSelect = () => {
@@ -307,7 +351,7 @@ export default function VisualizerOptions() {
             key={`filters-${selectedRoomId}`}
             onBack={() => setShowFilters(false)}
             onComplete={() => {}}
-            targetPath={`/${selectedRoomId}`}
+            targetPath={`/visualizer#room=${selectedRoomId}`}
             spaceType={selectedCategory}
           />
         ) : (
@@ -339,18 +383,73 @@ export default function VisualizerOptions() {
 
 
             {/* Single unified grid — 2D rooms + 3D thumbnail, no scroll */}
-            {/* <div className="flex-1 flex flex-col justify-between gap-4 min-h-0"> */}
              <div className={`flex-1 flex flex-col ${tight3DGap ? "justify-start" : "justify-between"} gap-4 min-h-0`}>
 
-              {/* 2D section */}
+              {/* 2D / Saved section */}
               <div className="flex flex-col gap-2 min-h-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 shrink-0">
                   <span className="w-5 h-[1px] bg-slate-300" />
-                  2D Rooms
+                  {active.key === "saved" ? "Saved Designs" : "2D Rooms"}
                 </p>
-                {active.roomIds.length === 0 ? (
+
+                {active.key === "saved" ? (
+                  loadingSaved ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-6 text-center text-sm font-semibold text-slate-500">
+                      Loading saved rooms...
+                    </div>
+                  ) : savedRooms.length > 0 ? (
+                    <div className="grid grid-cols-4 gap-2 lg:gap-3">
+                      {savedRooms.map((item, index) => (
+                        <motion.button
+                          type="button"
+                          key={`saved-${item.id}`}
+                          onClick={() => handleSavedClick(item.redirect_url)}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: index * 0.02 }}
+                          className="group block rounded-xl border border-slate-200 bg-white/90 p-1.5 hover:border-amber-400 hover:shadow-md text-left"
+                        >
+                          <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
+                            <img
+                              src={item.preview_image}
+                              alt="Saved room preview"
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-2 lg:gap-3">
+                      {SAVED_FALLBACK_ROOMS.map((roomId, index) => (
+                        <motion.button
+                          type="button"
+                          key={`fallback-${roomId}`}
+                          onClick={() => handleRoomSelect(roomId)}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: index * 0.02 }}
+                          className="group block rounded-xl border border-slate-200 bg-white/90 p-1.5 hover:border-amber-400 hover:shadow-md text-left"
+                        >
+                          <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
+                            <img
+                              src={`/app/images/room_background_${roomId}_thumb.png`}
+                              alt={`Room ${roomId} background`}
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            <img
+                              src={`/app/images/room_foreground_${roomId}_thumb.png`}
+                              alt={`Room ${roomId} foreground`}
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  )
+                ) : active.roomIds.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-6 text-center text-sm font-semibold text-slate-500">
-                    No saved rooms yet.
+                    No rooms available.
                   </div>
                 ) : (
                   <div className="grid grid-cols-4 gap-2 lg:gap-3">

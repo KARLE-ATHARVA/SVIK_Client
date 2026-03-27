@@ -760,7 +760,7 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
     localStorage.removeItem("selected_3d_sub_scene");
     window.dispatchEvent(new Event("storage"));
     window.dispatchEvent(new CustomEvent("force3DMode"));
-    window.location.href = `/visualizer_old?category=${encodeURIComponent(space)}`;
+    window.location.href = `/visualizer?category=${encodeURIComponent(space)}`;
   };
 
   const handleProductInfo = () => setIsProductInfoOpen(true);
