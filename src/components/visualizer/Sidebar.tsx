@@ -236,6 +236,18 @@ export default function Sidebar() {
     }
   }, [syncFavoritesFromServer]);
 
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const loggedIn = isLoggedIn();
+      setIsUserLoggedIn(loggedIn);
+      if (loggedIn) {
+        syncFavoritesFromServer();
+      }
+    };
+    window.addEventListener("auth-changed", handleAuthChange);
+    return () => window.removeEventListener("auth-changed", handleAuthChange);
+  }, [syncFavoritesFromServer]);
+
   const handleLoginSuccess = async () => {
     setIsUserLoggedIn(true);
     await syncFavoritesFromServer();

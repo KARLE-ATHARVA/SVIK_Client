@@ -280,6 +280,11 @@ const handleSubmit = async () => {
     if (mode === "login") {
       if (res.data?.pgatoken) {
         sessionStorage.setItem("pgatoken", res.data.pgatoken);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("auth-changed", { detail: { loggedIn: true } })
+          );
+        }
         onSuccess();
         onClose();
       } else {

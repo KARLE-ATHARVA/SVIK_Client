@@ -114,6 +114,8 @@ export default function VisualizerLayout() {
     designData?: string;
     roomId?: string | null;
   } | null>(null);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle");
+  const copyTimeoutRef = useRef<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -344,21 +346,28 @@ export default function VisualizerLayout() {
   }, []);
 
   useEffect(() => {
-    const handler = async (event: MessageEvent) => {
-      if (event?.data?.type !== "SAVE_DESIGN") return;
-      const payload = event.data.payload;
-      if (!payload?.link) return;
-      const apiBase = getApiBase();
-      if (payload.designData && apiBase) {
-        try {
-          const res = await fetch(`${apiBase}saved_rooms/designs`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              designData: payload.designData,
-              roomId: payload.roomId ?? null,
-            }),
-          });
+      const handler = async (event: MessageEvent) => {
+        if (event?.data?.type !== "SAVE_DESIGN") return;
+        const payload = event.data.payload;
+        if (!payload?.link) return;
+        const apiBase = getApiBase();
+        if (payload.designData && apiBase) {
+          try {
+            const token = sessionStorage.getItem("pgatoken");
+            const headers: Record<string, string> = {
+              "Content-Type": "application/json",
+            };
+            if (token) {
+              headers.Authorization = `Bearer ${token}`;
+            }
+            const res = await fetch(`${apiBase}saved_rooms/designs`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                designData: payload.designData,
+                roomId: payload.roomId ?? null,
+              }),
+            });
           const data = await res.json().catch(() => null);
           if (res.ok && data?.designId) {
             payload.designId = data.designId;
@@ -386,6 +395,7 @@ export default function VisualizerLayout() {
         designData: payload.designData,
         roomId: payload.roomId ?? null,
       });
+      setCopyStatus("idle");
       setShowModal(true);
     };
 
@@ -432,11 +442,48 @@ export default function VisualizerLayout() {
         return;
       }
 
+      if (design.designData) {
+        try {
+          const linkRes = await fetch(`${apiBase}saved_rooms/designs`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              designData: design.designData,
+              roomId: design.roomId ?? roomId ?? null,
+            }),
+          });
+          const linkData = await linkRes.json().catch(() => null);
+          if (linkRes.ok && linkData?.designId) {
+            design.designId = linkData.designId;
+            design.link = `${window.location.origin}/visualizer?d=${linkData.designId}`;
+            localStorage.setItem(
+              `visualizer_design_payload_${linkData.designId}`,
+              design.designData
+            );
+            const resolvedRoom = design.roomId ?? roomId ?? null;
+            if (resolvedRoom) {
+              localStorage.setItem(
+                `visualizer_design_room_${linkData.designId}`,
+                String(resolvedRoom)
+              );
+            }
+          }
+        } catch {
+          // If design linking fails, continue saving the image anyway.
+        }
+      }
+
       setIsSaving(true);
       const blob = await fetch(design.image).then((res) => res.blob());
       const formData = new FormData();
       formData.append("image", blob, "design.jpg");
       formData.append("redirectUrl", design.link);
+      if (design.designId) {
+        formData.append("designId", design.designId);
+      }
 
       const now = new Date();
       const datePart =
@@ -480,6 +527,21 @@ export default function VisualizerLayout() {
       handleSaveToBackend(pendingSave);
       setPendingSave(null);
     }
+  };
+
+  const handleCopyLink = async (link: string) => {
+    if (copyTimeoutRef.current) {
+      window.clearTimeout(copyTimeoutRef.current);
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopyStatus("success");
+    } catch {
+      setCopyStatus("error");
+    }
+    copyTimeoutRef.current = window.setTimeout(() => {
+      setCopyStatus("idle");
+    }, 2000);
   };
 
   const decodeDesignData = (encoded: string) => {
@@ -584,7 +646,7 @@ export default function VisualizerLayout() {
         <div className="bg-white rounded-2xl px-6 py-5 shadow-xl flex items-center gap-4">
           <div className="h-6 w-6 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
           <div className="text-sm font-semibold text-slate-700">
-            Loading your saved design…
+            Loading design…
           </div>
         </div>
       </div>
@@ -614,7 +676,7 @@ export default function VisualizerLayout() {
             <div className="bg-white rounded-2xl px-6 py-5 shadow-xl flex items-center gap-4">
               <div className="h-6 w-6 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
               <div className="text-sm font-semibold text-slate-700">
-                Loading your saved design…
+                Loading design…
               </div>
             </div>
           </div>
@@ -638,15 +700,21 @@ export default function VisualizerLayout() {
                 readOnly
                 className="w-full border p-2 rounded mb-3 text-sm"
               />
+              {copyStatus === "success" && (
+                <div className="text-xs text-green-600 mb-3">Link copied.</div>
+              )}
+              {copyStatus === "error" && (
+                <div className="text-xs text-red-600 mb-3">
+                  Unable to copy link. Please copy manually.
+                </div>
+              )}
 
               <div className="flex gap-2 justify-end">
                 <button
-                  onClick={() =>
-                    navigator.clipboard.writeText(savedDesign.link)
-                  }
+                  onClick={() => handleCopyLink(savedDesign.link)}
                   className="bg-black text-white px-4 py-2 rounded"
                 >
-                  Copy
+                  {copyStatus === "success" ? "Copied" : "Copy"}
                 </button>
 
                 <button
@@ -658,7 +726,10 @@ export default function VisualizerLayout() {
                 </button>
 
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setCopyStatus("idle");
+                  }}
                   className="border px-4 py-2 rounded"
                 >
                   Close

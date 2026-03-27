@@ -15,6 +15,14 @@ export default function Navbar() {
     setIsUserLoggedIn(isLoggedIn());
   }, []);
 
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setIsUserLoggedIn(isLoggedIn());
+    };
+    window.addEventListener("auth-changed", handleAuthChange);
+    return () => window.removeEventListener("auth-changed", handleAuthChange);
+  }, []);
+
   const handleLoginSuccess = () => {
     setIsUserLoggedIn(true);
     setShowAuthModal(false);
