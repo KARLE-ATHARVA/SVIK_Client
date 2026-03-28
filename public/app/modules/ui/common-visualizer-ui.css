@@ -633,9 +633,36 @@
     border-radius: 10px;
     padding: 3px;
     background: #fff;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     position: relative;
+}
+
+.custom_sidebar_tab_content .tile-type-label img {
+    display: block;
+    margin: 0 auto;
+    align-self: center;
+}
+
+.custom_sidebar_tab_content .tile-type-label .tile-name {
+    display: block;
+    margin-top: 8px;
+    padding: 0 4px;
+    font-size: 9px;
+    line-height: 1.35;
+    font-weight: 500;
+    color: #334155;
+    text-align: center;
+    text-transform: none;
+    letter-spacing: 0.01em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    word-break: break-word;
 }
 
 /* Disable name tooltip popup on tile hover */
@@ -1663,19 +1690,19 @@ body.inner_page_bg {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    gap: 12px !important;
-    min-height: 48px !important;
-    padding: 0 12px 0 16px !important;
+    gap: 8px !important;
+    min-height: 38px !important;
+    padding: 0 12px 0 14px !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 999px !important;
     background: #fff !important;
     color: #000 !important;
     font-family: 'UbuntuM' !important;
-    font-size: 15px !important;
+    font-size: 12px !important;
     font-weight: 500 !important;
     line-height: 1 !important;
-    box-shadow: 0 14px 30px -15px rgba(15, 23, 42, 0.4) !important;
-    letter-spacing: 0 !important;
+    box-shadow: 0 8px 18px -10px rgba(15, 23, 42, 0.3) !important;
+    letter-spacing: 0.02em !important;
 }
 
 .header_nav.hidden-xs a.pre_btn:hover,
@@ -1690,14 +1717,14 @@ body.inner_page_bg {
 
 .pre_btn_icon {
     color: #111827 !important;
-    font-size: 19px !important;
+    font-size: 15px !important;
     line-height: 1 !important;
 }
 
 .pre_btn_label {
     color: #111827 !important;
     white-space: nowrap;
-    font-weight: 500 !important;
+    font-weight: 400 !important;
 }
 
 .pre_btn_badge {

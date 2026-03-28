@@ -94,108 +94,110 @@ $(function() {
             revertDuration: 100
         });
 
-        var drag_down_ox = -1;
-        var drag_down_oy = -1;
-        $("#vis_cvs", cont_for_vis_cvs).draggable({
-            revert: true,
-            helper: "none",
-            start: function(e) {
-                if (typeof window.__freeLayoutActive !== "undefined" && window.__freeLayoutActive) {
-                    if (typeof dont_click !== "undefined") {
-                        dont_click = false;
-                    }
-                    return false;
-                }
-
-                dragging_side = null;
-
-                dont_click = true;
-
-                $(body).css({
-                    "cursor": "move"
-                });
-
-                drag_down_ox = e.offsetX;
-                drag_down_oy = e.offsetY;
-
-                var x = drag_down_ox;
-                var y = drag_down_oy;
-
-                var w = vis_cvs.width;
-                var h = vis_cvs.height;
-
-                var ow = vis_cvs.offsetWidth;
-                var oh = vis_cvs.offsetHeight;
-
-                x *= w / ow;
-                y *= h / oh;
-
-                x = Math.floor(x);
-                y = Math.floor(y);
-
-                if (indexer_data != null) {
-                    var j = (y * w + x) * 4;
-                    var clr = [indexer_data[j++], indexer_data[j++], indexer_data[j]];
-
-                    if (clr[0] == 0 && clr[1] == 0 && clr[2] == 0)
-                        return;
-
-                    console.log_(clr);
-
-                    var sk = clr[2];
-
-                    if (sk >= scene_data.length) {
-                        var k = Math.floor(128 / scene_data.length);
-                        var sk_ = sk;
-
-                        for (var i = 0; i < scene_data.length; i++) {
-                            if (sk <= 255 - k * i)
-                                sk_ = i;
-                            else
-                                break;
+        if (typeof option_room_draggable === "undefined" || option_room_draggable) {
+            var drag_down_ox = -1;
+            var drag_down_oy = -1;
+            $("#vis_cvs", cont_for_vis_cvs).draggable({
+                revert: true,
+                helper: "none",
+                start: function(e) {
+                    if (typeof window.__freeLayoutActive !== "undefined" && window.__freeLayoutActive) {
+                        if (typeof dont_click !== "undefined") {
+                            dont_click = false;
                         }
-                        sk = sk_;
+                        return false;
                     }
 
-                    var s = scene_data[sk];
+                    dragging_side = null;
 
-                    s[10001] = s[1];
-                    s[10002] = s[2];
+                    dont_click = true;
 
-                    dragging_side = s;
-                }
+                    $(body).css({
+                        "cursor": "move"
+                    });
 
-            },
-            drag: function(e, obj) {
+                    drag_down_ox = e.offsetX;
+                    drag_down_oy = e.offsetY;
 
-                var deltaX = obj.position.left - obj.originalPosition.left;
-                var deltaY = obj.position.top - obj.originalPosition.top;
-                var s = dragging_side;
+                    var x = drag_down_ox;
+                    var y = drag_down_oy;
 
-                if (s == null)
-                    return;
-                s[1] = s[10001] + deltaX / 33;
-                s[2] = s[10002] - deltaY / 33;
+                    var w = vis_cvs.width;
+                    var h = vis_cvs.height;
 
-                if (Date.now() - last_dragdraw_epoch > 50) {
+                    var ow = vis_cvs.offsetWidth;
+                    var oh = vis_cvs.offsetHeight;
+
+                    x *= w / ow;
+                    y *= h / oh;
+
+                    x = Math.floor(x);
+                    y = Math.floor(y);
+
+                    if (indexer_data != null) {
+                        var j = (y * w + x) * 4;
+                        var clr = [indexer_data[j++], indexer_data[j++], indexer_data[j]];
+
+                        if (clr[0] == 0 && clr[1] == 0 && clr[2] == 0)
+                            return;
+
+                        console.log_(clr);
+
+                        var sk = clr[2];
+
+                        if (sk >= scene_data.length) {
+                            var k = Math.floor(128 / scene_data.length);
+                            var sk_ = sk;
+
+                            for (var i = 0; i < scene_data.length; i++) {
+                                if (sk <= 255 - k * i)
+                                    sk_ = i;
+                                else
+                                    break;
+                            }
+                            sk = sk_;
+                        }
+
+                        var s = scene_data[sk];
+
+                        s[10001] = s[1];
+                        s[10002] = s[2];
+
+                        dragging_side = s;
+                    }
+
+                },
+                drag: function(e, obj) {
+
+                    var deltaX = obj.position.left - obj.originalPosition.left;
+                    var deltaY = obj.position.top - obj.originalPosition.top;
+                    var s = dragging_side;
+
+                    if (s == null)
+                        return;
+                    s[1] = s[10001] + deltaX / 33;
+                    s[2] = s[10002] - deltaY / 33;
+
+                    if (Date.now() - last_dragdraw_epoch > 50) {
+                        render(vis_cvs);
+                        last_dragdraw_epoch = Date.now();
+                    }
+
+                },
+                stop: function(e, obj) {
+
+                    $(body).css({
+                        "display": "block",
+                        "cursor": "default"
+                    });
+
                     render(vis_cvs);
-                    last_dragdraw_epoch = Date.now();
+
                 }
-
-            },
-            stop: function(e, obj) {
-
-                $(body).css({
-                    "display": "block",
-                    "cursor": "default"
-                });
-
-                render(vis_cvs);
-
-            }
-            ,
-            revertDuration: 100
-        });
+                ,
+                revertDuration: 100
+            });
+        }
 
     }
 

@@ -342,6 +342,7 @@
                         "<input type=\"radio\" class=\"tile-type-input\" value=\"" + esc(t.id) + "\" data-tile-width=\"" + esc(t.size[0]) + "\" data-tile-height=\"" + esc(t.size[1]) + "\" name=\"tile_" + panel + "_radio\" id=\"tile_radio_" + esc(t.id) + "\"/>" +
                         "<label class=\"tile-type-label\" aria-label=\"" + name + "\" for=\"tile_radio_" + esc(t.id) + "\">" +
                             "<img style=\"max-width:100%;max-height:62px;\" data-src=\"" + img + "\"/>" +
+                            "<div class=\"tile-name\">" + name + "</div>" +
                             "<button type=\"button\" class=\"tile-fav-btn\" data-fav-id=\"" + favId + "\" title=\"Add to favourites\"><span class=\"btn-icon\" aria-hidden=\"true\">♥</span></button>" +
                         "</label>" +
                 "</li>";
