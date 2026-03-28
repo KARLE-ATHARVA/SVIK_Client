@@ -216,7 +216,15 @@ const SAVED_PLACEHOLDER = "/app/images/saved_placeholder.svg";
 
 export default function VisualizerOptions() {
   const searchParams = useSearchParams();
-  const initialCategory = (searchParams.get("category") || "").toLowerCase();
+  const queryCategory = (searchParams.get("category") || "").toLowerCase();
+  let initialCategory = queryCategory;
+  if (!initialCategory && typeof window !== "undefined") {
+    const sticky = localStorage.getItem("visualizer_category_sticky") === "1";
+    const intent = sessionStorage.getItem("visualizer_category_intent") === "1";
+    if (sticky || intent) {
+      initialCategory = (localStorage.getItem("selected_space_type") || "").toLowerCase();
+    }
+  }
   const validInitialCategory = CATEGORIES.some((c) => c.key === initialCategory) ? initialCategory : "";
 
   const [showPicker, setShowPicker] = useState(validInitialCategory !== "");
@@ -266,6 +274,23 @@ export default function VisualizerOptions() {
   }, [fetchSaved]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const categoryIntent = sessionStorage.getItem("visualizer_category_intent") === "1";
+    const sticky = localStorage.getItem("visualizer_category_sticky") === "1";
+    if (!categoryIntent && !sticky) return;
+    const stored = (localStorage.getItem("selected_space_type") || "").toLowerCase();
+    if (CATEGORIES.some((c) => c.key === stored)) {
+      setSelectedCategory(stored);
+      setShowPicker(true);
+      setShowFilters(false);
+      setSelectedRoomId(null);
+    }
+    if (categoryIntent) {
+      sessionStorage.removeItem("visualizer_category_intent");
+    }
+  }, []);
+
+  useEffect(() => {
     const handleAuthChange = () => {
       const token = sessionStorage.getItem("pgatoken");
       const loggedIn = !!token;
@@ -284,6 +309,7 @@ export default function VisualizerOptions() {
     setSelectedCategory(spaceKey);
     if (typeof window !== "undefined") {
       localStorage.setItem("selected_space_type", spaceKey.toLowerCase());
+      localStorage.removeItem("visualizer_category_sticky");
     }
     setShowPicker(true);
     setShowFilters(false);
@@ -394,7 +420,12 @@ export default function VisualizerOptions() {
               </div>
 
               <button
-                onClick={() => setShowPicker(false)}
+                onClick={() => {
+                  setShowPicker(false);
+                  if (typeof window !== "undefined") {
+                    localStorage.removeItem("visualizer_category_sticky");
+                  }
+                }}
                 className="group flex items-center gap-3 text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-all uppercase tracking-[0.2em]"
               >
                 <span className="w-6 h-[1px] bg-slate-200 group-hover:w-10 group-hover:bg-amber-500 transition-all" />

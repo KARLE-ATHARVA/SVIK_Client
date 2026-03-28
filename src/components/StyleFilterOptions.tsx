@@ -52,7 +52,37 @@ export default function StyleFilterOptions({
 
   const navigateTo = (path: string) => {
     if (typeof window !== "undefined" && path.startsWith("/visualizer#")) {
-      window.location.assign(path);
+      const rawHash = path.split("#")[1] || "";
+      const parts = rawHash.split("&");
+      let room: string | null = null;
+      let design: string | null = null;
+      for (const part of parts) {
+        if (!part) continue;
+        const eq = part.indexOf("=");
+        const key = eq >= 0 ? part.slice(0, eq) : part;
+        const val = eq >= 0 ? part.slice(eq + 1) : "";
+        if (key === "room") {
+          room = val || null;
+        } else if (key === "design") {
+          design = val || null;
+        }
+      }
+      if (room) {
+        localStorage.setItem("visualizer_room_id", room);
+        if (design) {
+          localStorage.setItem("visualizer_design_hash", design);
+        } else {
+          localStorage.removeItem("visualizer_design_hash");
+        }
+        sessionStorage.setItem("visualizer_intent", "1");
+        localStorage.setItem("visualizer_intent_once", "1");
+        window.dispatchEvent(
+          new CustomEvent("visualizer-room-select", {
+            detail: { room, design },
+          })
+        );
+      }
+      window.history.replaceState({}, "", "/visualizer");
       return;
     }
     router.push(path);

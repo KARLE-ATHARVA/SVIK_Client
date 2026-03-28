@@ -760,7 +760,10 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
     localStorage.removeItem("selected_3d_sub_scene");
     window.dispatchEvent(new Event("storage"));
     window.dispatchEvent(new CustomEvent("force3DMode"));
-    window.location.href = `/visualizer?category=${encodeURIComponent(space)}`;
+    localStorage.setItem("selected_space_type", space);
+    sessionStorage.setItem("visualizer_category_intent", "1");
+    localStorage.setItem("visualizer_category_sticky", "1");
+    window.location.href = "/visualizer";
   };
 
   const handleProductInfo = () => setIsProductInfoOpen(true);

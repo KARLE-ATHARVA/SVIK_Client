@@ -95,6 +95,15 @@ export default function VisualizerLayout() {
       }
       return { room, design, loading: !!design };
     }
+    const sessionIntent = sessionStorage.getItem("visualizer_intent") === "1";
+    const localIntent = localStorage.getItem("visualizer_intent_once") === "1";
+    if (sessionIntent || localIntent) {
+      const storedRoom = localStorage.getItem("visualizer_room_id");
+      const storedDesign = localStorage.getItem("visualizer_design_hash");
+      if (storedRoom) {
+        return { room: storedRoom, design: storedDesign || null, loading: false };
+      }
+    }
     return { room: null, design: null, loading: false };
   };
 
@@ -193,13 +202,17 @@ export default function VisualizerLayout() {
       if (shortId) {
         setDesignLoading(true);
         const apiBase = getApiBase();
+        const loadFromBase = async (base: string) => {
+          const res = await fetch(`${base}saved_rooms/designs/${shortId}`);
+          if (!res.ok) return null;
+          const data = await res.json();
+          return data;
+        };
+
         if (apiBase) {
           try {
-            const res = await fetch(
-              `${apiBase}saved_rooms/designs/${shortId}`
-            );
-            if (res.ok) {
-              const data = await res.json();
+            const data = await loadFromBase(apiBase);
+            if (data) {
               if (cancelled) return;
               const room = data?.roomId ? String(data.roomId) : null;
               const design = (data?.designData || "").trim() || null;
@@ -211,6 +224,8 @@ export default function VisualizerLayout() {
               if (design) {
                 localStorage.setItem("visualizer_design_hash", design);
               }
+              sessionStorage.setItem("visualizer_intent", "1");
+              localStorage.setItem("visualizer_intent_once", "1");
               localStorage.setItem(
                 `visualizer_design_payload_${shortId}`,
                 design || ""
@@ -222,37 +237,52 @@ export default function VisualizerLayout() {
                 );
               }
               setDesignLoading(false);
-              if (room && design) {
-                window.location.hash = `#room=${room}&design=${design}`;
-              }
+              window.history.replaceState({}, "", "/visualizer");
               return;
             }
           } catch {
             // ignore and fall through
           }
         }
+
         // try http fallback for localhost https cert issues
-        if (!apiBase && typeof window !== "undefined") {
-          const raw = String((window as any).NEXT_PUBLIC_API_BASE ?? "").trim();
-          if (raw.startsWith("https://localhost")) {
-            const httpBase = raw.replace("https://", "http://");
-            try {
-              const res = await fetch(
-                `${httpBase.endsWith("/") ? httpBase : httpBase + "/"}saved_rooms/designs/${shortId}`
-              );
-              if (res.ok) {
-                const data = await res.json();
-                if (cancelled) return;
-                const room = data?.roomId ? String(data.roomId) : null;
-                const design = (data?.designData || "").trim() || null;
-                if (room) setRoomId(room);
-                if (design) setDesignHash(design);
-                window.history.replaceState({}, "", "/visualizer");
-                return;
+        const maybeHttpsLocalhost = apiBase || String((window as any).NEXT_PUBLIC_API_BASE ?? "").trim();
+        if (maybeHttpsLocalhost.startsWith("https://localhost")) {
+          const httpBase = maybeHttpsLocalhost.replace("https://", "http://");
+          try {
+            const data = await loadFromBase(
+              httpBase.endsWith("/") ? httpBase : httpBase + "/"
+            );
+            if (data) {
+              if (cancelled) return;
+              const room = data?.roomId ? String(data.roomId) : null;
+              const design = (data?.designData || "").trim() || null;
+              if (room) setRoomId(room);
+              if (design) setDesignHash(design);
+              if (room) {
+                localStorage.setItem("visualizer_room_id", room);
               }
-            } catch {
-              // ignore
+              if (design) {
+                localStorage.setItem("visualizer_design_hash", design);
+              }
+              sessionStorage.setItem("visualizer_intent", "1");
+              localStorage.setItem("visualizer_intent_once", "1");
+              localStorage.setItem(
+                `visualizer_design_payload_${shortId}`,
+                design || ""
+              );
+              if (room) {
+                localStorage.setItem(
+                  `visualizer_design_room_${shortId}`,
+                  room
+                );
+              }
+              setDesignLoading(false);
+              window.history.replaceState({}, "", "/visualizer");
+              return;
             }
+          } catch {
+            // ignore
           }
         }
         // fallback to local cache if present
@@ -269,9 +299,7 @@ export default function VisualizerLayout() {
           setRoomId(cachedRoom);
         }
         setDesignLoading(false);
-        if (cachedRoom && cachedDesign) {
-          window.location.hash = `#room=${cachedRoom}&design=${cachedDesign}`;
-        }
+        window.history.replaceState({}, "", "/visualizer");
         return;
       }
 
@@ -311,6 +339,17 @@ export default function VisualizerLayout() {
       setRoomId(room);
       setDesignHash(design);
       setDesignLoading(false);
+      if (room) {
+        localStorage.setItem("visualizer_room_id", room);
+        if (design) {
+          localStorage.setItem("visualizer_design_hash", design);
+        } else {
+          localStorage.removeItem("visualizer_design_hash");
+        }
+        sessionStorage.setItem("visualizer_intent", "1");
+        localStorage.setItem("visualizer_intent_once", "1");
+        window.history.replaceState({}, "", "/visualizer");
+      }
     };
 
     updateFromUrl();
@@ -326,7 +365,29 @@ export default function VisualizerLayout() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const hasExplicitVisualizerIntent = () => {
+      const search = new URLSearchParams(window.location.search);
+      const shortId = search.get("d");
+      if (shortId) return true;
+      const hash = window.location.hash || "";
+      if (!hash) return false;
+      if (hash.startsWith("#design-data:")) return true;
+      return hash.includes("room=") || hash.includes("design=");
+    };
+
     const loadFromStorage = () => {
+      const sessionIntent = sessionStorage.getItem("visualizer_intent") === "1";
+      const localIntent = localStorage.getItem("visualizer_intent_once") === "1";
+      const hasIntent = sessionIntent || localIntent;
+      if (!hasExplicitVisualizerIntent() && !hasIntent) {
+        localStorage.removeItem("visualizer_room_id");
+        localStorage.removeItem("visualizer_design_hash");
+        localStorage.removeItem("force_3d_mode");
+        localStorage.removeItem("selected_3d_sub_scene");
+        setIs3DMode(false);
+        setHas3DRoomSelected(false);
+        return;
+      }
       const storedRoom = localStorage.getItem("visualizer_room_id");
       const storedDesign = localStorage.getItem("visualizer_design_hash");
       if (storedRoom) {
@@ -334,14 +395,35 @@ export default function VisualizerLayout() {
         setDesignHash(storedDesign || null);
         window.history.replaceState({}, "", "/visualizer");
       }
+      if (sessionIntent) {
+        sessionStorage.removeItem("visualizer_intent");
+      }
+      if (localIntent) {
+        localStorage.removeItem("visualizer_intent_once");
+      }
     };
 
     loadFromStorage();
 
     const handleRoomChange = () => loadFromStorage();
+    const handleRoomSelect = (event: Event) => {
+      const detail = (event as CustomEvent).detail as
+        | { room?: string; design?: string | null }
+        | undefined;
+      const room = detail?.room ?? localStorage.getItem("visualizer_room_id");
+      const design =
+        detail?.design ?? localStorage.getItem("visualizer_design_hash");
+      if (room) {
+        setRoomId(room);
+        setDesignHash(design || null);
+        window.history.replaceState({}, "", "/visualizer");
+      }
+    };
     window.addEventListener("visualizer-room-change", handleRoomChange as EventListener);
+    window.addEventListener("visualizer-room-select", handleRoomSelect as EventListener);
     return () => {
       window.removeEventListener("visualizer-room-change", handleRoomChange as EventListener);
+      window.removeEventListener("visualizer-room-select", handleRoomSelect as EventListener);
     };
   }, []);
 
