@@ -2,7 +2,6 @@
 // Server Component – DO NOT add "use client"
 
 import "./globals.css";
-import GlobalCartShortcut from "@/components/cart/GlobalCartShortcut";
 
 export default function RootLayout({
   children,
@@ -36,7 +35,6 @@ export default function RootLayout({
           }}
         />
         {children}
-        <GlobalCartShortcut />
       </body>
     </html>
   );

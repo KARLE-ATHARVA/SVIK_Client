@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LogOut, Search, User } from "lucide-react";
-import CartNavButton from "@/components/cart/CartNavButton";
+import CatalogueNavButton from "@/components/catalogue/CatalogueNavButton";
 import AuthModal from "@/components/visualizer/AuthModal";
 import { isLoggedIn, logout } from "@/lib/auth";
 
@@ -108,7 +108,7 @@ export default function Navbar() {
             {isUserLoggedIn ? <LogOut size={16} /> : <User size={16} />}
           </button>
 
-          <CartNavButton />
+          <CatalogueNavButton />
         </div>
       </nav>
 
