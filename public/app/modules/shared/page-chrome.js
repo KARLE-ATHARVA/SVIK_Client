@@ -10,13 +10,11 @@
         <ul style='display:none;' class="nav nav-tabs custom_sidebar_tabs_wrap" role="tablist">
             <li role="presentation" class="active">
                 <a href="#menuPanel1" aria-controls="1" role="tab" data-toggle="tab">
-                    <img src="${base}/1_icon.png" alt="">
                     <br>1
                 </a>
             </li>
             <li role="presentation" class="">
                 <a href="#menuPanel2" aria-controls="2" role="tab" data-toggle="tab">
-                    <img src="${base}/2_icon.png" alt="">
                     <br>2
                 </a>
             </li>

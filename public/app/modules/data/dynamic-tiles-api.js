@@ -173,12 +173,12 @@
         var skuCode = pick(item, ["sku_code", "skuCode", "code"], "");
         if (skuCode) return getAssetBase() + "media/thumb/" + skuCode + ".jpg";
 
-        return "/app/images/tile_143.jpg";
+        return "/app/images/saved_placeholder.svg";
     }
 
     function toRenderableUrl(remoteUrl) {
         var r = toAbsUrl(remoteUrl);
-        if (!r) return "/app/images/tile_143.jpg";
+        if (!r) return "/app/images/saved_placeholder.svg";
         if (r.indexOf("/app/") === 0 || r.indexOf("/images/") === 0) return r;
         return "/api/tile-image?url=" + encodeURIComponent(r);
     }
