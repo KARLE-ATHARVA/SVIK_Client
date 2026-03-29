@@ -524,8 +524,8 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
 
   const handleSavePDF = async () => {
     const jsPDFModule = await import("jspdf").catch(() => null);
-    const jsPDF = jsPDFModule?.jsPDF ?? jsPDFModule?.default?.jsPDF ?? null;
-    if (!jsPDF) {
+    const JsPDF = jsPDFModule?.jsPDF ?? null;
+    if (!JsPDF) {
       window.print();
       return;
     }
@@ -541,7 +541,7 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
     ctx.drawImage(canvas, 0, 0, c.width, c.height);
     const roomDataUrl = c.toDataURL("image/jpeg");
 
-    const pdf = new jsPDF("p", "mm", "a4");
+    const pdf = new JsPDF("p", "mm", "a4");
     const pageW = 210;
     const margin = 12;
 
@@ -2310,9 +2310,6 @@ controls.maxPolarAngle = Math.PI * 0.95;
   return (
     <div ref={containerRef} className="relative w-full h-full bg-[#F9F7F2] overflow-hidden">
       <LegacySidebar3D
-        onFilters={() => {
-          /* open filters */
-        }}
         onClear={clearAllTiles}
         onSelectRoom={handleSelectRoom}
         onProductInfo={handleProductInfo}

@@ -176,6 +176,38 @@ function pruneSelectionsToAvailableOptions(
   });
 }
 
+function FilterChip({
+  value,
+  active,
+  disabled,
+  onClick,
+}: {
+  value: string;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        if (disabled) return;
+        onClick();
+      }}
+      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
+        active
+          ? "bg-slate-900 border-slate-900 text-white"
+          : disabled
+            ? "border-slate-100 text-slate-300 bg-slate-50 cursor-not-allowed opacity-60"
+            : "border-slate-200 text-slate-500 bg-white hover:border-slate-300"
+      }`}
+    >
+      {value}
+    </button>
+  );
+}
+
 function mapTilesToProducts(rows: TileListItem[]): Product[] {
   const assetBase = String(ASSET_BASE ?? "").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
@@ -199,7 +231,8 @@ export default function Sidebar() {
   const [pendingFavId, setPendingFavId] = useState<string | number | null>(null);
   const [currentSpace, setCurrentSpace] = useState("");
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
-  const [filterOptions, setFilterOptions] = useState<TileFilterOptions>(EMPTY_OPTIONS);
+  const [allFilterOptions, setAllFilterOptions] = useState<TileFilterOptions>(EMPTY_OPTIONS);
+  const [availableFilterOptions, setAvailableFilterOptions] = useState<TileFilterOptions>(EMPTY_OPTIONS);
   const [tempFilters, setTempFilters] = useState<TileFilterSelections>(EMPTY_FILTERS);
 
   const debouncedTempFilters = useDebouncedValue(tempFilters, 300);
@@ -314,14 +347,14 @@ export default function Sidebar() {
         }
 
         setProducts(mapTilesToProducts(finalRows));
-        setFilterOptions(finalOptions);
+        setAvailableFilterOptions(finalOptions);
         setTempFilters(finalFilters);
         syncPreferenceStorage(finalFilters);
         lastAppliedQueryKey.current = finalQueryKey;
       } catch (error) {
         console.error("Filter apply error:", error);
         setProducts([]);
-        setFilterOptions(EMPTY_OPTIONS);
+        setAvailableFilterOptions(EMPTY_OPTIONS);
       } finally {
         setLoading(false);
         if (options.closePanel) setShowFilters(false);
@@ -354,16 +387,23 @@ export default function Sidebar() {
 
         if (!isMounted) return;
 
-        setFilterOptions(available);
+        const prunedFilters = pruneSelectionsToAvailableOptions(initialFilters, available);
+        setAllFilterOptions(options);
+        setAvailableFilterOptions(available);
         setProducts(mapTilesToProducts(tileRows));
-        setTempFilters(initialFilters);
-        syncPreferenceStorage(initialFilters);
-        lastAppliedQueryKey.current = buildFilterRequestKey(request);
+        setTempFilters(prunedFilters);
+        syncPreferenceStorage(prunedFilters);
+        lastAppliedQueryKey.current = buildFilterRequestKey({
+          spaceName: currentSpace,
+          ...prunedFilters,
+        });
+        lastAvailableQueryKey.current = "";
       })
       .catch((error) => {
         if (!isMounted) return;
         console.error("Initial filter bootstrap error:", error);
-        setFilterOptions(EMPTY_OPTIONS);
+        setAllFilterOptions(EMPTY_OPTIONS);
+        setAvailableFilterOptions(EMPTY_OPTIONS);
         setProducts([]);
       })
       .finally(() => {
@@ -398,10 +438,14 @@ export default function Sidebar() {
 
     fetchFilterAvailableOptions(request, controller.signal)
       .then((available) => {
-        setFilterOptions(available);
+        setAvailableFilterOptions(available);
         setTempFilters((previous) => {
           const pruned = pruneSelectionsToAvailableOptions(previous, available);
-          return areFilterSelectionsEqual(previous, pruned) ? previous : pruned;
+          if (areFilterSelectionsEqual(previous, pruned)) {
+            return previous;
+          }
+          syncPreferenceStorage(pruned);
+          return pruned;
         });
         lastAvailableQueryKey.current = queryKey;
       })
@@ -602,18 +646,14 @@ export default function Sidebar() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Category</h4>
                 <div className="flex flex-wrap gap-2">
-                  {filterOptions.categories.map((cat) => (
-                    <button
+                  {allFilterOptions.categories.map((cat) => (
+                    <FilterChip
                       key={cat}
+                      value={cat}
+                      active={tempFilters.catNames.includes(cat)}
+                      disabled={!availableFilterOptions.categories.includes(cat)}
                       onClick={() => updateTempFilter("catNames", cat)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
-                        tempFilters.catNames.includes(cat)
-                          ? "bg-slate-900 border-slate-900 text-white"
-                          : "border-slate-200 text-slate-500 bg-white"
-                      }`}
-                    >
-                      {cat}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
@@ -621,18 +661,14 @@ export default function Sidebar() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Application</h4>
                 <div className="flex flex-wrap gap-2">
-                  {filterOptions.applications.map((app) => (
-                    <button
+                  {allFilterOptions.applications.map((app) => (
+                    <FilterChip
                       key={app}
+                      value={app}
+                      active={tempFilters.appNames.includes(app)}
+                      disabled={!availableFilterOptions.applications.includes(app)}
                       onClick={() => updateTempFilter("appNames", app)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
-                        tempFilters.appNames.includes(app)
-                          ? "bg-slate-900 border-slate-900 text-white"
-                          : "border-slate-200 text-slate-500 bg-white"
-                      }`}
-                    >
-                      {app}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
@@ -640,18 +676,14 @@ export default function Sidebar() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Finish</h4>
                 <div className="flex flex-wrap gap-2">
-                  {filterOptions.finishes.map((finish) => (
-                    <button
+                  {allFilterOptions.finishes.map((finish) => (
+                    <FilterChip
                       key={finish}
+                      value={finish}
+                      active={tempFilters.finishNames.includes(finish)}
+                      disabled={!availableFilterOptions.finishes.includes(finish)}
                       onClick={() => updateTempFilter("finishNames", finish)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
-                        tempFilters.finishNames.includes(finish)
-                          ? "bg-slate-900 border-slate-900 text-white"
-                          : "border-slate-200 text-slate-500 bg-white"
-                      }`}
-                    >
-                      {finish}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
@@ -659,18 +691,14 @@ export default function Sidebar() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Size</h4>
                 <div className="flex flex-wrap gap-2">
-                  {filterOptions.sizes.map((size) => (
-                    <button
+                  {allFilterOptions.sizes.map((size) => (
+                    <FilterChip
                       key={size}
+                      value={size}
+                      active={tempFilters.sizeNames.includes(size)}
+                      disabled={!availableFilterOptions.sizes.includes(size)}
                       onClick={() => updateTempFilter("sizeNames", size)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
-                        tempFilters.sizeNames.includes(size)
-                          ? "bg-slate-900 border-slate-900 text-white"
-                          : "border-slate-200 text-slate-500 bg-white"
-                      }`}
-                    >
-                      {size}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
@@ -678,18 +706,14 @@ export default function Sidebar() {
               <div>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Color</h4>
                 <div className="flex flex-wrap gap-2">
-                  {filterOptions.colors.map((color) => (
-                    <button
+                  {allFilterOptions.colors.map((color) => (
+                    <FilterChip
                       key={color}
+                      value={color}
+                      active={tempFilters.colorNames.includes(color)}
+                      disabled={!availableFilterOptions.colors.includes(color)}
                       onClick={() => updateTempFilter("colorNames", color)}
-                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase border transition-all ${
-                        tempFilters.colorNames.includes(color)
-                          ? "bg-slate-900 border-slate-900 text-white"
-                          : "border-slate-200 text-slate-500 bg-white"
-                      }`}
-                    >
-                      {color}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
