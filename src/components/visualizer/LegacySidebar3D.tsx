@@ -18,6 +18,7 @@ import { ASSET_BASE } from "@/lib/constants";
 import { isLoggedIn, logout } from "@/lib/auth";
 import { addFavoriteAPI, removeFavoriteAPI, listFavoritesAPI } from "@/lib/favorites";
 import AuthModal from "./AuthModal";
+import TopRightButtons from "./TopRightButtons";
 import { Loader2 } from "lucide-react";
 
 type Product = { id: string | number; name: string; image: string; size: string; skuCode: string };
@@ -629,10 +630,7 @@ export default function LegacySidebar3D({
         </div>
       </div>
 
-      <div className="top-right">
-        <button className="tr-btn" onClick={onSelectRoom}>Select Room</button>
-        <button className="tr-btn" onClick={onProductInfo}>Product Info</button>
-      </div>
+      <TopRightButtons onSelectRoom={onSelectRoom} onProductInfo={onProductInfo} />
 
       <div className="right-toolbar">
         <button className="rt-btn" title="Save" onClick={onSave}>
@@ -1124,80 +1122,77 @@ const css = `
   .spin { animation:spin 1s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
 
-.top-right {
-  position:absolute;
-  top:50px;
-  right:40px;
-  display:flex;
-  align-items:center;
-  gap:30px;
-  z-index:300001;
-  pointer-events:auto;
-}
-
-
-  .tr-btn {
-  display:inline-flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-
-  background:#fff !important;
-  border:1px solid rgba(0,0,0,0.10) !important;
-  color:#111827 !important;
-
-  border-radius:999px !important;
-  padding:8px 16px !important;
-
+  .top-right {
+    position:fixed;
+    top:44px;
+    right:44px;
+    display:flex;
+    align-items:center;
+    gap:30px !important;
+    z-index:2147483647;
+    pointer-events:auto;
+  }
   
-  font-family:'UbuntuM', sans-serif;
-  font-size:12px !important;
-  font-weight:200 !important;
-  line-height:1.1 !important;
+  
+    .tr-btn {
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    gap:8px !important;
+    min-height:38px !important;
+    padding:0 12px 0 14px !important;
+    border:1px solid #e2e8f0 !important;
+    border-radius:999px !important;
+    background:#fff !important;
+    color:#000 !important;
+    font-family:'UbuntuM' !important;
+    font-size:12px !important;
+    font-weight:500 !important;
+    line-height:1 !important;
+    box-shadow:0 8px 18px -10px rgba(15, 23, 42, 0.3) !important;
+    letter-spacing:0.02em !important;
+    cursor:pointer;
+    transition:box-shadow .2s ease, transform .15s ease, background .2s ease, border-color .2s ease;
+  }
 
-  cursor:pointer;
-}
+  .top-right .tr-btn {
+    margin:0 !important;
+  }
+  
+  .tr-btn:hover {
+    background:#f8fafc !important;
+    border:1px solid #cbd5e1 !important;
+    box-shadow:0 12px 28px rgba(15, 23, 42, 0.22) !important;
+  }
+  
+  .tr-btn:active {
+    transform:translateY(1px);
+  }
+  .tr-btn-icon {
+    color:#111827 !important;
+    font-size:15px !important;
+    line-height:1 !important;
+  }
 
-.tr-btn:hover {
-  box-shadow:0 16px 26px rgba(0,0,0,0.22) !important;
-}
-
-.tr-btn:active {
-  transform:translateY(1px);
-}
-.tr-btn::before{
-  content:"";
-  width:18px;
-  height:18px;
-  margin-right:10px;
-  display:inline-block;
-  background-repeat:no-repeat;
-  background-size:18px 18px;
-  opacity:.95;
-}
-
-/* left button icon (grid) */
-.top-right .tr-btn:first-child::before{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Crect x='3' y='3' width='8' height='8' rx='2' fill='%23111827'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2' fill='%23111827'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2' fill='%23111827'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2' fill='%23111827'/%3E%3C/svg%3E");
-}
-
-/* right button icon (info) */
-.top-right .tr-btn:last-child::before{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23111827'/%3E%3Crect x='11' y='10' width='2' height='7' rx='1' fill='white'/%3E%3Ccircle cx='12' cy='7.5' r='1.25' fill='white'/%3E%3C/svg%3E");
-}
+  .tr-btn-label {
+    color:#111827 !important;
+    white-space:nowrap;
+    font-weight:400 !important;
+  }
 
 
   .right-toolbar {
-    position:fixed;
-    right:0;
-    top:50%;
-    transform:translateY(-50%);
-    width:50px;
-    background:rgba(241,243,245,0.98);
-    border:1px solid #cfd6df;
-    border-radius:6px 0 0 6px;
-    box-shadow:0 10px 22px rgba(2,6,23,0.16);
-    overflow:hidden;
-    z-index:1200;
+    position:fixed !important;
+    right:0 !important;
+    top:50% !important;
+    margin-top:-130px !important;
+    width:50px !important;
+    border:1px solid #d9dde3 !important;
+    border-radius:6px 0 0 6px !important;
+    background:rgba(248,248,246,0.96) !important;
+    box-shadow:0 8px 18px rgba(2,6,23,0.12) !important;
+    overflow:visible !important;
+    z-index:1200 !important;
     pointer-events:auto;
     display:flex;
     flex-direction:column;
@@ -1206,17 +1201,88 @@ const css = `
   .rt-btn {
     width:50px !important;
     height:52px !important;
+    padding:0 !important;
     display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    border-bottom:1px solid #d7dde6 !important;
+    align-items:center;
+    justify-content:center;
+    border-bottom:1px solid #d9dde3 !important;
     background:transparent !important;
     cursor:pointer;
     transition:background-color .2s ease, transform .2s ease;
   }
   .rt-btn:last-child { border-bottom:0 !important; }
-  .rt-btn:hover { background:#e7edf1 !important; transform:translateY(-1px); }
-  .rt-btn img { width:20px; height:20px; opacity:0.95; stroke:#3b4250; fill:none; stroke-width:1.9; }
+  .rt-btn:hover { background:#f5f9f9 !important; transform:translateY(-1px); }
+  .rt-btn img {
+    max-width:20px;
+    max-height:20px;
+    opacity:0.92;
+    filter:brightness(0) saturate(100%) invert(14%) sepia(16%) saturate(1062%) hue-rotate(179deg) brightness(96%) contrast(93%);
+    transition:filter 180ms ease, transform 180ms ease;
+  }
+  .rt-btn:hover img {
+    filter:brightness(0) saturate(100%) invert(63%) sepia(86%) saturate(1428%) hue-rotate(359deg) brightness(100%) contrast(95%);
+    transform:translateY(-1px);
+  }
+
+  .save-options-panel,
+  .share-options-panel {
+    position: fixed;
+    right: -240px;
+    width: 200px;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid #d4dbe4;
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+    transition: right 0.3s ease;
+    z-index: 299999;
+    overflow: hidden;
+  }
+
+  .save-options-panel { top: 220px; }
+  .share-options-panel { top: calc(50% + 26px); transform: translateY(-50%); }
+  .save-options-panel.active,
+  .share-options-panel.active { right: 70px; }
+
+  .save-option,
+  .share-option {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    padding: 13px 14px;
+    border: 0;
+    border-bottom: 1px solid #d9e0e8;
+    background: transparent;
+    color: #0f172a;
+    font-weight: 490;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .save-option:last-child,
+  .share-option:last-child { border-bottom: none; }
+
+  .save-option:hover,
+  .save-option:focus,
+  .share-option:hover,
+  .share-option:focus {
+    background: #fff7e8;
+    outline: none;
+  }
+
+  .save-icon,
+  .share-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    filter: brightness(0) saturate(100%) invert(14%) sepia(16%) saturate(1062%) hue-rotate(179deg) brightness(96%) contrast(93%);
+    opacity: 0.9;
+  }
 
   /* ── Filter Modal ── */
   .modal-overlay {

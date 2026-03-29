@@ -21,6 +21,9 @@ export default function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        <link rel="stylesheet" href="/app/visualizer/css/font-awesome.min.css" />
+      </head>
       <body>
         <script
           dangerouslySetInnerHTML={{

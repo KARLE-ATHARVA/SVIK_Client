@@ -195,9 +195,17 @@ const modalCloseBtn: React.CSSProperties = {
   textTransform: "uppercase", cursor: "pointer", fontFamily: "'UbuntuM', sans-serif",
 };
 const modalInputStyle: React.CSSProperties = {
-  width: "100%", height: "42px", border: "1px solid #d1d9e0", borderRadius: "6px",
-  padding: "0 14px", fontSize: "14px", color: "#0f172a", background: "#fff",
-  outline: "none", boxSizing: "border-box", fontFamily: "inherit",
+  width: "100%",
+  height: "34px",
+  border: "1px solid #c9cdd6",
+  borderRadius: "6px",
+  padding: "8px 12px",
+  fontSize: "14px",
+  color: "#1f2937",
+  background: "#fff",
+  outline: "none",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
 };
  
  
@@ -425,6 +433,8 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
   });
   const [mailSending, setMailSending] = useState(false);
   const [mailSent, setMailSent] = useState(false);
+  const [mailMounted, setMailMounted] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
 
   const handleSaveImage = () => {
     const canvas = canvasRef.current;
@@ -844,6 +854,18 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
       setMailSending(false);
     }
   };
+
+  useEffect(() => {
+    if (activModal === "mail") {
+      setMailMounted(true);
+      const raf = requestAnimationFrame(() => setMailOpen(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    if (!mailMounted) return;
+    setMailOpen(false);
+    const t = setTimeout(() => setMailMounted(false), 600);
+    return () => clearTimeout(t);
+  }, [activModal, mailMounted]);
 
   const handlePrint = () => {
     const canvas = canvasRef.current;
@@ -2320,24 +2342,6 @@ controls.maxPolarAngle = Math.PI * 0.95;
 
       
 
-      <div className={`${legacyRightRail} absolute top-1/2 right-0 -translate-y-1/2 z-50`}>
-        <button onClick={() => setActivModal("save")} className={legacyRightBtn} title="Save Design">
-          <Save size={18} />
-        </button>
-        <button onClick={handlePrint} className={legacyRightBtn} title="Print / PDF">
-          <Printer size={18} />
-        </button>
-        <button onClick={() => setActivModal("mail")} className={legacyRightBtn} title="Email">
-          <Mail size={18} />
-        </button>
-        <button onClick={() => setActivModal("share")} className={legacyRightBtn} title="Share / Link">
-          <Share2 size={18} />
-        </button>
-        <button onClick={toggleFullscreen} className={`${legacyRightBtn} border-b-0`} title="Fullscreen">
-          {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-        </button>
-      </div>
-
       {isApplying && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-5 text-white">
@@ -2610,101 +2614,158 @@ controls.maxPolarAngle = Math.PI * 0.95;
 
       
       {activModal === "save" && (
-  <div className="fixed inset-0 z-[9999]" onClick={() => setActivModal(null)}>
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="fixed right-[78px] top-[200px] w-[260px] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden"
-      style={{ fontFamily: "'UbuntuM', sans-serif" }}
-    >
-      <button
-        onClick={() => { handleSaveImage(); setActivModal(null); }}
-        className="w-full flex items-center gap-4 px-5 py-4 text-[14px] text-slate-800 hover:bg-slate-50 border-b border-slate-200"
-      >
-        <FaRegFileImage size={20} className="text-slate-700" />
-        <span>Save Image</span>
-      </button>
-
-      <button
-        onClick={() => { handleSavePDF(); setActivModal(null); }}
-        className="w-full flex items-center gap-4 px-5 py-4 text-[14px] text-slate-800 hover:bg-slate-50 border-b border-slate-200"
-      >
-        <ImFilePdf size={20} className="text-slate-700" />
-        <span>Save PDF</span>
-      </button>
-
-      <button
-        onClick={() => { handleSaveForLater(); setActivModal(null); }}
-        className="w-full flex items-center gap-4 px-5 py-4 text-[14px] text-slate-800 hover:bg-slate-50"
-      >
-        <Bookmark size={20} className="text-slate-700" />
-        <span>Save For Later</span>
-      </button>
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 z-[9998]" onClick={() => setActivModal(null)}>
+          <div className="save-options-panel active" onClick={(e) => e.stopPropagation()}>
+            <button className="save-option" onClick={() => { handleSaveImage(); setActivModal(null); }}>
+              <span className="save-icon fa fa-file-image-o" aria-hidden="true"></span>
+              <span>Save Image</span>
+            </button>
+            <button className="save-option" onClick={() => { handleSavePDF(); setActivModal(null); }}>
+              <span className="save-icon fa fa-file-pdf-o" aria-hidden="true"></span>
+              <span>Save PDF</span>
+            </button>
+            <button className="save-option" onClick={() => { handleSaveForLater(); setActivModal(null); }}>
+              <span className="save-icon fa fa-bookmark-o" aria-hidden="true"></span>
+              <span>Save For Later</span>
+            </button>
+          </div>
+        </div>
+      )}
 
 
 
       
        {activModal === "share" && (
-  <div className="fixed inset-0 z-[80]" onClick={() => setActivModal(null)}>
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="fixed right-[70px] top-1/2 -translate-y-1/2 w-[260px] rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
-      style={{ fontFamily: "'UbuntuM', sans-serif" }}
-    >
-      {[
-        { label: "Facebook", service: "facebook" },
-        { label: "Twitter", service: "twitter" },
-        { label: "Google+", service: "google" },
-      ].map(({ label, service }, i, arr) => (
-        <button
-          key={service}
-          type="button"
-          onClick={() => {
-            handleShareSocial(service);
-            setActivModal(null);
-          }}
-          className={`w-full flex items-center gap-3 px-5 py-4 text-[13px] font-semibold text-slate-800 hover:bg-slate-50 ${
-            i !== arr.length - 1 ? "border-b border-slate-200" : ""
-          }`}
-        >
-          <img
-  src="/app/visualizer/images/share_icon.png"
-  alt=""
-  className="w-5 h-5 opacity-95"
-/>
-<span>{label}</span>
-        </button>
-      ))}
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 z-[9998]" onClick={() => setActivModal(null)}>
+          <div className="share-options-panel active" onClick={(e) => e.stopPropagation()}>
+            {[
+              { label: "Facebook", service: "facebook" },
+              { label: "Twitter", service: "twitter" },
+              { label: "Google+", service: "google" },
+            ].map(({ label, service }, i, arr) => (
+              <button
+                key={service}
+                type="button"
+                onClick={() => {
+                  handleShareSocial(service);
+                  setActivModal(null);
+                }}
+                className="share-option"
+              >
+                <img src="/app/visualizer/images/share_icon.png" alt="" className="share-icon" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
 
       
-      {activModal === "mail" && (
-        <div className="absolute inset-0 z-[80] flex items-start justify-center pt-[12vh]" style={{ background: "rgba(0,0,0,0.45)" }} onClick={() => setActivModal(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "8px", width: "500px", maxWidth: "96vw", boxShadow: "0 5px 20px rgba(0,0,0,0.4)", border: "1px solid rgba(0,0,0,0.18)", fontFamily: "'UbuntuM', sans-serif", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 14px", borderBottom: "1px solid #e5e5e5" }}>
-              <span style={{ fontSize: "14px", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "#111" }}>Email</span>
-              <button onClick={() => setActivModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "#000", opacity: 0.45, lineHeight: 1 }}>✕</button>
+      {mailMounted && (
+        <div
+          className="absolute inset-0 z-[80] flex items-start justify-center pt-[5vh]"
+          style={{
+            background: "rgba(0,0,0,0.45)",
+            opacity: mailOpen ? 1 : 0,
+            transition: "opacity 600ms ease",
+          }}
+          onClick={() => setActivModal(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#f8fafc",
+              borderRadius: "14px",
+              width: "600px",
+              maxWidth: "96vw",
+              boxShadow: "0 12px 28px rgba(15, 23, 42, 0.28)",
+              border: "1px solid #d7dde6",
+              fontFamily: "'UbuntuM', sans-serif",
+              overflow: "hidden",
+              transform: mailOpen ? "translateY(0)" : "translateY(-28px)",
+              opacity: mailOpen ? 1 : 0,
+              transition: "transform 600ms ease, opacity 600ms ease",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "14.5px 18px",
+                borderBottom: "1px solid #e2e8f0",
+                background: "#f8fafc",
+                color: "#0f172a",
+              }}
+            >
+              <span style={{ fontSize: "14px", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                Email
+              </span>
+              <button
+                onClick={() => setActivModal(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "22px", color: "#0f172a", lineHeight: 1, fontWeight: 700 }}
+              >
+                ×
+              </button>
             </div>
-            <div style={{ padding: "20px", background: "#f5f7fa" }}>
+            <div style={{ padding: "14.5px 15px", background: "#f8fafc" }}>
               {mailSent ? (
-                <div style={{ textAlign: "center", padding: "24px 0", color: "#16a34a", fontWeight: 700, fontSize: "14px" }}>✓ Email sent successfully!</div>
+                <div style={{ textAlign: "center", padding: "24px 0", color: "#16a34a", fontWeight: 700, fontSize: "14px" }}>
+                  ✓ Email sent successfully!
+                </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <input type="text" placeholder="Your Full Name" value={mailForm.name} onChange={(e) => setMailForm((p) => ({ ...p, name: e.target.value }))} style={modalInputStyle} />
-                  <input type="email" placeholder="Recipient's Email Address" value={mailForm.to} onChange={(e) => setMailForm((p) => ({ ...p, to: e.target.value }))} style={modalInputStyle} />
-                  <input type="text" placeholder="Subject" value={mailForm.subject} onChange={(e) => setMailForm((p) => ({ ...p, subject: e.target.value }))} style={modalInputStyle} />
-                  <textarea placeholder="Write your message here..." rows={4} value={mailForm.message} onChange={(e) => setMailForm((p) => ({ ...p, message: e.target.value }))} style={{ ...modalInputStyle, height: "auto", padding: "10px 14px", resize: "vertical", lineHeight: "1.5" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <input
+                    type="text"
+                    placeholder="Your Full Name"
+                    value={mailForm.name}
+                    onChange={(e) => setMailForm((p) => ({ ...p, name: e.target.value }))}
+                    style={{ ...modalInputStyle, height: "34px" }}
+                  />
+                  <input
+                    type="email"
+                    placeholder="Recipient's Email Address"
+                    value={mailForm.to}
+                    onChange={(e) => setMailForm((p) => ({ ...p, to: e.target.value }))}
+                    style={{ ...modalInputStyle, height: "34px" }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Subject"
+                    value={mailForm.subject}
+                    onChange={(e) => setMailForm((p) => ({ ...p, subject: e.target.value }))}
+                    style={{ ...modalInputStyle, height: "34px" }}
+                  />
+                  <textarea
+                    placeholder="Write your message here..."
+                    rows={2}
+                    value={mailForm.message}
+                    onChange={(e) => setMailForm((p) => ({ ...p, message: e.target.value }))}
+                    style={{ ...modalInputStyle, height: "auto", padding: "10px 12px", resize: "vertical", lineHeight: "1.5" }}
+                  />
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 20px 14px", background: "#f5f7fa", borderTop: "1px solid #e5e5e5" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 22px", background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
               {!mailSent && (
-                <button onClick={handleMailSend} disabled={mailSending} style={{ ...modalCloseBtn, opacity: mailSending ? 0.6 : 1, cursor: mailSending ? "not-allowed" : "pointer" }}>
+                <button
+                  onClick={handleMailSend}
+                  disabled={mailSending}
+                  style={{
+                    background: "#f8fafc",
+                    color: "#1e293b",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    padding: "6px 14px",
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    fontFamily: "'UbuntuM', sans-serif",
+                    opacity: mailSending ? 0.6 : 1,
+                    cursor: mailSending ? "not-allowed" : "pointer",
+                  }}
+                >
                   {mailSending ? "SENDING..." : "SEND"}
                 </button>
               )}
