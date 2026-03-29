@@ -277,17 +277,64 @@ body {
   font-size: 25px;
 }
 
-/* Force modal close button visible and black */
+/* Force modal close button visible and theme-aligned (no dark hover) */
 .modal .close.custom_modal_btn {
     opacity: 1 !important;
-    color: #000 !important;
+    color: #64748b !important;
     font-size: 28px !important;
     font-weight: 700 !important;
     text-shadow: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    outline: none !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
 }
 
 .modal .close.custom_modal_btn span {
-    color: #000 !important;
+    color: #64748b !important;
+}
+
+.modal .close.custom_modal_btn:hover,
+.modal .close.custom_modal_btn:focus,
+.modal .close.custom_modal_btn:active,
+.modal .close.custom_modal_btn:hover span,
+.modal .close.custom_modal_btn:focus span,
+.modal .close.custom_modal_btn:active span {
+    color: #475569 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+/* Extra-specific override in the modal header to defeat bootstrap hover styles */
+.modal .modal-header .close.custom_modal_btn,
+.modal .modal-header .close.custom_modal_btn span {
+    color: #64748b !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    border: 0 !important;
+    outline: none !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+}
+
+.modal .modal-header .close.custom_modal_btn:hover,
+.modal .modal-header .close.custom_modal_btn:focus,
+.modal .modal-header .close.custom_modal_btn:active,
+.modal .modal-header .close.custom_modal_btn:hover span,
+.modal .modal-header .close.custom_modal_btn:focus span,
+.modal .modal-header .close.custom_modal_btn:active span {
+    color: #475569 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
 }
 .filter_form label {
   text-align: left !important;

@@ -62,6 +62,22 @@ $(function(){
     function isRoom6Page() {
         return true;
     }
+    function isHighlightWallTarget() {
+        var target = Number(window.__targetTileType || window.__wallTargetTileType || 1);
+        if (window.__wallTileTypes && window.__wallTileTypes.length) {
+            return window.__wallTileTypes.indexOf(target) !== -1;
+        }
+        if (window.scene_data && scene_data.length) {
+            for (var i = 0; i < scene_data.length; i++) {
+                if (scene_data[i][0] == target) {
+                    var name = String(scene_data[i][176] || "").toLowerCase();
+                    if (name.indexOf("floor") !== -1) return false;
+                    if (name.indexOf("wall") !== -1) return true;
+                }
+            }
+        }
+        return target !== 2;
+    }
 
     $(document).on("click", ".highlight-area-btn", function(e) {
         if (e) {
@@ -69,6 +85,7 @@ $(function(){
             e.stopPropagation();
         }
         if (!isRoom6Page()) return;
+        if (!isHighlightWallTarget()) return;
         if (window.__highlightModeActive && !window.__highlightActive) {
             window.__highlightModeActive = false;
             window.__highlightPending = false;
@@ -349,6 +366,10 @@ $(function(){
         updateHighlightOverlayPlacement(canvas);
         var ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (window.__highlightUseShapes) {
+            updateHighlightBrushUI();
+            return;
+        }
         if (!window.__highlightSelections || !window.__highlightSelections.length) return;
         window.__highlightSelections.forEach(function(sel, idx) {
             if (sel && sel.tile && sel.shape) {
@@ -374,6 +395,12 @@ $(function(){
         if (!window.vis_cvs || !tile || !shapePoints || !shapePoints.length) return;
         window.__highlightSelections = window.__highlightSelections || [];
         window.__highlightSelectionVersion = window.__highlightSelectionVersion || [];
+        var highlightTileType = Number(window.__wallTargetTileType || window.__targetTileType || tile.tile_type || 1);
+        if (window.__wallTileTypes && window.__wallTileTypes.length) {
+            if (window.__wallTileTypes.indexOf(highlightTileType) === -1) {
+                highlightTileType = Number(window.__wallTileTypes[0] || highlightTileType);
+            }
+        }
         var idx = (typeof selectionIndex === "number" && isFinite(selectionIndex)) ? selectionIndex : -1;
         if (idx < 0) {
             idx = window.__highlightSelections.length;
@@ -383,8 +410,133 @@ $(function(){
             shape: cloneObj(shapePoints)
         };
         window.__highlightSelectionVersion[idx] = (window.__highlightSelectionVersion[idx] || 0) + 1;
-        redrawHighlightTileOverlay();
+        window.__highlightUseShapes = true;
+        window.__highlightShapes = window.__highlightShapes || [];
+
+        function normalizeSizeForHighlight(data, sourceTile) {
+            if (data.size && data.size.length) return;
+            if (sourceTile && sourceTile.size && sourceTile.size.length) {
+                data.size = sourceTile.size;
+                return;
+            }
+            var raw = String((sourceTile && (sourceTile.size_name || sourceTile.sizeName || sourceTile.size)) || "");
+            var m = raw.match(/(\d+)\s*[xX]\s*(\d+)/);
+            if (m) {
+                data.size = [Number(m[1]), Number(m[2])];
+            }
+        }
+
+        function upsertHighlightShape(data) {
+            if (!data) return;
+            data.shape = cloneObj(shapePoints);
+            data.__highlight = true;
+            data.__highlightIndex = idx;
+            if (tile && tile.grout_color && !data.grout_color) data.grout_color = tile.grout_color;
+            if (tile && tile.grout_id && !data.grout_id) data.grout_id = tile.grout_id;
+            normalizeSizeForHighlight(data, tile);
+            var replaced = false;
+            for (var i = 0; i < window.__highlightShapes.length; i++) {
+                if (window.__highlightShapes[i] && window.__highlightShapes[i].__highlightIndex === idx) {
+                    window.__highlightShapes[i] = data;
+                    replaced = true;
+                    break;
+                }
+            }
+            if (!replaced) window.__highlightShapes.push(data);
+            if (window.shapes && shapes.length) {
+                shapes = shapes.filter(function(s) { return !s || !s.__highlight; });
+            } else {
+                shapes = shapes || [];
+            }
+            window.__highlightShapes.forEach(function(s) { shapes.push(s); });
+            if (typeof window.scheduleRender === "function") {
+                scheduleRender();
+            } else if (typeof render === "function" && window.vis_cvs) {
+                render(vis_cvs);
+            }
+            updateHighlightBrushUI();
+        }
+
+        tile.tile_type = highlightTileType;
+        if (typeof setShape === "function") {
+            setShape(highlightTileType, tile, function(data1) {
+                data1.tile_type = highlightTileType;
+                upsertHighlightShape(data1);
+            });
+        } else {
+            tile.tile_type = highlightTileType;
+            upsertHighlightShape(tile);
+        }
     };
+
+    function applyHighlightShapeTile(tile, shapePoints, selectionIndex) {
+        if (!tile || !shapePoints || !shapePoints.length) return;
+        var targetType = Number(window.__wallTargetTileType || window.__targetTileType || tile.tile_type || 1);
+        if (window.__wallTileTypes && window.__wallTileTypes.length) {
+            if (window.__wallTileTypes.indexOf(targetType) === -1) {
+                targetType = Number(window.__wallTileTypes[0] || targetType);
+            }
+        }
+        var idx = (typeof selectionIndex === "number" && isFinite(selectionIndex)) ? selectionIndex : null;
+        var tileData = cloneObj(tile);
+        tileData.tile_type = targetType;
+        function parseSizeFromString(raw) {
+            var m = String(raw || "").match(/(\d+)\s*[xX]\s*(\d+)/);
+            if (!m) return null;
+            return [Number(m[1]), Number(m[2])];
+        }
+        function resolveTileSize(obj) {
+            if (!obj) return null;
+            if (obj.size && obj.size.length >= 2) return obj.size;
+            if (obj.size_name) return parseSizeFromString(obj.size_name);
+            if (obj.sizeName) return parseSizeFromString(obj.sizeName);
+            if (obj.size_label) return parseSizeFromString(obj.size_label);
+            if (obj.filters) {
+                if (obj.filters["23"]) return parseSizeFromString(obj.filters["23"]);
+                if (obj.filters["24"]) return parseSizeFromString(obj.filters["24"]);
+            }
+            return null;
+        }
+
+        var finish = function(data1) {
+            data1.shape = cloneObj(shapePoints);
+            data1.__highlight = true;
+            data1.__highlightIndex = idx != null ? idx : (Date.now());
+            if (!data1.size || !data1.size.length) {
+                var sz = resolveTileSize(data1) || resolveTileSize(tileData) || resolveTileSize(tile) || [300, 300];
+                data1.size = sz;
+            }
+            if (window.shapes && shapes.length) {
+                shapes = shapes.filter(function(s) {
+                    if (!s || !s.__highlight) return true;
+                    if (idx == null) return false;
+                    return s.__highlightIndex !== idx;
+                });
+            } else {
+                shapes = shapes || [];
+            }
+            shapes.push(data1);
+            if (typeof window.scheduleRender === "function") {
+                scheduleRender();
+            } else if (typeof render === "function" && window.vis_cvs) {
+                render(vis_cvs);
+            }
+            if (typeof clearMask === "function") {
+                clearMask();
+            } else {
+                activeShape = null;
+            }
+        };
+
+        if (typeof setShape === "function") {
+            setShape(targetType, tileData, function(data1) {
+                data1.tile_type = targetType;
+                finish(data1);
+            });
+        } else {
+            finish(tileData);
+        }
+    }
 
     if (window && window.addEventListener) {
         window.addEventListener("resize", function() {
@@ -412,6 +564,7 @@ $(function(){
 
     window.startHighlightArea = function() {
         if (!isRoom6Page()) return;
+        if (!isHighlightWallTarget()) return;
         if (!window.vis_cvs) {
             return;
         }
@@ -455,6 +608,9 @@ $(function(){
                 maskRect = null;
             }
         }
+        if (!isFloorTarget) {
+            maskRect = null;
+        }
         var baseRect = maskRect || visRect;
         var targetW = (window.line_cvs && line_cvs.width) ? line_cvs.width : vis_cvs.width;
         var targetH = (window.line_cvs && line_cvs.height) ? line_cvs.height : vis_cvs.height;
@@ -462,6 +618,19 @@ $(function(){
         function getSceneMaskPoints() {
             if (!targetScene || !targetScene[11] || !targetScene[11].length) return null;
             return targetScene[11];
+        }
+        function pointInPolygon(point, vs) {
+            if (!vs || vs.length < 3) return false;
+            var x = point[0], y = point[1];
+            var inside = false;
+            for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                var xi = vs[i][0], yi = vs[i][1];
+                var xj = vs[j][0], yj = vs[j][1];
+                var intersect = ((yi > y) !== (yj > y)) &&
+                    (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
         }
 
         function isAxisAlignedRect(points) {
@@ -483,7 +652,7 @@ $(function(){
         }
 
         function shouldSkewToMask() {
-            return isFloorTarget;
+            return false;
         }
 
         function normalizeMaskPoints(points) {
@@ -613,8 +782,17 @@ $(function(){
         $(window).off(".highlightRect");
 
         $overlay.on("mousedown.highlightRect", function(e) {
+            if (!isHighlightWallTarget()) return;
             rectActive = true;
             rectStart = { x: e.clientX, y: e.clientY };
+            try {
+                var startVis = toVisCoords(rectStart.x, rectStart.y);
+                var maskPts = getSceneMaskPoints();
+                if (maskPts && maskPts.length && !pointInPolygon([startVis.x, startVis.y], maskPts)) {
+                    rectActive = false;
+                    return;
+                }
+            } catch (err) {}
             drawRect(rectStart, rectStart);
             e.preventDefault();
         });
@@ -1406,12 +1584,19 @@ $(function(){
         if (window.__highlightSelectionVersion) {
             window.__highlightSelectionVersion.length = 0;
         }
+        if (window.__highlightShapes) {
+            window.__highlightShapes.length = 0;
+        }
         window.__highlightLastShape = null;
         window.__highlightShape = null;
         window.__highlightPending = false;
         window.__highlightModeActive = false;
         window.__highlightAllowRetile = false;
         window.__highlightActiveSelectionIndex = null;
+        window.__highlightUseShapes = false;
+        if (window.shapes && shapes.length) {
+            shapes = shapes.filter(function(s) { return !s || !s.__highlight; });
+        }
         if (window.__highlightBrushEls && window.__highlightBrushEls.length) {
             window.__highlightBrushEls.forEach(function(el) {
                 if (el && el.parentNode) {
@@ -2628,9 +2813,7 @@ function setShape(tid, data, ondone) {
 function selectTile(tiles) {
     if (window.__highlightPending && window.__highlightShape) {
         var lastShape = cloneObj(window.__highlightShape);
-        if (typeof window.applyHighlightTileOverlay === "function") {
-            window.applyHighlightTileOverlay(tiles[0], lastShape, window.__highlightPendingIndex);
-        }
+        applyHighlightShapeTile(tiles[0], lastShape, window.__highlightPendingIndex);
         if (typeof window.hideHighlightOverlay === "function") {
             window.hideHighlightOverlay();
         }
@@ -2645,12 +2828,10 @@ function selectTile(tiles) {
         return;
     }
     if (window.__highlightModeActive && window.__highlightAllowRetile && window.__highlightLastShape && window.__highlightLastShape.length) {
-        if (typeof window.applyHighlightTileOverlay === "function") {
-            var idx = (typeof window.__highlightActiveSelectionIndex === "number")
-                ? window.__highlightActiveSelectionIndex
-                : window.__highlightSelections.length - 1;
-            window.applyHighlightTileOverlay(tiles[0], window.__highlightLastShape, idx);
-        }
+        var idx = (typeof window.__highlightActiveSelectionIndex === "number")
+            ? window.__highlightActiveSelectionIndex
+            : window.__highlightSelections.length - 1;
+        applyHighlightShapeTile(tiles[0], window.__highlightLastShape, idx);
         return;
     }
     if(activeShape != null){

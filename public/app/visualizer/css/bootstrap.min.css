@@ -7029,3 +7029,9 @@ button.close {
         display: none!important
     }
 }
+/* SVIK override: keep modal close icon light and not dark on hover */
+.modal .close{opacity:1!important;color:#64748b!important;text-shadow:none!important;background:transparent!important;filter:none!important}
+.modal .close{border:0!important;outline:0!important;appearance:none!important;-webkit-appearance:none!important}
+.modal .close:hover,.modal .close:focus,.modal .close:active{opacity:1!important;color:#475569!important;background:transparent!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}
+.modal .close span{color:#64748b!important}
+.modal .close:hover span,.modal .close:focus span,.modal .close:active span{color:#475569!important}

@@ -389,6 +389,9 @@ $(function() {
             window.__highlightModeActive = false;
             window.__highlightActiveSelectionIndex = null;
             window.__highlightAllowRetile = false;
+            if (typeof window.hideHighlightOverlay === "function") {
+                window.hideHighlightOverlay();
+            }
         }
         window.__targetTileType = side;
         if (window.__wallTileTypes && window.__wallTileTypes.indexOf(side) !== -1 && typeof switchActiveWall === "function") {
@@ -402,6 +405,9 @@ $(function() {
             window.__highlightModeActive = false;
             window.__highlightActiveSelectionIndex = null;
             window.__highlightAllowRetile = false;
+            if (typeof window.hideHighlightOverlay === "function") {
+                window.hideHighlightOverlay();
+            }
         }
     });
 

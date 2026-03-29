@@ -32,7 +32,7 @@ type SavedRoom = {
 const CATEGORIES: RoomCategory[] = [
   { key: "living", label: "Living Rooms", icon: FaCouch, roomIds: [6, 20, 21, 22, 30, 33, 47], sceneType: "living_room", has3D: true },
   { key: "kitchen", label: "Kitchens", icon: FaUtensils, roomIds: [8, 26, 29, 34, 35, 45, 46], sceneType: "kitchen", has3D: true },
-  { key: "bedroom", label: "Bedrooms", icon: FaBed, roomIds: [36, 37, 38, 39], sceneType: "bedroom", has3D: true },
+  { key: "bedroom", label: "Bedrooms", icon: FaBed, roomIds: [37, 38, 39], sceneType: "bedroom", has3D: true },
   { key: "bathroom", label: "Bathrooms", icon: FaBath, roomIds: [12, 23, 24, 25, 40, 42, 44], sceneType: "bathroom", has3D: true },
   { key: "outdoor", label: "Indoor / Outdoor", icon: FaHome, roomIds: [27, 28, 31, 32], sceneType: "living_room", has3D: false },
   { key: "saved", label: "Saved", icon: FaHeart, roomIds: [], sceneType: "living_room", has3D: false },

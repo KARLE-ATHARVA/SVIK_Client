@@ -6,9 +6,6 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header custom_modal_header">
-                <button type="button" class="close custom_modal_btn" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
                 <h4 class="modal-title custom_modal_title" id="grouts-section-1-label">Select Grout</h4>
             </div>
             <div class="modal-body">
@@ -67,6 +64,9 @@
                     </div>
                 </form>
             </div>
+            <div class="modal-footer custome_modal_footer">
+                <button type="button" class="btn btn-default btn-sm custom_default_btn" data-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>
@@ -75,9 +75,6 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header custom_modal_header">
-                <button type="button" class="close custom_modal_btn" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
                 <h4 class="modal-title custom_modal_title" id="grouts-section-2-label">Select Grout</h4>
             </div>
             <div class="modal-body">
@@ -136,6 +133,9 @@
                     </div>
                 </form>
             </div>
+            <div class="modal-footer custome_modal_footer">
+                <button type="button" class="btn btn-default btn-sm custom_default_btn" data-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>`;
@@ -150,9 +150,6 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header custom_modal_header">
-                <button type="button" class="close custom_modal_btn" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
                 <h4 class="modal-title custom_modal_title" id="filter-section-label-1">Filter</h4>
             </div>
             <div class="modal-body">
@@ -306,9 +303,6 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header custom_modal_header">
-                <button type="button" class="close custom_modal_btn" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
                 <h4 class="modal-title custom_modal_title" id="filter-section-label-2">Filter</h4>
             </div>
             <div class="modal-body">
@@ -476,9 +470,6 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header custom_modal_header">
-                <button type="button" class="close custom_modal_btn" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
                 <h4 class="modal-title custom_modal_title" id="save-design-dialog-label">Save Design</h4>
             </div>
             <div class="modal-body">
@@ -498,9 +489,6 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header custom_modal_header">
-                <button type="button" class="close custom_modal_btn" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
                 <h4 class="modal-title custom_modal_title" id="share-dialog-label">Share</h4>
             </div>
             <div class="modal-body">
@@ -534,9 +522,6 @@
         <div class="modal-content">
             <form name="mailform" id="mailform" method="post" action="${action}">
                 <div class="modal-header custom_modal_header">
-                    <button type="button" class="close custom_modal_btn" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
                     <h4 class="modal-title custom_modal_title" id="mail-dialog-label">Email</h4>
                 </div>
                 <div class="modal-body">
@@ -555,6 +540,7 @@
                 </div>
                 <div class="modal-footer custome_modal_footer">
                     <input type="submit" id="sendMail" value="Send" name="submit" class="btn btn-default btn-sm custom_default_btn">
+                    <button type="button" class="btn btn-default btn-sm custom_default_btn" data-dismiss="modal">Close</button>
                 </div>
             </form>
         </div>
@@ -596,3 +582,6 @@ window.filter_select = function (inputs, mode) {
         applyFilter(key);
     }
 };
+
+
+

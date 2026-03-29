@@ -32,7 +32,7 @@
 <script>document.write(getCommonMailModalHtml(""));</script>
 <div id='cont_for_vis_cvs'>
     <canvas id='vis_cvs' class="view"></canvas>
-    <a data-isdragging="no" data-left="1140" data-top="730" onclick="showLeftMenu(1);" class="brush_icon" href="#menuPanel1" aria-controls="1" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
+    <a data-isdragging="no" data-left="1140" data-top="730" onclick="showLeftMenu(2);" class="brush_icon" href="#menuPanel2" aria-controls="2" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
 </div>
 <section id="inverted-contain" style='display:none;'>
     <div class="panzoom-parent">
@@ -134,11 +134,11 @@
 <script src="/app/modules/data/dynamic-tiles-api.js"></script>
 <script>
 $(function() {
-    var panelsLoaded = { "1": false };
+    var panelsLoaded = { "2": false };
     var apiInitTriggered = false;
 
     function tryInitApiTiles() {
-        if (apiInitTriggered || !panelsLoaded["1"]) {
+        if (apiInitTriggered || !panelsLoaded["2"]) {
             return;
         }
         apiInitTriggered = true;
@@ -156,12 +156,12 @@ $(function() {
 
     $("#roomsContainer").load("/app/modules/partials/room.html");
 
-    $("#menuPanel1").load("/app/modules/partials/menu-panel-1.html", function() {
+    $("#menuPanel2").load("/app/modules/partials/menu-panel-2.html", function() {
         if (typeof window.forceEnhanceVisualizerSidebar === "function") {
-            window.forceEnhanceVisualizerSidebar(1);
+            window.forceEnhanceVisualizerSidebar(2);
         }
         if (typeof window.setVisualizerTilesLoading === "function") {
-            window.setVisualizerTilesLoading(1);
+            window.setVisualizerTilesLoading(2);
         }
         $('.tile-type-label > img', this).each(function() {
             if (this.dataset && this.dataset.src) {
@@ -170,9 +170,9 @@ $(function() {
             }
         });
         if ($.fn.preloader) {
-            $("#tiles-list-1").preloader();
+            $("#tiles-list-2").preloader();
         }
-        panelsLoaded["1"] = true;
+        panelsLoaded["2"] = true;
         tryInitApiTiles();
     });
 

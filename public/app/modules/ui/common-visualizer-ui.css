@@ -254,7 +254,9 @@
 }
 
 .custom_sidebar_tab_content .top_btns_secondary {
-    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-columns: 1fr 44px;
+    column-gap: 6px;
+    align-items: center;
 }
 
 .custom_sidebar_tab_content .top_btns .custom_default_btn {
@@ -402,36 +404,6 @@
     z-index: 20;
 }
 
-.has-highlight-btn .custom_sidebar_tab_content .top_btns.top_btns_secondary {
-    display: grid;
-    grid-template-columns: 1fr 40px 40px;
-    column-gap: 6px;
-    align-items: center;
-}
-
-.has-highlight-btn .custom_sidebar_tab_content .top_btns.top_btns_secondary .custom_default_btn {
-    width: auto;
-}
-
-.has-highlight-btn .custom_sidebar_tab_content .top_btns.top_btns_secondary .filter-row-btn {
-    width: 100%;
-    min-width: 0;
-    padding-left: 10px;
-    padding-right: 10px;
-    font-size: 12px;
-}
-
-.has-highlight-btn .custom_sidebar_tab_content .top_btns.top_btns_secondary .highlight-icon-btn,
-.has-highlight-btn .custom_sidebar_tab_content .top_btns.top_btns_secondary .clear-tiles-icon-btn {
-    flex: 0 0 40px;
-    width: 40px;
-    min-width: 40px;
-    padding: 6px 0;
-}
-
-.has-highlight-btn .custom_sidebar_tab_content .top_btns.top_btns_secondary .highlight-icon-btn .btn-icon {
-    font-size: 16px;
-}
 
 .custom_sidebar_tab_content .top_btns .custom_default_btn.filter-icon-btn .btn-icon {
     font-size: 12px;
@@ -622,28 +594,38 @@
 }
 
 .custom_sidebar_tab_content .tiles-list .tile-wrap {
-    padding: 4px;
+    padding: 2px;
     text-align: left;
     display: flex;
     justify-content: center;
+    align-items: center;
+    width: 98px;
+    height: 110px;
+    box-sizing: border-box;
 }
 
 .custom_sidebar_tab_content .tile-type-label {
     border: 1px solid transparent;
     border-radius: 10px;
-    padding: 3px;
+    padding: 4px;
     background: #fff;
     display: flex;
     flex-direction: column;
     align-items: center;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     position: relative;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
 }
 
 .custom_sidebar_tab_content .tile-type-label img {
     display: block;
     margin: 0 auto;
     align-self: center;
+    max-width: 100%;
+    max-height: 62px;
+    object-fit: contain;
 }
 
 .custom_sidebar_tab_content .tile-type-label .tile-name {
@@ -909,6 +891,44 @@
 .filter_form .col-sm-9 hr {
     margin: 10px 0 10px;
     border-top: 1px solid #e2e8f0;
+}
+
+.filter_form .filter-bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.filter_form .filter-bulk-btn {
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #475569;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+    line-height: 1;
+    transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: auto;
+}
+
+.filter_form .filter-bulk-btn:hover,
+.filter_form .filter-bulk-btn:focus {
+    border-color: #cbd5e1;
+    color: #0f172a;
+    background: #f1f5f9;
+}
+
+.filter_form .filter-bulk-btn:active {
+    transform: translateY(1px);
 }
 
 .filter_form .col-sm-9 span {
@@ -1272,6 +1292,67 @@ body.inner_page_bg {
 .modal .close.custom_modal_btn,
 .modal .close.custom_modal_btn span {
     color: var(--viz-text) !important;
+}
+
+.modal .close.custom_modal_btn {
+    background: transparent !important;
+    opacity: 1 !important;
+    text-shadow: none;
+}
+
+.modal .close.custom_modal_btn:hover,
+.modal .close.custom_modal_btn:focus {
+    color: #475569 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+.modal .close.custom_modal_btn:hover span,
+.modal .close.custom_modal_btn:focus span {
+    color: #475569 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+.modal .custom_modal_btn:hover,
+.modal .custom_modal_btn:focus {
+    background: transparent !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+/* Stronger override for header close buttons (bootstrap defaults were darkening) */
+.modal .modal-header .close.custom_modal_btn,
+.modal .modal-header .close.custom_modal_btn span {
+    background: transparent !important;
+    color: #64748b !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+.modal .modal-header .close.custom_modal_btn:hover,
+.modal .modal-header .close.custom_modal_btn:focus,
+.modal .modal-header .close.custom_modal_btn:active,
+.modal .modal-header .close.custom_modal_btn:hover span,
+.modal .modal-header .close.custom_modal_btn:focus span,
+.modal .modal-header .close.custom_modal_btn:active span {
+    background: transparent !important;
+    color: #475569 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+.modal[id^="filter-section-"] .close.custom_modal_btn {
+    display: none !important;
 }
 
 .modal .modal-content {
