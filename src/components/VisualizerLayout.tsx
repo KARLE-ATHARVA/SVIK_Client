@@ -1,45 +1,4 @@
-// // src/components/VisualizerLayout.tsx
-// "use client";
 
-// import { motion } from "framer-motion";
-// import VisualizerIntro from "./VisualizerIntro";
-// import VisualizerOptions from "./VisualizerOptions";
-
-// const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
-
-// export default function VisualizerLayout() {
-//   return (
-//     <section className="h-screen w-full relative bg-[#f8f8f6] overflow-hidden flex items-center justify-center p-4 lg:p-8">
-      
-//       {/* Background Decorative Elements */}
-//       <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-amber-200/20 rounded-full blur-[120px] pointer-events-none" />
-//       <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-slate-200/40 rounded-full blur-[140px] pointer-events-none" />
-
-//       <div className="relative max-w-[1400px] w-full h-full max-h-[900px] grid grid-cols-12 gap-6 lg:gap-8 items-stretch">
-        
-//         {/* LEFT PANEL */}
-//         <motion.div
-//           initial={{ opacity: 0, x: -30 }}
-//           animate={{ opacity: 1, x: 0 }}
-//           transition={{ duration: 0.8, ease: EASE_OUT }}
-//           className="col-span-12 lg:col-span-4 bg-white rounded-[32px] p-8 lg:p-12 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.08)] flex flex-col border border-slate-100 overflow-hidden"
-//         >
-//           <VisualizerIntro />
-//         </motion.div>
-
-//         {/* RIGHT PANEL */}
-//         <motion.div
-//           initial={{ opacity: 0, x: 30 }}
-//           animate={{ opacity: 1, x: 0 }}
-//           transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT }}
-//           className="col-span-12 lg:col-span-8 bg-slate-900/5 backdrop-blur-sm rounded-[32px] p-6 lg:p-10 border border-white/50 shadow-inner flex flex-col justify-center overflow-hidden"
-//         >
-//           <VisualizerOptions />
-//         </motion.div>
-//       </div>
-//     </section>
-//   );
-// }
 
 "use client";
 
@@ -149,6 +108,54 @@ export default function VisualizerLayout() {
     return raw.endsWith("/") ? raw : `${raw}/`;
   };
 
+  const decodeBase64Json = (encoded: string) => {
+    const binary = atob(encoded);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    const decoded = new TextDecoder("utf-8").decode(bytes);
+    return JSON.parse(decoded);
+  };
+
+  const tryParse3DDesignPayload = (encoded: string) => {
+    try {
+      const obj = decodeBase64Json(encoded);
+      if (!obj || typeof obj !== "object") return null;
+      if ((obj as any).kind === "svik-3d-v1") return obj;
+      if ((obj as any).scene && ((obj as any).wallTiles || (obj as any).wallBySurface))
+        return obj;
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const apply3DDesign = (encoded: string, roomHint?: string | null) => {
+    const payload = tryParse3DDesignPayload(encoded);
+    if (!payload) return false;
+
+    const scene = String((payload as any).scene ?? roomHint ?? "living_room").toLowerCase();
+    try {
+      localStorage.removeItem("visualizer_room_id");
+      localStorage.removeItem("visualizer_design_hash");
+      localStorage.setItem("force_3d_mode", "true");
+      localStorage.setItem("selected_3d_sub_scene", scene);
+      localStorage.setItem("visualizer_3d_design_hash", encoded);
+      sessionStorage.setItem("visualizer_intent", "1");
+      localStorage.setItem("visualizer_intent_once", "1");
+      window.dispatchEvent(new CustomEvent("force3DMode"));
+      window.dispatchEvent(new CustomEvent("selected3DSceneUpdated"));
+      window.dispatchEvent(new CustomEvent("visualizer-3d-design", { detail: payload }));
+    } catch {
+      // ignore
+    }
+
+    setRoomId(null);
+    setDesignHash(null);
+    setDesignApplied(false);
+    setDesignLoading(false);
+    window.history.replaceState({}, "", "/visualizer");
+    return true;
+  };
+
   
 
   useEffect(() => {
@@ -216,16 +223,6 @@ export default function VisualizerLayout() {
               if (cancelled) return;
               const room = data?.roomId ? String(data.roomId) : null;
               const design = (data?.designData || "").trim() || null;
-              if (room) setRoomId(room);
-              if (design) setDesignHash(design);
-              if (room) {
-                localStorage.setItem("visualizer_room_id", room);
-              }
-              if (design) {
-                localStorage.setItem("visualizer_design_hash", design);
-              }
-              sessionStorage.setItem("visualizer_intent", "1");
-              localStorage.setItem("visualizer_intent_once", "1");
               localStorage.setItem(
                 `visualizer_design_payload_${shortId}`,
                 design || ""
@@ -235,6 +232,17 @@ export default function VisualizerLayout() {
                   `visualizer_design_room_${shortId}`,
                   room
                 );
+              }
+              sessionStorage.setItem("visualizer_intent", "1");
+              localStorage.setItem("visualizer_intent_once", "1");
+              if (design && apply3DDesign(design, room)) return;
+              if (room) setRoomId(room);
+              if (design) setDesignHash(design);
+              if (room) {
+                localStorage.setItem("visualizer_room_id", room);
+              }
+              if (design) {
+                localStorage.setItem("visualizer_design_hash", design);
               }
               setDesignLoading(false);
               window.history.replaceState({}, "", "/visualizer");
@@ -257,16 +265,6 @@ export default function VisualizerLayout() {
               if (cancelled) return;
               const room = data?.roomId ? String(data.roomId) : null;
               const design = (data?.designData || "").trim() || null;
-              if (room) setRoomId(room);
-              if (design) setDesignHash(design);
-              if (room) {
-                localStorage.setItem("visualizer_room_id", room);
-              }
-              if (design) {
-                localStorage.setItem("visualizer_design_hash", design);
-              }
-              sessionStorage.setItem("visualizer_intent", "1");
-              localStorage.setItem("visualizer_intent_once", "1");
               localStorage.setItem(
                 `visualizer_design_payload_${shortId}`,
                 design || ""
@@ -276,6 +274,17 @@ export default function VisualizerLayout() {
                   `visualizer_design_room_${shortId}`,
                   room
                 );
+              }
+              sessionStorage.setItem("visualizer_intent", "1");
+              localStorage.setItem("visualizer_intent_once", "1");
+              if (design && apply3DDesign(design, room)) return;
+              if (room) setRoomId(room);
+              if (design) setDesignHash(design);
+              if (room) {
+                localStorage.setItem("visualizer_room_id", room);
+              }
+              if (design) {
+                localStorage.setItem("visualizer_design_hash", design);
               }
               setDesignLoading(false);
               window.history.replaceState({}, "", "/visualizer");
@@ -292,6 +301,7 @@ export default function VisualizerLayout() {
         const cachedRoom = localStorage.getItem(
           `visualizer_design_room_${shortId}`
         );
+        if (cachedDesign && apply3DDesign(cachedDesign.trim(), cachedRoom)) return;
         if (cachedDesign) {
           setDesignHash(cachedDesign.trim() || null);
         }
@@ -305,8 +315,10 @@ export default function VisualizerLayout() {
 
       const hash = window.location.hash || "";
       if (hash.startsWith("#design-data:")) {
+        const encoded = hash.substring("#design-data:".length);
+        if (encoded && apply3DDesign(encoded, null)) return;
         setRoomId(null);
-        setDesignHash(hash.substring("#design-data:".length));
+        setDesignHash(encoded);
         setDesignLoading(false);
         return;
       }
@@ -336,6 +348,7 @@ export default function VisualizerLayout() {
           }
         }
       }
+      if (design && apply3DDesign(design, room)) return;
       setRoomId(room);
       setDesignHash(design);
       setDesignLoading(false);
@@ -382,6 +395,7 @@ export default function VisualizerLayout() {
       if (!hasExplicitVisualizerIntent() && !hasIntent) {
         localStorage.removeItem("visualizer_room_id");
         localStorage.removeItem("visualizer_design_hash");
+        localStorage.removeItem("visualizer_3d_design_hash");
         localStorage.removeItem("force_3d_mode");
         localStorage.removeItem("selected_3d_sub_scene");
         setIs3DMode(false);
@@ -453,7 +467,10 @@ export default function VisualizerLayout() {
           const data = await res.json().catch(() => null);
           if (res.ok && data?.designId) {
             payload.designId = data.designId;
-            payload.link = `${window.location.origin}/visualizer?d=${data.designId}`;
+            const is3D = !!tryParse3DDesignPayload(String(payload.designData ?? ""));
+            payload.link = `${window.location.origin}/visualizer?d=${data.designId}${
+              is3D ? "&view=3d" : ""
+            }`;
             localStorage.setItem(
               `visualizer_design_payload_${data.designId}`,
               payload.designData
@@ -489,6 +506,37 @@ export default function VisualizerLayout() {
     const base = String(raw ?? "").trim();
     if (!base) return "";
     return base.endsWith("/") ? base : `${base}/`;
+  };
+
+  const pushLocalSavedRoom = (design: {
+    link: string;
+    image: string | null;
+    designId?: string;
+    designData?: string;
+    roomId?: string | null;
+  }) => {
+    try {
+      const key = "visualizer_saved_local_v1";
+      const existingRaw = localStorage.getItem(key) || "[]";
+      const existing = JSON.parse(existingRaw);
+      const arr = Array.isArray(existing) ? existing : [];
+      const next = {
+        id: Date.now(),
+        preview_image: design.image ?? "",
+        redirect_url: design.link,
+        created_at: new Date().toISOString(),
+        local_only: true,
+      };
+      const deduped = [next, ...arr].filter(
+        (it, idx, all) =>
+          it?.redirect_url &&
+          all.findIndex((x) => x?.redirect_url === it.redirect_url) === idx
+      );
+      localStorage.setItem(key, JSON.stringify(deduped.slice(0, 50)));
+      window.dispatchEvent(new CustomEvent("visualizer-saved-local-updated"));
+    } catch {
+      // ignore
+    }
   };
 
   const handleSaveToBackend = async (design: {
@@ -540,7 +588,10 @@ export default function VisualizerLayout() {
           const linkData = await linkRes.json().catch(() => null);
           if (linkRes.ok && linkData?.designId) {
             design.designId = linkData.designId;
-            design.link = `${window.location.origin}/visualizer?d=${linkData.designId}`;
+            const is3D = !!tryParse3DDesignPayload(String(design.designData ?? ""));
+            design.link = `${window.location.origin}/visualizer?d=${linkData.designId}${
+              is3D ? "&view=3d" : ""
+            }`;
             localStorage.setItem(
               `visualizer_design_payload_${linkData.designId}`,
               design.designData
@@ -559,9 +610,40 @@ export default function VisualizerLayout() {
       }
 
       setIsSaving(true);
-      const blob = await fetch(design.image).then((res) => res.blob());
+
+      const dataUrlToFile = (dataUrl: string, defaultName: string): File | null => {
+        try {
+          const m = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
+          if (!m) return null;
+          const mime = m[1] || "image/jpeg";
+          const b64 = m[2] || "";
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const ext = mime.includes("png") ? "png" : "jpg";
+          return new File([bytes], `${defaultName}.${ext}`, { type: mime });
+        } catch {
+          return null;
+        }
+      };
+
+      let file: File | null = null;
+      if (design.image.startsWith("data:")) {
+        file = dataUrlToFile(design.image, "design");
+      } else {
+        const blob = await fetch(design.image).then((res) => res.blob());
+        const type = blob.type || "image/jpeg";
+        const ext = type.includes("png") ? "png" : "jpg";
+        file = new File([blob], `design.${ext}`, { type });
+      }
+      if (!file) {
+        pushLocalSavedRoom(design);
+        alert("Saved link locally, but could not prepare image for upload.");
+        if (design.designId) lastSavedIdRef.current = design.designId;
+        return;
+      }
       const formData = new FormData();
-      formData.append("image", blob, "design.jpg");
+      formData.append("image", file, file.name);
       formData.append("redirectUrl", design.link);
       if (design.designId) {
         formData.append("designId", design.designId);
@@ -585,7 +667,20 @@ export default function VisualizerLayout() {
       });
 
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error("Save failed");
+      if (!res.ok) {
+        console.error("saved_rooms/save failed", {
+          status: res.status,
+          body: data,
+        });
+        pushLocalSavedRoom(design);
+        alert(
+          `Saved link, but server image save failed. Use the link or try again later.${
+            data?.error ? ` (${data.error})` : ""
+          }`
+        );
+        if (design.designId) lastSavedIdRef.current = design.designId;
+        return;
+      }
 
       if (data?.message === "Already exists") {
         alert("Design already saved.");
@@ -886,6 +981,69 @@ export default function VisualizerLayout() {
           )}
         </motion.div>
       </div>
+
+      {showModal && savedDesign && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-[420px] shadow-xl">
+            <h2 className="text-lg font-semibold mb-4">Design Saved</h2>
+
+            {savedDesign.image && (
+              <img
+                src={savedDesign.image}
+                className="rounded-md border mb-4"
+                alt="Saved design preview"
+              />
+            )}
+
+            <input
+              value={savedDesign.link}
+              readOnly
+              className="w-full border p-2 rounded mb-3 text-sm"
+            />
+            {copyStatus === "success" && (
+              <div className="text-xs text-green-600 mb-3">Link copied.</div>
+            )}
+            {copyStatus === "error" && (
+              <div className="text-xs text-red-600 mb-3">
+                Unable to copy link. Please copy manually.
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => handleCopyLink(savedDesign.link)}
+                className="bg-black text-white px-4 py-2 rounded"
+              >
+                {copyStatus === "success" ? "Copied" : "Copy"}
+              </button>
+
+              <button
+                onClick={() => handleSaveToBackend(savedDesign)}
+                disabled={isSaving}
+                className="bg-green-600 text-white px-4 py-2 rounded"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setCopyStatus("idle");
+                }}
+                className="border px-4 py-2 rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleLoginSuccess}
+      />
     </section>
   );
 }

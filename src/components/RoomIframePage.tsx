@@ -30,6 +30,47 @@ function getDesignHashFromLocation(): string | null {
   return design || null;
 }
 
+function dataUrlToFile(dataUrl: string, defaultName: string): File | null {
+  try {
+    const m = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
+    if (!m) return null;
+    const mime = m[1] || "image/jpeg";
+    const b64 = m[2] || "";
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const ext = mime.includes("png") ? "png" : "jpg";
+    return new File([bytes], `${defaultName}.${ext}`, { type: mime });
+  } catch {
+    return null;
+  }
+}
+
+function pushLocalSavedRoom(design: { link: string; image: string | null }) {
+  try {
+    const key = "visualizer_saved_local_v1";
+    const existingRaw = localStorage.getItem(key) || "[]";
+    const existing = JSON.parse(existingRaw);
+    const arr = Array.isArray(existing) ? existing : [];
+    const next = {
+      id: Date.now(),
+      preview_image: design.image ?? "",
+      redirect_url: design.link,
+      created_at: new Date().toISOString(),
+      local_only: true,
+    };
+    const deduped = [next, ...arr].filter(
+      (it, idx, all) =>
+        it?.redirect_url &&
+        all.findIndex((x) => x?.redirect_url === it.redirect_url) === idx
+    );
+    localStorage.setItem(key, JSON.stringify(deduped.slice(0, 50)));
+    window.dispatchEvent(new CustomEvent("visualizer-saved-local-updated"));
+  } catch {
+    // ignore
+  }
+}
+
 export default function RoomIframePage({ roomId }: RoomIframePageProps) {
   const [designHash, setDesignHash] = useState<string | null>(null);
   const [savedDesign, setSavedDesign] = useState<SavedDesign | null>(null);
@@ -92,10 +133,26 @@ export default function RoomIframePage({ roomId }: RoomIframePageProps) {
 
       setIsSaving(true);
 
-      const blob = await fetch(design.image).then((res) => res.blob());
+      let file: File | null = null;
+      if (design.image.startsWith("data:")) {
+        file = dataUrlToFile(design.image, "design");
+      } else {
+        const blob = await fetch(design.image).then((res) => res.blob());
+        const type = blob.type || "image/jpeg";
+        const ext = type.includes("png") ? "png" : "jpg";
+        file = new File([blob], `design.${ext}`, { type });
+      }
+      if (!file) {
+        pushLocalSavedRoom(design);
+        alert("Saved link locally, but could not prepare image for upload.");
+        return;
+      }
       const formData = new FormData();
-      formData.append("image", blob, "design.jpg");
+      formData.append("image", file, file.name);
       formData.append("redirectUrl", design.link);
+      if (design.designId) {
+        formData.append("designId", design.designId);
+      }
 
       const now = new Date();
       const datePart =
@@ -115,7 +172,15 @@ export default function RoomIframePage({ roomId }: RoomIframePageProps) {
       });
 
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error("Save failed");
+      if (!res.ok) {
+        console.error("saved_rooms/save failed", { status: res.status, body: data });
+        pushLocalSavedRoom(design);
+        alert(
+          `Saved link, but server image save failed.${data?.error ? ` (${data.error})` : ""}`
+        );
+        if (design.designId) lastSavedIdRef.current = design.designId;
+        return;
+      }
 
       if (data?.message === "Already exists") {
         alert("Design already saved.");

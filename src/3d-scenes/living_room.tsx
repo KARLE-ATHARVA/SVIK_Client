@@ -35,10 +35,15 @@ export interface LivingRoomRefs {
   handleLightClick: (name: string) => boolean;
 }
 
+// interface SceneBuilderProps {
+//   scene: THREE.Scene;
+//   onFloorMaterialReady: (material: THREE.MeshStandardMaterial) => void;
+//   onWallMaterialsReady: (materials: THREE.MeshStandardMaterial[]) => void;
+// }
 interface SceneBuilderProps {
   scene: THREE.Scene;
   onFloorMaterialReady: (material: THREE.MeshStandardMaterial) => void;
-  onWallMaterialsReady: (materials: THREE.MeshStandardMaterial[]) => void;
+  onWallMaterialsReady: (materials: any[]) => void;  // ← change this
 }
 
 export function buildLivingRoomScene({
@@ -71,8 +76,8 @@ export function buildLivingRoomScene({
     roughness: 0.65,
     metalness: 0.0,
     // emissive: new THREE.Color(0xffffff),
-    emissive: new THREE.Color(0x000000),
-    emissiveIntensity: 0.05,
+    emissive: new THREE.Color(0x111111),
+emissiveIntensity: 0.1,
   });
   onFloorMaterialReady(floorMat);
 
@@ -87,13 +92,18 @@ export function buildLivingRoomScene({
   //     emissiveIntensity: 0.05,
   //     side: THREE.DoubleSide,
   //   });
-  const makeWallMat = (col = 0xffffff) =>
-  new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.65,   // ← match floor exactly
-    metalness: 0.0,
-    emissive: new THREE.Color(0x000000),
-    emissiveIntensity: 0.05,
+  // const makeWallMat = (col = 0xffffff) =>
+  // new THREE.MeshStandardMaterial({
+  //   color: 0xffffff,
+  //   roughness: 0.65,   // ← match floor exactly
+  //   metalness: 0.0,
+  //   emissive: new THREE.Color(0x000000),
+  //   emissiveIntensity: 0.55,
+  //   side: THREE.DoubleSide,
+  // });
+  const makeWallMat = (): THREE.MeshBasicMaterial =>
+  new THREE.MeshBasicMaterial({
+    color: 0xf0f0f0,
     side: THREE.DoubleSide,
   });
 
@@ -179,7 +189,7 @@ export function buildLivingRoomScene({
     transparent: true,
     opacity: 0.92,
     emissive: 0xff9922,
-    emissiveIntensity: 2.0,
+    emissiveIntensity: 0.5,
   });
 
   const pendantShadeMat = new THREE.MeshStandardMaterial({
@@ -188,7 +198,7 @@ export function buildLivingRoomScene({
     metalness: 0.65,
     side: THREE.DoubleSide,
     emissive: 0xfff0d0,
-    emissiveIntensity: 1.2,
+    emissiveIntensity: 0.4,
   });
 
   const tubeMat1 = new THREE.MeshStandardMaterial({
@@ -196,23 +206,23 @@ export function buildLivingRoomScene({
     roughness: 0.12,
     metalness: 0.1,
     emissive: 0xfff8f0,
-    emissiveIntensity: 3.0,
+    emissiveIntensity: 0.6,
   });
   const tubeMat2 = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.12,
     metalness: 0.1,
     emissive: 0xfff8f0,
-    emissiveIntensity: 3.0,
+    emissiveIntensity: 0.6,
   });
 
   // ==============================================
   // LIGHTING
   // ==============================================
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
   scene.add(ambientLight);
 
-  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.0);
+  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.3);
   scene.add(hemisphereLight);
 
   const sunLight = new THREE.DirectionalLight(0xfff8e8, 0.8);
@@ -228,26 +238,26 @@ export function buildLivingRoomScene({
   sunLight.shadow.bias = -0.0001;
   scene.add(sunLight);
 
-  const floorLampLight = new THREE.PointLight(0xfff0d8, 12, 8);
+  const floorLampLight = new THREE.PointLight(0xfff0d8, 2.5, 8);
   floorLampLight.position.set(-7, 2.2, 3);
   floorLampLight.castShadow = true;
   floorLampLight.shadow.mapSize.set(512, 512);
   floorLampLight.shadow.bias = -0.001;
   scene.add(floorLampLight);
 
-  const pendantLight = new THREE.PointLight(0xfff5e6, 15, 8);
+  const pendantLight = new THREE.PointLight(0xfff5e6, 3.0, 8);
   pendantLight.position.set(5, 4.2, 0);
   pendantLight.castShadow = true;
   pendantLight.shadow.mapSize.set(512, 512);
   scene.add(pendantLight);
 
-  const tubeLight1 = new THREE.PointLight(0xfff8f0, 22, 14);
+  const tubeLight1 = new THREE.PointLight(0xfff8f0, 4.0, 14);
   tubeLight1.position.set(-4, 5.6, -1);
   tubeLight1.castShadow = true;
   tubeLight1.shadow.mapSize.set(512, 512);
   scene.add(tubeLight1);
 
-  const tubeLight2 = new THREE.PointLight(0xfff8f0, 22, 14);
+  const tubeLight2 = new THREE.PointLight(0xfff8f0, 4.0, 14);
   tubeLight2.position.set(5, 5.6, -1);
   tubeLight2.castShadow = true;
   tubeLight2.shadow.mapSize.set(512, 512);
@@ -256,13 +266,14 @@ export function buildLivingRoomScene({
   const tvGlow = new THREE.RectAreaLight(0x4080ff, 3, 2.2, 1.2);
   tvGlow.position.set(-4, 1.5, -7.85);
   scene.add(tvGlow);
+  
 
   // HDRI environment
   new RGBELoader().load(
     "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/peppermint_powerplant_1k.hdr",
     (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
-      //scene.environment = hdr;
+      scene.environment = hdr;
     }
   );
 
@@ -276,12 +287,18 @@ export function buildLivingRoomScene({
     tube2:   true,
   };
 
+  // const defaults = {
+  //   floorLamp:   { light: 12,  shade: 2.0,  emissive: 0xff9922 as number },
+  //   pendant:     { light: 15,  shade: 1.2,  emissive: 0xfff0d0 as number },
+  //   tube1:       { light: 22,  emissive: 3.0 },
+  //   tube2:       { light: 22,  emissive: 3.0 },
+  // };
   const defaults = {
-    floorLamp:   { light: 12,  shade: 2.0,  emissive: 0xff9922 as number },
-    pendant:     { light: 15,  shade: 1.2,  emissive: 0xfff0d0 as number },
-    tube1:       { light: 22,  emissive: 3.0 },
-    tube2:       { light: 22,  emissive: 3.0 },
-  };
+  floorLamp: { light: 2.5, shade: 0.5,  emissive: 0xff9922 as number },
+  pendant:   { light: 3.0, shade: 0.4,  emissive: 0xfff0d0 as number },
+  tube1:     { light: 4.0, emissive: 0.6 },
+  tube2:     { light: 4.0, emissive: 0.6 },
+};
 
   function handleLightClick(name: string): boolean {
     if (name === LIVING_LIGHT_NAMES.floorShade) {

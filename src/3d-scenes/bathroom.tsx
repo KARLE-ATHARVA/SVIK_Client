@@ -382,7 +382,7 @@ export function buildBathroomScene({
     new THREE.BoxGeometry(1.1, 1.4, 0.45),
     new THREE.MeshStandardMaterial({ color: 0xf7f7f7, roughness: 0.35, metalness: 0.08 })
   );
-  geyserBody.castShadow = true;
+  geyserBody.castShadow = false;
   geyserGroup.add(geyserBody);
 
   const geyserFront = new THREE.Mesh(
@@ -504,14 +504,7 @@ export function buildBathroomScene({
   // ==============================================
   // Shower (right side) — static
   // ==============================================
-  const glassMat = new THREE.MeshStandardMaterial({
-    color: 0xc8dde8, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.35,
-  });
-
-  const showerGlassSide = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), glassMat);
-  showerGlassSide.rotation.y = Math.PI / 2;
-  showerGlassSide.position.set(2.7, 1.1, -3.0);
-  scene.add(showerGlassSide);
+  
 
   const showerArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.5, 12), chromeMat);
   showerArm.rotation.z = Math.PI / 4;

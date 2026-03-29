@@ -33,6 +33,8 @@ type Handlers = {
   onClear?: () => void;
 };
 
+type TargetSurface3D = "wall" | "floor";
+
 const EMPTY_FILTERS: TileFilterSelections = { catNames: [], appNames: [], finishNames: [], sizeNames: [], colorNames: [] };
 const EMPTY_OPTIONS: TileFilterOptions = { categories: [], applications: [], finishes: [], sizes: [], colors: [] };
 
@@ -127,6 +129,23 @@ function mapTilesToProducts(rows: TileListItem[]): Product[] {
   });
 }
 
+function pickApplicationForSurface(applications: string[], surface: TargetSurface3D): string | null {
+  const norm = (v: string) => String(v ?? "").trim().toLowerCase();
+  const list = (applications || []).map(String).filter(Boolean);
+  const want = surface === "floor" ? "floor" : "wall";
+
+  const isBathroomFloor = (v: string) => norm(v) === "bathroom floor";
+
+  const exact = list.find((a) => norm(a) === want);
+  if (exact && !isBathroomFloor(exact)) return exact;
+
+  const contains = list.find((a) => norm(a).includes(want));
+  if (contains && !isBathroomFloor(contains)) return contains;
+
+  const fallback = list.find((a) => !isBathroomFloor(a));
+  return fallback ?? null;
+}
+
 export default function LegacySidebar3D({
   onSelectRoom,
   onProductInfo,
@@ -137,7 +156,7 @@ export default function LegacySidebar3D({
   onFullscreen,
   onClear,
 }: Handlers) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -147,17 +166,30 @@ export default function LegacySidebar3D({
   const [pendingFavId, setPendingFavId] = useState<string | number | null>(null);
   const [currentSpace, setCurrentSpace] = useState("");
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  // Full option set for the current space (unfiltered); used for floor/wall switching.
+  const [catalogOptions, setCatalogOptions] = useState<TileFilterOptions>(EMPTY_OPTIONS);
   const [filterOptions, setFilterOptions] = useState<TileFilterOptions>(EMPTY_OPTIONS);
   const [tempFilters, setTempFilters] = useState<TileFilterSelections>(EMPTY_FILTERS);
   const [debouncedTempFilters, setDebouncedTempFilters] = useState(tempFilters);
   const [searchTerm, setSearchTerm] = useState("");
   const [rotation, setRotation] = useState("0");
   const [selectedTileId, setSelectedTileId] = useState<string | number | null>(null);
+  const [targetSurface, setTargetSurface] = useState<TargetSurface3D>(() => {
+    try {
+      const v = String(localStorage.getItem("visualizer_3d_target_surface") || "")
+        .trim()
+        .toLowerCase();
+      return v === "floor" ? "floor" : "wall";
+    } catch {
+      return "wall";
+    }
+  });
 
 
   const lastAppliedQueryKey = useRef("");
   const lastAvailableQueryKey = useRef("");
   const availableOptionsAbortRef = useRef<AbortController | null>(null);
+  const tempFiltersRef = useRef<TileFilterSelections>(tempFilters);
 
   const uiColorOptions = useMemo(() => getUiColorOptions(filterOptions.colors), [filterOptions.colors]);
   const uiApplicationOptions = useMemo(() => {
@@ -169,6 +201,10 @@ export default function LegacySidebar3D({
   useEffect(() => {
     const t = setTimeout(() => setDebouncedTempFilters(tempFilters), 300);
     return () => clearTimeout(t);
+  }, [tempFilters]);
+
+  useEffect(() => {
+    tempFiltersRef.current = tempFilters;
   }, [tempFilters]);
   useEffect(() => {
   const loadSelected = () => {
@@ -202,23 +238,7 @@ export default function LegacySidebar3D({
       console.error("Failed to sync favorites:", err);
     }
   }, []);
-//   const syncFavoritesFromServer = useCallback(async () => {
-//   if (!isLoggedIn()) return;
 
-//   try {
-//     const res = await listFavoritesAPI();
-
-//     // legacy-friendly: backend may return [] OR { data: [] }
-//     const rows = Array.isArray(res.data) ? res.data : res.data?.data;
-//     const ids = (rows || [])
-//       .map((item: any) => String(item?.tile_id ?? item?.tileId ?? item?.id ?? ""))
-//       .filter(Boolean);
-
-//     setFavourites(ids);
-//   } catch (err) {
-//     console.error("Failed to sync favorites:", err);
-//   }
-// }, []);
 
 
   useEffect(() => {
@@ -231,17 +251,7 @@ export default function LegacySidebar3D({
       const saved = localStorage.getItem("favourites");
       if (saved) setFavourites(JSON.parse(saved));
     }
-//     else {
-//   // legacy 2D uses this key
-//   const saved = localStorage.getItem("visualizer_favorites_v1");
-//   if (saved) {
-//     try {
-//       const parsed = JSON.parse(saved);
-//       const ids = Array.isArray(parsed) ? parsed.map((x) => String(x)) : [];
-//       setFavourites(ids);
-//     } catch {}
-//   }
-// }
+
 
   }, [syncFavoritesFromServer]);
 
@@ -256,6 +266,32 @@ export default function LegacySidebar3D({
     window.addEventListener("auth-changed", handleAuthChange);
     return () => window.removeEventListener("auth-changed", handleAuthChange);
   }, [syncFavoritesFromServer]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { open?: boolean } | undefined;
+      if (typeof detail?.open === "boolean") {
+        setOpen(detail.open);
+      }
+    };
+    window.addEventListener("visualizer-3d-sidebar", handler as EventListener);
+    return () => window.removeEventListener("visualizer-3d-sidebar", handler as EventListener);
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { surface?: string } | undefined;
+      const surface = String(detail?.surface || "").trim().toLowerCase();
+      const next: TargetSurface3D = surface === "floor" ? "floor" : "wall";
+      setTargetSurface(next);
+      try {
+        localStorage.setItem("visualizer_3d_target_surface", next);
+      } catch {}
+    };
+
+    window.addEventListener("visualizer-3d-target-surface", handler as EventListener);
+    return () => window.removeEventListener("visualizer-3d-target-surface", handler as EventListener);
+  }, []);
 
   const handleLoginSuccess = async () => {
     setIsUserLoggedIn(true);
@@ -272,36 +308,6 @@ export default function LegacySidebar3D({
     }
     setShowAuthModal(false);
   };
-//   const handleLoginSuccess = async () => {
-//   setIsUserLoggedIn(true);
-
-//   // immediately refresh from server (legacy behavior)
-//   await syncFavoritesFromServer();
-
-//   // if user tried to fav while logged out, auto-fav after login
-//   if (pendingFavId) {
-//     const favKey = String(pendingFavId);
-//     try {
-//       await addFavoriteAPI(favKey);
-//       setFavourites((prev) => (prev.includes(favKey) ? prev : [...prev, favKey]));
-
-//       // keep local copy too (legacy key) so it persists for UI
-//       try {
-//         const next = (prev: string[]) => (prev.includes(favKey) ? prev : [...prev, favKey]);
-//         const saved = localStorage.getItem("visualizer_favorites_v1");
-//         const parsed = saved ? JSON.parse(saved) : [];
-//         const list = Array.isArray(parsed) ? parsed.map(String) : [];
-//         localStorage.setItem("visualizer_favorites_v1", JSON.stringify(next(list)));
-//       } catch {}
-//     } catch (err) {
-//       console.error("Auto favorite failed", err);
-//     } finally {
-//       setPendingFavId(null);
-//     }
-//   }
-
-//   setShowAuthModal(false);
-// };
 
 
   const handleLogout = () => {
@@ -310,15 +316,7 @@ export default function LegacySidebar3D({
     setFavourites([]);
   };
 
-//   const handleLogout = () => {
-//   logout(); // removes pgatoken + reload (your auth.ts does reload)
-//   setIsUserLoggedIn(false);
-//   setShowFavourites(false);
-//   setFavourites([]);
-//   try {
-//     localStorage.setItem("visualizer_favorites_v1", JSON.stringify([]));
-//   } catch {}
-// };
+
 
   const handleProductApply = (product: Product) => {
     const tile = { id: product.id, name: product.name, image: product.image, skuCode: product.skuCode };
@@ -428,6 +426,7 @@ export default function LegacySidebar3D({
     fetchFilterOptions(currentSpace)
       .then(async (options) => {
         if (!isMounted) return;
+        setCatalogOptions(options);
         const initialFilters = getInitialFiltersFromStorage(options);
         const baseReq = { spaceName: currentSpace, ...initialFilters };
         const req = {
@@ -448,6 +447,7 @@ export default function LegacySidebar3D({
       .catch((error) => {
         if (!isMounted) return;
         console.error("Initial filter bootstrap error:", error);
+        setCatalogOptions(EMPTY_OPTIONS);
         setFilterOptions(EMPTY_OPTIONS);
         setProducts([]);
       })
@@ -456,6 +456,23 @@ export default function LegacySidebar3D({
       });
     return () => { isMounted = false; };
   }, [currentSpace]);
+
+  useEffect(() => {
+    if (!currentSpace) return;
+    const applications =
+      catalogOptions.applications.length ? catalogOptions.applications : filterOptions.applications;
+    if (!applications.length) return;
+
+    const desired = pickApplicationForSurface(applications, targetSurface);
+    if (!desired) return;
+
+    const base = sanitizeFilterSelections(tempFiltersRef.current);
+    if (base.appNames.length === 1 && base.appNames[0] === desired) return;
+
+    const next: TileFilterSelections = { ...base, appNames: [desired] };
+    setTempFilters(next);
+    fetchTilesAndOptions(next);
+  }, [currentSpace, fetchTilesAndOptions, catalogOptions.applications, filterOptions.applications, targetSurface]);
 
   useEffect(() => {
     if (!showFilters || !currentSpace) return;
@@ -771,9 +788,10 @@ const css = `
   }
 
   .tile-selected {
-  outline: 2px solid #f59e0b !important;
-  outline-offset: -2px;
-  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18) !important;
+  box-shadow: 0 0 0 1.5px #f59e0b !important;
+  outline: none !important;
+  border-radius: 0.5px !important;
+  overflow: visible !important;
 }
 
 
@@ -813,7 +831,7 @@ const css = `
     top: 78px;
     left: 12px;
     width: 325px;
-    height: calc(100vh - 140px);
+    height: 580px;
     max-height: calc(100vh - 140px);
     background: #f1f3f5;
     border: 1px solid #cfd6df;
@@ -959,11 +977,12 @@ const css = `
 
   /* ── Tile scroll area ── */
   .sb-tiles-scroll {
-    flex: 1 1 0;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 2px 2px 6px;
-  }
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;   /* ← remove the 300px cap */
+  overflow-y: auto;
+  padding: 2px 2px 6px;
+}
   .sb-tiles-scroll::-webkit-scrollbar { width: 4px; }
   .sb-tiles-scroll::-webkit-scrollbar-track { background: transparent; }
   .sb-tiles-scroll::-webkit-scrollbar-thumb { background: #c8cdd6; border-radius: 999px; }
@@ -975,7 +994,7 @@ const css = `
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  gap: 10px;
   padding-bottom: 10px;
 }
   */
@@ -999,7 +1018,7 @@ const css = `
 .tile:hover { opacity: 0.85; }
 */
 .tile {
-  border-radius: 16px;
+  border-radius: 14px;
   border: none;
   background: #fff;
   overflow: hidden;
@@ -1018,15 +1037,23 @@ const css = `
   border-radius: 6px;
 }
 .tile-img img { width: 100%; height: 100%; object-fit: cover; display: block; } */
-.tile-img {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  background: #f0f0f0;
-  overflow: hidden;
-  border-radius: 0;
+.tile-img{
+  position:relative;
+  width:92%;
+  background:#fff;
+  
+
+  padding:3px ;           /* space around image like 2D */
+  overflow:hidden;
+  margin: 0 auto; 
 }
-.tile-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile-img img{
+  width:100%;
+  height:auto;              /* IMPORTANT: preserves 600x600 vs 600x1200 */
+  display:block;
+  object-fit:contain;       /* safe even if height constraints appear later */
+        /* rounded image corners inside card */
+}
 
   /* ── Per-tile heart button — hidden by default, shown on tile hover ── */
   .tile-heart {
@@ -1080,7 +1107,7 @@ const css = `
   word-break: break-word;
   line-height: 1.3;
   background: #fff;
-  border-top: 1px solid #f0f2f5;
+  
 }
 
   .tile-loading, .tile-empty {
@@ -1097,30 +1124,67 @@ const css = `
   .spin { animation:spin 1s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
 
-  .top-right {
-    position:absolute;
-    top:14px;
-    right:10px;
-    display:flex;
-    gap:12px;
-    z-index:300001;
-    pointer-events:auto;
-  }
+.top-right {
+  position:absolute;
+  top:50px;
+  right:40px;
+  display:flex;
+  align-items:center;
+  gap:30px;
+  z-index:300001;
+  pointer-events:auto;
+}
+
 
   .tr-btn {
-    background:rgba(255,255,255,0.94) !important;
-    border:1px solid #dbe3ec !important;
-    color:#0f172a !important;
-    border-radius:12px !important;
-    box-shadow:0 8px 20px rgba(2,6,23,0.08);
-    font-family:'UbuntuM', sans-serif;
-    font-size:14px !important;
-    font-weight:400 !important;
-    line-height:1.1 !important;
-    padding:6px 12px !important;
-    cursor:pointer;
-  }
-  .tr-btn:hover { background:#fff !important; border-color:#cbd5e1 !important; }
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+
+  background:#fff !important;
+  border:1px solid rgba(0,0,0,0.10) !important;
+  color:#111827 !important;
+
+  border-radius:999px !important;
+  padding:8px 16px !important;
+
+  
+  font-family:'UbuntuM', sans-serif;
+  font-size:12px !important;
+  font-weight:200 !important;
+  line-height:1.1 !important;
+
+  cursor:pointer;
+}
+
+.tr-btn:hover {
+  box-shadow:0 16px 26px rgba(0,0,0,0.22) !important;
+}
+
+.tr-btn:active {
+  transform:translateY(1px);
+}
+.tr-btn::before{
+  content:"";
+  width:18px;
+  height:18px;
+  margin-right:10px;
+  display:inline-block;
+  background-repeat:no-repeat;
+  background-size:18px 18px;
+  opacity:.95;
+}
+
+/* left button icon (grid) */
+.top-right .tr-btn:first-child::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Crect x='3' y='3' width='8' height='8' rx='2' fill='%23111827'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2' fill='%23111827'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2' fill='%23111827'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2' fill='%23111827'/%3E%3C/svg%3E");
+}
+
+/* right button icon (info) */
+.top-right .tr-btn:last-child::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Ccircle cx='12' cy='12' r='10' fill='%23111827'/%3E%3Crect x='11' y='10' width='2' height='7' rx='1' fill='white'/%3E%3Ccircle cx='12' cy='7.5' r='1.25' fill='white'/%3E%3C/svg%3E");
+}
+
 
   .right-toolbar {
     position:fixed;

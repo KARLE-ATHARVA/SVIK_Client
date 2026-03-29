@@ -16,6 +16,11 @@ import {
   Share2,
 } from "lucide-react";
 import * as THREE from "three";
+import { Bookmark } from "lucide-react";
+import { ImFilePdf } from "react-icons/im";
+import {FaRegFileImage} from "react-icons/fa";
+
+
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { API_BASE } from "@/lib/constants";
 import LegacySidebar3D from "./LegacySidebar3D"; // adjust path
@@ -60,7 +65,8 @@ type AnyRoomRefs = BedroomRefs | KitchenRefs | BathroomRefs | LivingRoomRefs;
 type SceneBuilder = (props: {
   scene: THREE.Scene;
   onFloorMaterialReady: (mat: THREE.MeshStandardMaterial) => void;
-  onWallMaterialsReady: (mats: THREE.MeshStandardMaterial[]) => void;
+  //onWallMaterialsReady: (mats: THREE.MeshStandardMaterial[]) => void;
+  onWallMaterialsReady: (mats: any[]) => void;
 }) => AnyRoomRefs | void;
 
 const sceneBuilders: Record<string, SceneBuilder> = {
@@ -99,6 +105,18 @@ type AppliedTile = {
   skuCode?: string;
   size?: string | null;
 };
+
+type Saved3DDesignPayload = {
+  kind?: string;
+  scene?: string;
+  wallBySurface?: Partial<Record<WallTarget, AppliedTile>>;
+  floorTile?: AppliedTile | null;
+  wallTiles?: AppliedTile[];
+  floorTiles?: AppliedTile[];
+  rotationDeg?: number;
+};
+
+type TargetSurface3D = "wall" | "floor";
 
 // ─── Repeat values per tile size ─────────────────────────────────────────────
 function getRepeat(
@@ -198,10 +216,48 @@ export default function Preview3D() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
+  const [sceneKey, setSceneKey] = useState<string>(() => {
+    if (typeof window === "undefined") return "living_room";
+    return (
+      localStorage.getItem("selected_3d_sub_scene") || "living_room"
+    ).toLowerCase();
+  });
+
+  const setTargetSurface = useCallback((surface: TargetSurface3D) => {
+    try {
+      localStorage.setItem("visualizer_3d_target_surface", surface);
+    } catch {
+      // ignore
+    }
+    try {
+      window.dispatchEvent(
+        new CustomEvent("visualizer-3d-target-surface", { detail: { surface } })
+      );
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const setSidebarOpen = useCallback((open: boolean) => {
+    try {
+      window.dispatchEvent(
+        new CustomEvent("visualizer-3d-sidebar", { detail: { open } })
+      );
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const pendingAutoApplySurfaceRef = useRef<TargetSurface3D | null>(null);
+  const closeSidebarOnApplyRef = useRef(false);
+  const markCloseSidebarOnApply = () => {
+    closeSidebarOnApplyRef.current = true;
+  };
+
   // Materials
   const floorMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
-  const wallMatsRef = useRef<THREE.MeshStandardMaterial[]>([]);
-
+ // const wallMatsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+const wallMatsRef = useRef<any[]>([]);
   // Original snapshots for clear
   const originalFloorSnapRef = useRef<MatSnapshot | null>(null);
   const originalWallSnapsRef = useRef<MatSnapshot[]>([]);
@@ -254,6 +310,9 @@ export default function Preview3D() {
   const [productInfoTab, setProductInfoTab] = useState<"wall" | "floor">("wall");
   const [appliedWallTiles, setAppliedWallTiles] = useState<AppliedTile[]>([]);
   const [appliedFloorTiles, setAppliedFloorTiles] = useState<AppliedTile[]>([]);
+  const [appliedWallBySurface, setAppliedWallBySurface] = useState<
+    Partial<Record<WallTarget, AppliedTile>>
+  >({});
 
   // ── REFS for tile — always fresh, no stale closure issues ─────────────────
   const selectedTileRef = useRef<any>(null);
@@ -265,6 +324,21 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+
+  useEffect(() => {
+    const readScene = () => {
+      setSceneKey(
+        (localStorage.getItem("selected_3d_sub_scene") || "living_room").toLowerCase()
+      );
+    };
+    readScene();
+    window.addEventListener("storage", readScene);
+    window.addEventListener("selected3DSceneUpdated", readScene as EventListener);
+    return () => {
+      window.removeEventListener("storage", readScene);
+      window.removeEventListener("selected3DSceneUpdated", readScene as EventListener);
+    };
+  }, []);
 
   // ── Tile selection listener ───────────────────────────────────────────────
   useEffect(() => {
@@ -371,9 +445,13 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
   const createDesignShareLink = () => {
     try {
       const payload = {
+        kind: "svik-3d-v1",
         scene: localStorage.getItem("selected_3d_sub_scene") || "living_room",
+        wallBySurface: appliedWallBySurface,
+        floorTile: appliedFloorTiles[0] ?? null,
         wallTiles: appliedWallTiles,
         floorTiles: appliedFloorTiles,
+        rotationDeg: Number(localStorage.getItem("tile_rotation_deg") || "0") || 0,
       };
       const encoded = btoa(
         unescape(encodeURIComponent(JSON.stringify(payload)))
@@ -381,6 +459,56 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
       return `${window.location.href.split("#")[0]}#design-data:${encoded}`;
     } catch {
       return window.location.href;
+    }
+  };
+
+  const handleSaveForLater = () => {
+    try {
+      const canvas = canvasRef.current;
+      const scene = localStorage.getItem("selected_3d_sub_scene") || "living_room";
+
+      const payload = {
+        kind: "svik-3d-v1",
+        scene,
+        wallBySurface: appliedWallBySurface,
+        floorTile: appliedFloorTiles[0] ?? null,
+        wallTiles: appliedWallTiles,
+        floorTiles: appliedFloorTiles,
+        rotationDeg: Number(localStorage.getItem("tile_rotation_deg") || "0") || 0,
+      };
+
+      const designData = btoa(
+        unescape(encodeURIComponent(JSON.stringify(payload)))
+      );
+
+      let image: string | null = null;
+      if (canvas) {
+        const c = document.createElement("canvas");
+        c.width = canvas.width;
+        c.height = canvas.height;
+        const ctx = c.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, c.width, c.height);
+          ctx.drawImage(canvas, 0, 0, c.width, c.height);
+          image = c.toDataURL("image/jpeg", 0.92);
+        }
+      }
+
+      window.postMessage(
+        {
+          type: "SAVE_DESIGN",
+          payload: {
+            link: `${window.location.origin}/visualizer?view=3d#design-data:${designData}`,
+            image,
+            designData,
+            roomId: null,
+          },
+        },
+        "*"
+      );
+    } catch {
+      alert("Failed to prepare save payload.");
     }
   };
 
@@ -808,58 +936,62 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
   const getTileImageSrc = (src?: string) =>
     src ? `${IMAGE_PROXY_URL}${encodeURIComponent(src)}` : "";
 
-  // ── Texture builder ───────────────────────────────────────────────────────
-//   const buildTexture = useCallback(
-//     (base: THREE.Texture, rx: number, ry: number): THREE.Texture => {
-//       const img = base.image as HTMLImageElement;
-//       const cv = document.createElement("canvas");
-//       cv.width = img.width;
-//       cv.height = img.height;
-//       const ctx = cv.getContext("2d")!;
-//       ctx.drawImage(img, 0, 0, cv.width, cv.height);
-//       ctx.strokeStyle = "#4f4942";
-//       ctx.lineWidth = 3;
-//       ctx.strokeRect(1.5, 1.5, cv.width - 3, cv.height - 3);
-//       ctx.strokeStyle = "#e6e1da";
-//       ctx.lineWidth = 1;
-//       ctx.strokeRect(3.5, 3.5, cv.width - 7, cv.height - 7);
-//       const tex = new THREE.CanvasTexture(cv);
-//       tex.colorSpace = THREE.SRGBColorSpace;
-//       // tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-//       // tex.repeat.set(rx, ry);
-//       // tex.needsUpdate = true;
-//       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-// tex.repeat.set(rx, ry);
-
-// // apply rotation (0 or 90)
-// const rot = degToRad(tileRotationRef.current);
-// tex.center.set(0.5, 0.5);
-// tex.rotation = rot;
-
-// tex.needsUpdate = true;
-
-//       return tex;
-//     },
-//     []
-//   );
-
+ 
 const buildTexture = useCallback(
   (base: THREE.Texture, rx: number, ry: number): THREE.Texture => {
     const img = base.image as HTMLImageElement;
     const cv = document.createElement("canvas");
-    const scale = 2;
+    const scale = 4;
     cv.width = img.width * scale;
     cv.height = img.height * scale;
     const ctx = cv.getContext("2d")!;
     ctx.drawImage(img, 0, 0, cv.width, cv.height);
-    const groutOuter = 1;  // fixed 4px — thin, uniform for all tile sizes
-const groutInner = 0;  // fixed 1px inner highlight
-    ctx.strokeStyle = "#4f4942";
-    ctx.lineWidth = groutOuter;
-    ctx.strokeRect(groutOuter / 2, groutOuter / 2, cv.width - groutOuter, cv.height - groutOuter);
-    ctx.strokeStyle = "#e6e1da";
-    ctx.lineWidth = groutInner;
-    ctx.strokeRect(groutOuter + groutInner / 2, groutOuter + groutInner / 2, cv.width - (groutOuter + groutInner) * 2, cv.height - (groutOuter + groutInner) * 2);
+
+    // ── Detect average brightness of tile ──────────────────
+    // Sample a small version of the original image to get avg color
+    const sampleCanvas = document.createElement("canvas");
+    sampleCanvas.width = 16;
+    sampleCanvas.height = 16;
+    const sampleCtx = sampleCanvas.getContext("2d")!;
+    sampleCtx.drawImage(img, 0, 0, 16, 16);
+    const pixels = sampleCtx.getImageData(0, 0, 16, 16).data;
+    let totalBrightness = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      // perceived brightness formula
+      totalBrightness +=
+        0.299 * pixels[i] +       // R
+        0.587 * pixels[i + 1] +   // G
+        0.114 * pixels[i + 2];    // B
+    }
+    const avgBrightness = totalBrightness / (pixels.length / 4); // 0–255
+
+    
+    const isDark = avgBrightness < 80;
+    const groutOuter = isDark ? "#888888" : "#2a2a2a";
+    const groutInner = isDark ? "#aaaaaa" : "#555555";
+    // ────────────────────────────────────────────────────────
+
+    const groutWidth = 3;
+    const groutInnerW = 1.5;
+
+    ctx.strokeStyle = groutOuter;
+    ctx.lineWidth = groutWidth;
+    ctx.strokeRect(
+      groutWidth / 2,
+      groutWidth / 2,
+      cv.width - groutWidth,
+      cv.height - groutWidth
+    );
+
+    ctx.strokeStyle = groutInner;
+    ctx.lineWidth = groutInnerW;
+    ctx.strokeRect(
+      groutWidth + groutInnerW / 2,
+      groutWidth + groutInnerW / 2,
+      cv.width - (groutWidth + groutInnerW) * 2,
+      cv.height - (groutWidth + groutInnerW) * 2
+    );
+
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -873,28 +1005,9 @@ const groutInner = 0;  // fixed 1px inner highlight
   },
   []
 );
-//   const applyTexToMat = useCallback((mat: THREE.MeshStandardMaterial, tex: THREE.Texture) => {
-//     const prev = mat.map;
-//     if (prev && ownedMapsRef.current.has(prev)) {
-//       prev.dispose();
-//       ownedMapsRef.current.delete(prev);
-//     }
-//     ownedMapsRef.current.add(tex);
 
-//     // mat.map = tex;
-//     // mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping;
-//     // mat.map.repeat.copy(tex.repeat);
-//     // mat.map.needsUpdate = true;
-// mat.map = tex;
-// mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping;
-// mat.map.repeat.copy(tex.repeat);
-// mat.map.anisotropy = rendererRef.current?.capabilities.getMaxAnisotropy() ?? 16;
-// mat.map.needsUpdate = true;
-//     mat.transparent = false;
-//     mat.opacity = 1;
-//     mat.needsUpdate = true;
-//   }, []);
-const applyTexToMat = useCallback((mat: THREE.MeshStandardMaterial, tex: THREE.Texture) => {
+
+const applyTexToMat = useCallback((mat: any, tex: THREE.Texture) => {
   const prev = mat.map;
   if (prev && ownedMapsRef.current.has(prev)) {
     prev.dispose();
@@ -907,18 +1020,11 @@ const applyTexToMat = useCallback((mat: THREE.MeshStandardMaterial, tex: THREE.T
   mat.map.repeat.copy(tex.repeat);
   mat.map.anisotropy = rendererRef.current?.capabilities.getMaxAnisotropy() ?? 16;
   mat.map.needsUpdate = true;
-
-  // Force ALL surfaces to render identically
   mat.color.set(0xffffff);
-  mat.roughness = 0.65;
-  mat.metalness = 0.0;
-  mat.emissive.set(0xffffff);
-  mat.emissiveIntensity = 0.18;
   mat.transparent = false;
   mat.opacity = 1;
   mat.needsUpdate = true;
 }, []);
-
   // ── KEY FIX: loadAndApply reads from ref — never stale ───────────────────
   const loadAndApply = useCallback((applyFn: (base: THREE.Texture) => void) => {
     const tile = selectedTileRef.current;
@@ -933,47 +1039,91 @@ const applyTexToMat = useCallback((mat: THREE.MeshStandardMaterial, tex: THREE.T
     loader.load(
       url,
       (tex: THREE.Texture) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        applyFn(tex);
-        setIsApplying(false);
+        try {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          applyFn(tex);
+          if (closeSidebarOnApplyRef.current) {
+            closeSidebarOnApplyRef.current = false;
+            setSidebarOpen(false);
+          }
+        } finally {
+          setIsApplying(false);
+        }
       },
       () => {},
       () => {
         setErrorMessage("Failed to load tile texture.");
         setIsApplying(false);
+        closeSidebarOnApplyRef.current = false;
       }
     );
-  }, []);
+  }, [setSidebarOpen]);
 
+  
   const applyFloor = useCallback(() => {
-    if (!floorMatRef.current) return;
-    const [rx, ry] = getRepeat(selectedTileSizeRef.current, "floor");
-    registerAppliedTile("floor");
-    loadAndApply((base) =>
-      applyTexToMat(floorMatRef.current!, buildTexture(base, rx, ry))
+  if (!floorMatRef.current) return;
+  const [rx, ry] = getRepeat(selectedTileSizeRef.current, "floor");
+  registerAppliedTile("floor");
+  markCloseSidebarOnApply();
+  loadAndApply((base) => {
+    applyTexToMat(floorMatRef.current!, buildTexture(base, rx, ry));
+
+    // ── Neutralize floor after tile applied ──
+    if (floorMatRef.current) {
+      floorMatRef.current.roughness = 0.9;
+      floorMatRef.current.metalness = 0.0;
+      floorMatRef.current.emissive.set(0x000000);
+      floorMatRef.current.emissiveIntensity = 0.0;
+      floorMatRef.current.needsUpdate = true;
+    }
+  });
+}, [loadAndApply, applyTexToMat, buildTexture, registerAppliedTile]);
+
+  
+const applyWall = useCallback(
+  (surfaceName: string) => {
+    const idx =
+      surfaceName === SURFACE_NAMES.wallBack
+        ? 0
+        : surfaceName === SURFACE_NAMES.wallLeft
+        ? 1
+        : surfaceName === SURFACE_NAMES.wallRight
+        ? 2
+        : -1;
+
+    // ── GUARD: bail if mat not ready ──────────────────
+    if (idx < 0) return;
+    const mat = wallMatsRef.current[idx];
+    if (!mat) {
+      console.warn("Wall mat not ready at index", idx, wallMatsRef.current);
+      return;
+    }
+    // ─────────────────────────────────────────────────
+
+    const [rx, ry] = getRepeat(selectedTileSizeRef.current, "wall");
+    const wallTile = buildAppliedTile(
+      selectedTileRef.current,
+      selectedTileSizeRef.current
     );
-  }, [loadAndApply, applyTexToMat, buildTexture, registerAppliedTile]);
-
-  const applyWall = useCallback(
-    (surfaceName: string) => {
-      const idx =
-        surfaceName === SURFACE_NAMES.wallBack
-          ? 0
-          : surfaceName === SURFACE_NAMES.wallLeft
-          ? 1
-          : surfaceName === SURFACE_NAMES.wallRight
-          ? 2
-          : -1;
-      if (idx < 0 || !wallMatsRef.current[idx]) return;
-      const [rx, ry] = getRepeat(selectedTileSizeRef.current, "wall");
-      registerAppliedTile("wall");
-      loadAndApply((base) =>
-        applyTexToMat(wallMatsRef.current[idx], buildTexture(base, rx, ry))
-      );
-    },
-    [loadAndApply, applyTexToMat, buildTexture, registerAppliedTile]
-  );
-
+    if (
+      wallTile &&
+      (surfaceName === SURFACE_NAMES.wallBack ||
+        surfaceName === SURFACE_NAMES.wallLeft ||
+        surfaceName === SURFACE_NAMES.wallRight)
+    ) {
+      setAppliedWallBySurface((prev) => ({
+        ...prev,
+        [surfaceName as WallTarget]: wallTile,
+      }));
+    }
+    registerAppliedTile("wall");
+    markCloseSidebarOnApply();
+    loadAndApply((base) =>
+      applyTexToMat(mat, buildTexture(base, rx, ry))  // ← use captured mat
+    );
+  },
+  [loadAndApply, applyTexToMat, buildTexture, registerAppliedTile]
+);
   const applyAreaTileOnWall = useCallback(
     (wall: WallTarget, p1: THREE.Vector3, p2: THREE.Vector3) => {
       if (!sceneRef.current) return;
@@ -982,6 +1132,7 @@ const applyTexToMat = useCallback((mat: THREE.MeshStandardMaterial, tex: THREE.T
       const wallMesh = scene.getObjectByName(wall);
       const wallPos = wallMesh ? wallMesh.position : new THREE.Vector3();
 
+      markCloseSidebarOnApply();
       loadAndApply((base) => {
         registerAppliedTile("wall");
         if (areaMeshesRef.current[wall]) {
@@ -1036,6 +1187,30 @@ const applyTexToMat = useCallback((mat: THREE.MeshStandardMaterial, tex: THREE.T
     },
     [loadAndApply, buildTexture, registerAppliedTile]
   );
+
+  useEffect(() => {
+    const maybeAutoApply = (event?: Event) => {
+      const target = pendingAutoApplySurfaceRef.current;
+      if (!target) return;
+      if (target !== "floor") return;
+      if (event instanceof StorageEvent) {
+        const key = String(event.key || "");
+        if (key && key !== "selected_tile" && key !== "selected_tile_size") return;
+      }
+      if (!floorMatRef.current) return;
+      if (!selectedTileRef.current?.image) return;
+      if (modeRef.current !== "orbit") return;
+      pendingAutoApplySurfaceRef.current = null;
+      applyFloor();
+    };
+
+    window.addEventListener("storage", maybeAutoApply as EventListener);
+    window.addEventListener("selectedTileUpdated", maybeAutoApply as EventListener);
+    return () => {
+      window.removeEventListener("storage", maybeAutoApply as EventListener);
+      window.removeEventListener("selectedTileUpdated", maybeAutoApply as EventListener);
+    };
+  }, [applyFloor]);
 
   const clearAreaPatch = useCallback((wall: WallTarget) => {
     if (!sceneRef.current) return;
@@ -1388,10 +1563,8 @@ const applyTexToMat = useCallback((mat: THREE.MeshStandardMaterial, tex: THREE.T
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // renderer.toneMappingExposure = 0.7;
-    renderer.toneMapping = THREE.LinearToneMapping;
-renderer.toneMappingExposure = 0.6;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.75;
     rendererRef.current = renderer;
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -1409,8 +1582,8 @@ controls.maxPolarAngle = Math.PI * 0.95;
     controls.enablePan = false;
     controlsRef.current = controls;
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.2);
     dir.position.set(0, 12, 0);
     dir.castShadow = true;
     dir.shadow.mapSize.width = dir.shadow.mapSize.height = 2048;
@@ -1427,9 +1600,6 @@ controls.maxPolarAngle = Math.PI * 0.95;
     originalFloorSnapRef.current = null;
     originalWallSnapsRef.current = [];
 
-    const sceneKey = (
-      localStorage.getItem("selected_3d_sub_scene") || "living_room"
-    ).toLowerCase();
     const builder = sceneBuilders[sceneKey] || buildLivingRoomScene;
 
     const refs = builder({
@@ -1448,20 +1618,21 @@ controls.maxPolarAngle = Math.PI * 0.95;
           rotation: mat.map?.rotation,
         };
       },
+      
       onWallMaterialsReady: (mats) => {
-        wallMatsRef.current = mats;
-        originalWallSnapsRef.current = mats.map((m) => ({
-          map: m.map ?? null,
-          transparent: m.transparent,
-          opacity: m.opacity,
-          wrapS: m.map?.wrapS,
-          wrapT: m.map?.wrapT,
-          repeat: m.map ? m.map.repeat.clone() : undefined,
-          offset: m.map ? m.map.offset.clone() : undefined,
-          center: m.map ? m.map.center.clone() : undefined,
-          rotation: m.map?.rotation,
-        }));
-      },
+  wallMatsRef.current = mats;
+  originalWallSnapsRef.current = mats.map((m) => ({
+    map: m.map ?? null,
+    transparent: m.transparent,
+    opacity: m.opacity,
+    wrapS: m.map?.wrapS,
+    wrapT: m.map?.wrapT,
+    repeat: m.map ? m.map.repeat.clone() : undefined,
+    offset: m.map ? m.map.offset.clone() : undefined,
+    center: m.map ? m.map.center.clone() : undefined,
+    rotation: m.map?.rotation,
+  }));
+},
     });
 
     const allRefs = refs as AnyRoomRefs | undefined;
@@ -1534,7 +1705,117 @@ controls.maxPolarAngle = Math.PI * 0.95;
         cameraRef.current =
           null;
     };
-  }, [refreshHandles]);
+  }, [refreshHandles, sceneKey]);
+
+  const decode3DDesignData = (encoded: string): Saved3DDesignPayload => {
+    const binary = atob(encoded);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    const decoded = new TextDecoder("utf-8").decode(bytes);
+    return JSON.parse(decoded);
+  };
+
+  const applyTileToMat = useCallback(
+    (mat: THREE.MeshStandardMaterial, tile: AppliedTile, surface: "wall" | "floor") => {
+      if (!tile?.image) return;
+      const [rx, ry] = getRepeat(tile.size ?? null, surface);
+      const url = `${IMAGE_PROXY_URL}${encodeURIComponent(tile.image)}`;
+      const loader = new THREE.TextureLoader();
+      loader.load(
+        url,
+        (base) => {
+          base.colorSpace = THREE.SRGBColorSpace;
+          applyTexToMat(mat, buildTexture(base, rx, ry));
+        },
+        () => {},
+        () => {
+          // ignore
+        }
+      );
+    },
+    [applyTexToMat, buildTexture]
+  );
+
+  const apply3DSavedPayload = useCallback(
+    (payload: Saved3DDesignPayload) => {
+      if (!payload || typeof payload !== "object") return;
+
+      const rotationDeg = Number(payload.rotationDeg ?? 0);
+      if (!isNaN(rotationDeg)) {
+        tileRotationRef.current = rotationDeg;
+        localStorage.setItem("tile_rotation_deg", String(rotationDeg));
+      }
+
+      const wallBySurface = (payload.wallBySurface ?? {}) as Partial<
+        Record<WallTarget, AppliedTile>
+      >;
+      const floorTile = (payload.floorTile ?? null) as AppliedTile | null;
+      const wallTiles = (payload.wallTiles ?? []) as AppliedTile[];
+      const floorTiles = (payload.floorTiles ?? []) as AppliedTile[];
+
+      if (wallTiles.length) setAppliedWallTiles(wallTiles);
+      if (floorTiles.length) setAppliedFloorTiles(floorTiles);
+      if (wallBySurface && typeof wallBySurface === "object")
+        setAppliedWallBySurface(wallBySurface);
+
+      const floorMat = floorMatRef.current;
+      if (floorMat && floorTile) {
+        applyTileToMat(floorMat, floorTile, "floor");
+      } else if (floorMat && floorTiles[0]) {
+        applyTileToMat(floorMat, floorTiles[0], "floor");
+      }
+
+      const mats = wallMatsRef.current;
+      const applyWallMat = (wall: WallTarget, idx: number) => {
+        const t = wallBySurface?.[wall];
+        if (!t || !mats[idx]) return;
+        applyTileToMat(mats[idx], t, "wall");
+      };
+
+      applyWallMat(SURFACE_NAMES.wallBack, 0);
+      applyWallMat(SURFACE_NAMES.wallLeft, 1);
+      applyWallMat(SURFACE_NAMES.wallRight, 2);
+    },
+    [applyTileToMat]
+  );
+
+  useEffect(() => {
+    const applyEncodedWhenReady = (encoded: string) => {
+      let attempts = 0;
+      const tryApply = () => {
+        attempts += 1;
+        if (attempts > 60) return;
+        if (!floorMatRef.current || wallMatsRef.current.length < 3) {
+          setTimeout(tryApply, 250);
+          return;
+        }
+        try {
+          const payload = decode3DDesignData(encoded);
+          apply3DSavedPayload(payload);
+        } catch {
+          // ignore
+        }
+      };
+      tryApply();
+    };
+
+    const encoded = localStorage.getItem("visualizer_3d_design_hash");
+    if (encoded) applyEncodedWhenReady(encoded);
+
+    const onDesign = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail) {
+        apply3DSavedPayload(detail);
+        return;
+      }
+      const stored = localStorage.getItem("visualizer_3d_design_hash");
+      if (stored) applyEncodedWhenReady(stored);
+    };
+
+    window.addEventListener("visualizer-3d-design", onDesign as EventListener);
+    return () => {
+      window.removeEventListener("visualizer-3d-design", onDesign as EventListener);
+    };
+  }, [apply3DSavedPayload]);
 
   // ── Attach scale-handle pointerdown ──────────────────────────────────────
   useEffect(() => {
@@ -1814,116 +2095,7 @@ controls.maxPolarAngle = Math.PI * 0.95;
     },
     [syncFurnitureOutline, getFloorPoint]
   );
-//   const handleMouseMove = useCallback(
-//   (e: React.MouseEvent) => {
-//     if (handleDragRef.current) {
-//       const hd = handleDragRef.current;
-//       const sel = selectedFurniture.current;
-//       if (!sel) return;
-//       const dx = e.clientX - hd.mouseX;
-//       const dy = e.clientY - hd.mouseY;
-//       const delta = (dx - dy) * 0.003;
-//       const newScale = Math.max(0.3, Math.min(4.0, hd.scaleStart * (1 + delta)));
-//       sel.scale.set(newScale, newScale, newScale);
-//       syncFurnitureOutline();
-//       refreshHandles();
-//       return;
-//     }
-//     if (furnitureDragging.current && selectedFurniture.current) {
-//       const fp = getFloorPoint(e);
-//       const start = furnitureDragFloorStart.current;
-//       const objStart = furnitureDragObjStart.current;
-//       if (!fp || !start || !objStart) return;
-//       const sceneKey = (
-//         localStorage.getItem("selected_3d_sub_scene") || "living_room"
-//       ).toLowerCase();
-//       const bounds = sceneKey.includes("bathroom")
-//         ? { x: 5.2, z: 3.8 }
-//         : sceneKey.includes("bedroom")
-//         ? { x: 6.2, z: 5.2 }
-//         : sceneKey.includes("kitchen")
-//         ? { x: 7.2, z: 6.2 }
-//         : { x: 9.2, z: 7.2 };
-//       const newX = objStart.x + fp.x - start.x;
-//       const newZ = objStart.z + fp.z - start.z;
-//       selectedFurniture.current.position.x = Math.max(
-//         -bounds.x,
-//         Math.min(bounds.x, newX)
-//       );
-//       selectedFurniture.current.position.z = Math.max(
-//         -bounds.z,
-//         Math.min(bounds.z, newZ)
-//       );
-//       syncFurnitureOutline();
-//       return;
-//     }
-//     const m = modeRef.current;
-//     if (m === "pick-wall" || m === "draw-area") {
-//       const hit = raycastAnyWall(getNDC(e));
-//       setHoveredWall(hit ? hit.name : null);
-//       if (canvasRef.current)
-//         canvasRef.current.style.cursor = hit ? "pointer" : "crosshair";
-//       return;
-//     }
-//     if (m === "draw-area-dragging") {
-//       const wall = areaWallRef.current;
-//       const p1 = drawStartHitRef.current;
-//       if (!wall || !p1 || !sceneRef.current) return;
-//       const pt = raycastWallHit(getNDC(e), wall);
-//       if (!pt) return;
-//       const isBack = wall === SURFACE_NAMES.wallBack;
-//       const cx = (p1.x + pt.x) / 2,
-//         cy = (p1.y + pt.y) / 2,
-//         cz = (p1.z + pt.z) / 2;
-//       const w = Math.max(Math.abs(isBack ? pt.x - p1.x : pt.z - p1.z), 0.01);
-//       const h = Math.max(Math.abs(pt.y - p1.y), 0.01);
-//       const wallMesh = sceneRef.current.getObjectByName(wall);
-//       const wallPos = wallMesh ? (wallMesh as THREE.Mesh).position : new THREE.Vector3();
-//       if (!previewBoxRef.current) {
-//         const geo = new THREE.PlaneGeometry(1, 1);
-//         const mat = new THREE.MeshBasicMaterial({
-//           color: 0xf59e0b,
-//           transparent: true,
-//           opacity: 0.12,
-//           side: THREE.DoubleSide,
-//           depthWrite: false,
-//         });
-//         const mesh = new THREE.Mesh(geo, mat);
-//         mesh.renderOrder = 2;
-//         sceneRef.current.add(mesh);
-//         previewBoxRef.current = mesh;
-//         const edgeGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(1, 1));
-//         const outline = new THREE.LineSegments(
-//           edgeGeo,
-//           new THREE.LineBasicMaterial({
-//             color: 0xffffff,
-//             transparent: true,
-//             opacity: 0.85,
-//           })
-//         );
-//         outline.renderOrder = 3;
-//         outline.name = "preview_outline";
-//         mesh.add(outline);
-//       }
-//       const OFFSET = 0.014;
-//       previewBoxRef.current.scale.set(w, h, 1);
-//       if (isBack) {
-//         previewBoxRef.current.rotation.set(0, 0, 0);
-//         previewBoxRef.current.position.set(cx, cy, wallPos.z + OFFSET);
-//       } else if (wall === SURFACE_NAMES.wallLeft) {
-//         previewBoxRef.current.rotation.set(0, Math.PI / 2, 0);
-//         previewBoxRef.current.position.set(wallPos.x + OFFSET, cy, cz);
-//       } else {
-//         previewBoxRef.current.rotation.set(0, -Math.PI / 2, 0);
-//         previewBoxRef.current.position.set(wallPos.x - OFFSET, cy, cz);
-//       }
-//       return;
-//     }
-//     if (m === "orbit" && canvasRef.current)
-//       canvasRef.current.style.cursor = "grab";
-//   },
-//   [syncFurnitureOutline, getFloorPoint, refreshHandles]
-// );
+
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -2110,7 +2282,6 @@ controls.maxPolarAngle = Math.PI * 0.95;
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, [resizeRenderer]);
 
-  const tileReady = !!selectedTile && !isApplying;
   const activeProductTiles = productInfoTab === "wall" ? appliedWallTiles : appliedFloorTiles;
 
   // ─── UI ──────────────────────────────────────────────────────────────────
@@ -2147,14 +2318,7 @@ controls.maxPolarAngle = Math.PI * 0.95;
       />
       <div className="absolute inset-0 border border-white/10 pointer-events-none z-20" />
 
-      {/* <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-        <button onClick={handleSelectRoom} className={legacyHeaderBtn}>
-          Select Room
-        </button>
-        <button onClick={handleProductInfo} className={legacyHeaderBtn}>
-          Product Info
-        </button>
-      </div> */}
+      
 
       <div className={`${legacyRightRail} absolute top-1/2 right-0 -translate-y-1/2 z-50`}>
         <button onClick={() => setActivModal("save")} className={legacyRightBtn} title="Save Design">
@@ -2195,25 +2359,13 @@ controls.maxPolarAngle = Math.PI * 0.95;
           </div>
         </div>
       )}
-{/* 
-      {selectedTile && (
-        <div className="absolute top-24 right-6 z-40 bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-slate-200 max-w-[160px]">
-          <p className="text-xs font-semibold mb-1.5 text-slate-800">Selected Tile</p>
-          <img
-            src={`${IMAGE_PROXY_URL}${encodeURIComponent(selectedTile.image)}`}
-            alt={selectedTile.name}
-            className="w-full h-auto rounded-lg object-cover"
-          />
-          <p className="text-[10px] mt-1.5 text-slate-600 truncate">{selectedTile.name}</p>
-          {selectedTileSize && <p className="text-[9px] mt-1 text-slate-500">Size: {selectedTileSize}</p>}
-        </div>
-      )} */}
+
 
       {mode === "pick-wall" && (
         <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
           <div className="bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full text-sm font-medium shadow-2xl border border-amber-500/30 flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            Click any wall to tile it · <span className="text-amber-400">Esc to cancel</span>
+            Click any wall to lay tiles · <span className="text-amber-400">Esc to cancel</span>
           </div>
         </div>
       )}
@@ -2309,11 +2461,15 @@ controls.maxPolarAngle = Math.PI * 0.95;
         <div className="flex flex-col items-center gap-1.5">
           <span className="text-[10px] text-white/60 uppercase tracking-widest font-medium">Floor</span>
           <button
-            disabled={!tileReady || mode !== "orbit"}
-            onClick={applyFloor}
+            disabled={mode !== "orbit"}
+            onClick={() => {
+              setTargetSurface("floor");
+              pendingAutoApplySurfaceRef.current = "floor";
+              setSidebarOpen(true);
+            }}
             className={`px-5 py-2.5 rounded-full text-xs uppercase tracking-wider font-semibold shadow-2xl border transition-all
               ${
-                tileReady && mode === "orbit"
+                mode === "orbit"
                   ? "bg-slate-900/95 text-white border-emerald-500/40 hover:bg-emerald-700 hover:border-emerald-400"
                   : "bg-slate-900/50 text-white/30 border-slate-700 cursor-not-allowed"
               }`}
@@ -2329,15 +2485,25 @@ controls.maxPolarAngle = Math.PI * 0.95;
         <div className="flex flex-col items-center gap-1.5">
           <span className="text-[10px] text-white/60 uppercase tracking-widest font-medium">Wall</span>
           <button
-            disabled={!tileReady}
-            onClick={() => setMode(mode === "pick-wall" ? "orbit" : "pick-wall")}
+            onClick={() => {
+              if (mode === "pick-wall") {
+                setMode("orbit");
+                modeRef.current = "orbit";
+                setHoveredWall(null);
+                setSidebarOpen(false);
+                if (canvasRef.current) canvasRef.current.style.cursor = "grab";
+              } else {
+                setTargetSurface("wall");
+                setSidebarOpen(true);
+                setMode("pick-wall");
+                modeRef.current = "pick-wall";
+              }
+            }}
             className={`px-5 py-2.5 rounded-full text-xs uppercase tracking-wider font-semibold shadow-xl border transition-all
               ${
                 mode === "pick-wall"
                   ? "bg-amber-500 text-white border-amber-400"
-                  : tileReady
-                  ? "bg-slate-900/95 text-white border-amber-500/30 hover:bg-amber-700 hover:border-amber-400"
-                  : "bg-slate-900/50 text-white/30 border-slate-700 cursor-not-allowed"
+                  : "bg-slate-900/95 text-white border-amber-500/30 hover:bg-amber-700 hover:border-amber-400"
               }`}
           >
             {mode === "pick-wall" ? "✕ Cancel" : "Click Wall"}
@@ -2350,11 +2516,12 @@ controls.maxPolarAngle = Math.PI * 0.95;
           <span className="text-[10px] text-white/60 uppercase tracking-widest font-medium">Wall Area</span>
           <div className="flex gap-2">
             <button
-              disabled={!tileReady}
               onClick={() => {
                 if (mode === "draw-area" || mode === "draw-area-dragging") {
                   cancelArea();
                 } else {
+                  setTargetSurface("wall");
+                  setSidebarOpen(true);
                   setMode("draw-area");
                   modeRef.current = "draw-area";
                 }
@@ -2363,9 +2530,7 @@ controls.maxPolarAngle = Math.PI * 0.95;
                 ${
                   mode === "draw-area" || mode === "draw-area-dragging"
                     ? "bg-violet-500 text-white border-violet-400"
-                    : tileReady
-                    ? "bg-slate-900/95 text-white border-violet-500/30 hover:bg-violet-700"
-                    : "bg-slate-900/50 text-white/30 border-slate-700 cursor-not-allowed"
+                    : "bg-slate-900/95 text-white border-violet-500/30 hover:bg-violet-700"
                 }`}
             >
               <span className="flex items-center gap-2">
@@ -2443,201 +2608,81 @@ controls.maxPolarAngle = Math.PI * 0.95;
         </div>
       )}
 
-      {/* {activModal === "save" && (
-        <div className="absolute inset-0 z-[80] flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setActivModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 w-[320px]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-[13px] font-black tracking-[0.15em] uppercase text-slate-800">Save Design</h3>
-              <button onClick={() => setActivModal(null)} className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50">
-                <X size={14} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => {
-                  handleSaveImage();
-                  setActivModal(null);
-                }}
-                className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-              >
-                <Save size={14} /> Save as Image
-              </button>
-              <button
-                onClick={() => {
-                  handleSavePDF();
-                  setActivModal(null);
-                }}
-                className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-              >
-                <Printer size={14} /> Save as PDF
-              </button>
-              <button
-                onClick={() => {
-                  handleSaveLink();
-                  setActivModal(null);
-                }}
-                className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-              >
-                <Share2 size={14} /> Copy Share Link
-              </button>
-            </div>
-          </div>
-        </div>
-      )} */}
-
       
       {activModal === "save" && (
-        <div className="absolute inset-0 z-[80] flex items-start justify-center pt-[12vh]" style={{ background: "rgba(0,0,0,0.45)" }} onClick={() => setActivModal(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "8px", width: "560px", maxWidth: "96vw", boxShadow: "0 5px 20px rgba(0,0,0,0.4)", border: "1px solid rgba(0,0,0,0.18)", fontFamily: "'UbuntuM', sans-serif", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 14px", borderBottom: "1px solid #e5e5e5" }}>
-              <span style={{ fontSize: "14px", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "#111" }}>Save Design</span>
-              <button onClick={() => setActivModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "#000", opacity: 0.45, lineHeight: 1 }}>✕</button>
-            </div>
-            <div style={{ padding: "30px 24px 24px", background: "#f5f7fa", display: "flex", flexWrap: "wrap", gap: "14px", justifyContent: "center" }}>
-              <button style={modalSaveBtn} onClick={() => { handleSaveImage(); setActivModal(null); }}>SAVE DESIGN AS IMAGE</button>
-              <button style={modalSaveBtn} onClick={() => { handleSavePDF(); setActivModal(null); }}>SAVE WITH INFO AS PDF</button>
-              <button style={modalSaveBtn} onClick={() => { handleSaveLink(); setActivModal(null); }}>SAVE DESIGN FOR LATER</button>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 20px 14px", background: "#f5f7fa", borderTop: "1px solid #e5e5e5" }}>
-              <button style={modalCloseBtn} onClick={() => setActivModal(null)}>CLOSE</button>
-            </div>
-          </div>
-        </div>
-      )}
+  <div className="fixed inset-0 z-[9999]" onClick={() => setActivModal(null)}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="fixed right-[78px] top-[200px] w-[260px] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden"
+      style={{ fontFamily: "'UbuntuM', sans-serif" }}
+    >
+      <button
+        onClick={() => { handleSaveImage(); setActivModal(null); }}
+        className="w-full flex items-center gap-4 px-5 py-4 text-[14px] text-slate-800 hover:bg-slate-50 border-b border-slate-200"
+      >
+        <FaRegFileImage size={20} className="text-slate-700" />
+        <span>Save Image</span>
+      </button>
 
-      {/* {activModal === "share" && (
-        <div className="absolute inset-0 z-[80] flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setActivModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 w-[320px]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-[13px] font-black tracking-[0.15em] uppercase text-slate-800">Share Design</h3>
-              <button onClick={() => setActivModal(null)} className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50">
-                <X size={14} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => handleShareSocial("facebook")}
-                className="w-full py-3 rounded-xl text-white text-[11px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                style={{ backgroundColor: "#1877F2" }}
-              >
-                Facebook
-              </button>
-              <button
-                onClick={() => handleShareSocial("twitter")}
-                className="w-full py-3 rounded-xl text-white text-[11px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                style={{ backgroundColor: "#1DA1F2" }}
-              >
-                Twitter / X
-              </button>
-              <button
-                onClick={() => handleShareSocial("google")}
-                className="w-full py-3 rounded-xl text-white text-[11px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                style={{ backgroundColor: "#DB4437" }}
-              >
-                Google+
-              </button>
-              <button
-                onClick={() => handleShareSocial("whatsapp")}
-                className="w-full py-3 rounded-xl text-white text-[11px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                style={{ backgroundColor: "#25D366" }}
-              >
-                WhatsApp
-              </button>
-              <button
-                onClick={() => {
-                  handleSaveLink();
-                  setActivModal(null);
-                }}
-                className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-              >
-                <Share2 size={14} /> Copy Link
-              </button>
-            </div>
-          </div>
-        </div>
-      )} */}
+      <button
+        onClick={() => { handleSavePDF(); setActivModal(null); }}
+        className="w-full flex items-center gap-4 px-5 py-4 text-[14px] text-slate-800 hover:bg-slate-50 border-b border-slate-200"
+      >
+        <ImFilePdf size={20} className="text-slate-700" />
+        <span>Save PDF</span>
+      </button>
 
-      {activModal === "share" && (
-        <div className="absolute inset-0 z-[80] flex items-start justify-center pt-[12vh]" style={{ background: "rgba(0,0,0,0.45)" }} onClick={() => setActivModal(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "8px", width: "480px", maxWidth: "96vw", boxShadow: "0 5px 20px rgba(0,0,0,0.4)", border: "1px solid rgba(0,0,0,0.18)", fontFamily: "'UbuntuM', sans-serif", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 14px", borderBottom: "1px solid #e5e5e5" }}>
-              <span style={{ fontSize: "14px", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "#111" }}>Share</span>
-              <button onClick={() => setActivModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "#000", opacity: 0.45, lineHeight: 1 }}>✕</button>
-            </div>
-            <div style={{ padding: "30px 24px 24px", background: "#f5f7fa", display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
-              {[
-                { label: "Facebook", color: "#3b5998", service: "facebook" },
-                { label: "Twitter",  color: "#55acee", service: "twitter" },
-                { label: "Google+",  color: "#dd4b39", service: "google" },
-              ].map(({ label, color, service }) => (
-                <button key={service} onClick={() => handleShareSocial(service)}
-                  style={{ background: color, color: "#fff", border: "none", borderRadius: "10px", width: "110px", height: "80px", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "'UbuntuM', sans-serif" }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 20px 14px", background: "#f5f7fa", borderTop: "1px solid #e5e5e5" }}>
-              <button style={modalCloseBtn} onClick={() => setActivModal(null)}>CLOSE</button>
-            </div>
-          </div>
-        </div>
-      )}
- 
+      <button
+        onClick={() => { handleSaveForLater(); setActivModal(null); }}
+        className="w-full flex items-center gap-4 px-5 py-4 text-[14px] text-slate-800 hover:bg-slate-50"
+      >
+        <Bookmark size={20} className="text-slate-700" />
+        <span>Save For Later</span>
+      </button>
+    </div>
+  </div>
+)}
 
-      {/* {activModal === "mail" && (
-        <div className="absolute inset-0 z-[80] flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setActivModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 w-[380px]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-[13px] font-black tracking-[0.15em] uppercase text-slate-800">Email Design</h3>
-              <button onClick={() => setActivModal(null)} className="w-7 h-7 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50">
-                <X size={14} />
-              </button>
-            </div>
-            {mailSent ? (
-              <div className="text-center py-6 text-emerald-600 font-bold text-sm">✓ Email sent successfully!</div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <input
-                  type="text"
-                  placeholder="Your Full Name"
-                  value={mailForm.name}
-                  onChange={(e) => setMailForm((p) => ({ ...p, name: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-amber-400 transition-colors"
-                />
-                <input
-                  type="email"
-                  placeholder="Recipient's Email Address"
-                  value={mailForm.to}
-                  onChange={(e) => setMailForm((p) => ({ ...p, to: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-amber-400 transition-colors"
-                />
-                <input
-                  type="text"
-                  placeholder="Subject"
-                  value={mailForm.subject}
-                  onChange={(e) => setMailForm((p) => ({ ...p, subject: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-amber-400 transition-colors"
-                />
-                <textarea
-                  placeholder="Write your message here..."
-                  rows={3}
-                  value={mailForm.message}
-                  onChange={(e) => setMailForm((p) => ({ ...p, message: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-amber-400 transition-colors resize-none"
-                />
-                <button
-                  onClick={handleMailSend}
-                  disabled={mailSending}
-                  className="w-full py-3 rounded-xl bg-slate-900 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {mailSending ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
-                  {mailSending ? "Sending..." : "Send Email"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )} */}
+
+
+      
+       {activModal === "share" && (
+  <div className="fixed inset-0 z-[80]" onClick={() => setActivModal(null)}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="fixed right-[70px] top-1/2 -translate-y-1/2 w-[260px] rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
+      style={{ fontFamily: "'UbuntuM', sans-serif" }}
+    >
+      {[
+        { label: "Facebook", service: "facebook" },
+        { label: "Twitter", service: "twitter" },
+        { label: "Google+", service: "google" },
+      ].map(({ label, service }, i, arr) => (
+        <button
+          key={service}
+          type="button"
+          onClick={() => {
+            handleShareSocial(service);
+            setActivModal(null);
+          }}
+          className={`w-full flex items-center gap-3 px-5 py-4 text-[13px] font-semibold text-slate-800 hover:bg-slate-50 ${
+            i !== arr.length - 1 ? "border-b border-slate-200" : ""
+          }`}
+        >
+          <img
+  src="/app/visualizer/images/share_icon.png"
+  alt=""
+  className="w-5 h-5 opacity-95"
+/>
+<span>{label}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+)}
+
+
+      
       {activModal === "mail" && (
         <div className="absolute inset-0 z-[80] flex items-start justify-center pt-[12vh]" style={{ background: "rgba(0,0,0,0.45)" }} onClick={() => setActivModal(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "8px", width: "500px", maxWidth: "96vw", boxShadow: "0 5px 20px rgba(0,0,0,0.4)", border: "1px solid rgba(0,0,0,0.18)", fontFamily: "'UbuntuM', sans-serif", overflow: "hidden" }}>
