@@ -109,6 +109,20 @@ function syncPreferenceStorage(filters: TileFilterSelections): void {
   } catch {}
 }
 
+function pruneSelectionsByAvailable(
+  filters: TileFilterSelections,
+  available: TileFilterOptions
+): TileFilterSelections {
+  const sanitized = sanitizeFilterSelections(filters);
+  return {
+    catNames: sanitized.catNames.filter((v) => available.categories.includes(v)),
+    appNames: sanitized.appNames.filter((v) => available.applications.includes(v)),
+    finishNames: sanitized.finishNames.filter((v) => available.finishes.includes(v)),
+    sizeNames: sanitized.sizeNames.filter((v) => available.sizes.includes(v)),
+    colorNames: pruneBaseColorSelection(sanitized.colorNames, available.colors),
+  };
+}
+
 function mapTilesToProducts(rows: TileListItem[]): Product[] {
   const base = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
   const assetBase = base.endsWith("/") ? base : `${base}/`;
@@ -140,6 +154,7 @@ export default function LegacySidebar3D({
   const [open, setOpen] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingAvailableOptions, setLoadingAvailableOptions] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [favourites, setFavourites] = useState<(string | number)[]>([]);
   const [showFavourites, setShowFavourites] = useState(false);
@@ -147,9 +162,9 @@ export default function LegacySidebar3D({
   const [pendingFavId, setPendingFavId] = useState<string | number | null>(null);
   const [currentSpace, setCurrentSpace] = useState("");
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
-  const [filterOptions, setFilterOptions] = useState<TileFilterOptions>(EMPTY_OPTIONS);
+  const [allFilterOptions, setAllFilterOptions] = useState<TileFilterOptions>(EMPTY_OPTIONS);
+  const [availableFilterOptions, setAvailableFilterOptions] = useState<TileFilterOptions>(EMPTY_OPTIONS);
   const [tempFilters, setTempFilters] = useState<TileFilterSelections>(EMPTY_FILTERS);
-  const [debouncedTempFilters, setDebouncedTempFilters] = useState(tempFilters);
   const [searchTerm, setSearchTerm] = useState("");
   const [rotation, setRotation] = useState("0");
   const [selectedTileId, setSelectedTileId] = useState<string | number | null>(null);
@@ -159,17 +174,22 @@ export default function LegacySidebar3D({
   const lastAvailableQueryKey = useRef("");
   const availableOptionsAbortRef = useRef<AbortController | null>(null);
 
-  const uiColorOptions = useMemo(() => getUiColorOptions(filterOptions.colors), [filterOptions.colors]);
+  const uiColorOptions = useMemo(() => getUiColorOptions(allFilterOptions.colors), [allFilterOptions.colors]);
+  const uiAvailableColorOptions = useMemo(
+    () => getUiColorOptions(availableFilterOptions.colors),
+    [availableFilterOptions.colors]
+  );
   const uiApplicationOptions = useMemo(() => {
-    return filterOptions.applications.filter(
+    return allFilterOptions.applications.filter(
       (a) => a.trim().toLowerCase() !== "bathroom floor"
     );
-  }, [filterOptions.applications]);
+  }, [allFilterOptions.applications]);
+  const uiAvailableApplicationOptions = useMemo(() => {
+    return availableFilterOptions.applications.filter(
+      (a) => a.trim().toLowerCase() !== "bathroom floor"
+    );
+  }, [availableFilterOptions.applications]);
 
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedTempFilters(tempFilters), 300);
-    return () => clearTimeout(t);
-  }, [tempFilters]);
   useEffect(() => {
   const loadSelected = () => {
     try {
@@ -361,7 +381,7 @@ export default function LegacySidebar3D({
       }
       const request = {
         ...baseRequest,
-        colorNames: expandSelectedColorsForApi(sanitized.colorNames, filterOptions.colors),
+        colorNames: expandSelectedColorsForApi(sanitized.colorNames, allFilterOptions.colors),
       };
       setLoading(true);
       try {
@@ -369,13 +389,7 @@ export default function LegacySidebar3D({
           fetchFilterTileList(request),
           fetchFilterAvailableOptions(request),
         ]);
-        const pruned: TileFilterSelections = {
-          catNames: sanitized.catNames.filter((v) => available.categories.includes(v)),
-          appNames: sanitized.appNames.filter((v) => available.applications.includes(v)),
-          finishNames: sanitized.finishNames.filter((v) => available.finishes.includes(v)),
-          sizeNames: sanitized.sizeNames.filter((v) => available.sizes.includes(v)),
-          colorNames: pruneBaseColorSelection(sanitized.colorNames, available.colors),
-        };
+        const pruned = pruneSelectionsByAvailable(sanitized, available);
         let finalRows = rows;
         let finalOptions = available;
         let finalFilters = sanitized;
@@ -396,20 +410,20 @@ export default function LegacySidebar3D({
           finalKey = buildFilterRequestKey({ spaceName: currentSpace, ...pruned });
         }
         setProducts(mapTilesToProducts(finalRows));
-        setFilterOptions(finalOptions);
+        setAvailableFilterOptions(finalOptions);
         setTempFilters(finalFilters);
         syncPreferenceStorage(finalFilters);
         lastAppliedQueryKey.current = finalKey;
       } catch (error) {
         console.error("Filter apply error:", error);
         setProducts([]);
-        setFilterOptions(EMPTY_OPTIONS);
+        setAvailableFilterOptions(EMPTY_OPTIONS);
       } finally {
         setLoading(false);
         if (options.closePanel) setShowFilters(false);
       }
     },
-    [currentSpace, filterOptions.colors]
+    [allFilterOptions.colors, currentSpace]
   );
 
   const resetFilters = useCallback(() => {
@@ -439,16 +453,20 @@ export default function LegacySidebar3D({
           fetchFilterAvailableOptions(req),
         ]);
         if (!isMounted) return;
-        setFilterOptions(available);
+        const prunedFilters = pruneSelectionsByAvailable(initialFilters, available);
+        setAllFilterOptions(options);
+        setAvailableFilterOptions(available);
         setProducts(mapTilesToProducts(rows));
-        setTempFilters(initialFilters);
-        syncPreferenceStorage(initialFilters);
-        lastAppliedQueryKey.current = buildFilterRequestKey(baseReq);
+        setTempFilters(prunedFilters);
+        syncPreferenceStorage(prunedFilters);
+        lastAppliedQueryKey.current = buildFilterRequestKey({ spaceName: currentSpace, ...prunedFilters });
+        lastAvailableQueryKey.current = "";
       })
       .catch((error) => {
         if (!isMounted) return;
         console.error("Initial filter bootstrap error:", error);
-        setFilterOptions(EMPTY_OPTIONS);
+        setAllFilterOptions(EMPTY_OPTIONS);
+        setAvailableFilterOptions(EMPTY_OPTIONS);
         setProducts([]);
       })
       .finally(() => {
@@ -459,31 +477,42 @@ export default function LegacySidebar3D({
 
   useEffect(() => {
     if (!showFilters || !currentSpace) return;
-    const sanitized = sanitizeFilterSelections(debouncedTempFilters);
+    const sanitized = sanitizeFilterSelections(tempFilters);
     const baseReq = { spaceName: currentSpace, ...sanitized };
     const key = buildFilterRequestKey(baseReq);
     const request = {
       ...baseReq,
-      colorNames: expandSelectedColorsForApi(sanitized.colorNames, filterOptions.colors),
+      colorNames: expandSelectedColorsForApi(sanitized.colorNames, allFilterOptions.colors),
     };
     if (key === lastAvailableQueryKey.current) return;
     availableOptionsAbortRef.current?.abort();
     const controller = new AbortController();
     availableOptionsAbortRef.current = controller;
+    setLoadingAvailableOptions(true);
     fetchFilterAvailableOptions(request, controller.signal)
       .then((available) => {
-        setFilterOptions(available);
+        setAvailableFilterOptions(available);
         setTempFilters((prev) => {
           const next = sanitizeFilterSelections(prev);
-          return { ...next, colorNames: pruneBaseColorSelection(next.colorNames, available.colors) };
+          const pruned = pruneSelectionsByAvailable(next, available);
+          syncPreferenceStorage(pruned);
+          return pruned;
         });
         lastAvailableQueryKey.current = key;
       })
       .catch((error) => {
         if ((error as Error)?.name !== "AbortError") console.error("FilterAvailableOptions error:", error);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoadingAvailableOptions(false);
+        }
       });
-    return () => controller.abort();
-  }, [debouncedTempFilters, currentSpace, showFilters, filterOptions.colors]);
+    return () => {
+      controller.abort();
+      setLoadingAvailableOptions(false);
+    };
+  }, [allFilterOptions.colors, currentSpace, showFilters, tempFilters]);
 
   const handleApplyFilters = useCallback(() => {
     fetchTilesAndOptions(tempFilters, { closePanel: true });
@@ -645,29 +674,37 @@ export default function LegacySidebar3D({
             <div className="modal-scroll">
               <FilterBlock
                 title="Size"
-                options={filterOptions.sizes}
+                options={allFilterOptions.sizes}
+                enabledOptions={availableFilterOptions.sizes}
                 active={tempFilters.sizeNames}
+                disabled={loadingAvailableOptions}
                 onToggle={(v) => updateTempFilter("sizeNames", v)}
                 onSetActive={(next) => setTempFilters((prev) => ({ ...prev, sizeNames: next }))}
               />
               <FilterBlock
                 title="Finish"
-                options={filterOptions.finishes}
+                options={allFilterOptions.finishes}
+                enabledOptions={availableFilterOptions.finishes}
                 active={tempFilters.finishNames}
+                disabled={loadingAvailableOptions}
                 onToggle={(v) => updateTempFilter("finishNames", v)}
                 onSetActive={(next) => setTempFilters((prev) => ({ ...prev, finishNames: next }))}
               />
               <FilterBlock
                 title="Category"
-                options={filterOptions.categories}
+                options={allFilterOptions.categories}
+                enabledOptions={availableFilterOptions.categories}
                 active={tempFilters.catNames}
+                disabled={loadingAvailableOptions}
                 onToggle={(v) => updateTempFilter("catNames", v)}
                 onSetActive={(next) => setTempFilters((prev) => ({ ...prev, catNames: next }))}
               />
               <FilterBlock
                 title="Application"
                 options={uiApplicationOptions}
+                enabledOptions={uiAvailableApplicationOptions}
                 active={tempFilters.appNames.filter((a) => a.trim().toLowerCase() !== "bathroom floor")}
+                disabled={loadingAvailableOptions}
                 onToggle={(v) => {
                   if (v.trim().toLowerCase() === "bathroom floor") return;
                   updateTempFilter("appNames", v);
@@ -682,8 +719,10 @@ export default function LegacySidebar3D({
               <FilterBlock
                 title="Color"
                 options={uiColorOptions}
+                enabledOptions={uiAvailableColorOptions}
                 active={tempFilters.colorNames}
                 single
+                disabled={loadingAvailableOptions}
                 onToggle={(v) => updateTempFilter("colorNames", v)}
                 onSetActive={(next) =>
                   setTempFilters((prev) => ({ ...prev, colorNames: next.slice(0, 1) }))
@@ -710,28 +749,40 @@ export default function LegacySidebar3D({
 function FilterBlock({
   title,
   options,
+  enabledOptions,
   active,
+  disabled = false,
   onToggle,
   onSetActive,
   single = false,
 }: {
   title: string;
   options: string[];
+  enabledOptions?: string[];
   active: string[];
+  disabled?: boolean;
   onToggle: (v: string) => void;
   onSetActive?: (next: string[]) => void;
   single?: boolean;
 }) {
+  const enabledSet = new Set(enabledOptions ?? options);
+  const selectableOptions = options.filter((opt) => enabledSet.has(opt));
+
   const handleAll = () => {
     if (!onSetActive) return;
     if (single) return onSetActive([]);
-    onSetActive(options.slice());
+    if (disabled) return;
+    onSetActive(selectableOptions);
   };
-  const handleNone = () => { onSetActive?.([]); };
+  const handleNone = () => {
+    if (disabled) return;
+    onSetActive?.([]);
+  };
   const handleInvert = () => {
     if (!onSetActive) return;
     if (single) return onSetActive([]);
-    onSetActive(options.filter((opt) => !active.includes(opt)));
+    if (disabled) return;
+    onSetActive(selectableOptions.filter((opt) => !active.includes(opt)));
   };
 
   return (
@@ -744,16 +795,23 @@ function FilterBlock({
       </div>
       <div className="filter-divider" />
       <div className="chip-row">
-        {options.map((opt) => (
+        {options.map((opt) => {
+          const chipDisabled = disabled || !enabledSet.has(opt);
+          return (
           <button
             type="button"
             key={opt}
-            className={`fchip ${active.includes(opt) ? "on" : ""}`}
-            onClick={() => onToggle(opt)}
+            className={`fchip ${active.includes(opt) ? "on" : ""} ${chipDisabled ? "disabled" : ""}`}
+            disabled={chipDisabled}
+            onClick={() => {
+              if (chipDisabled) return;
+              onToggle(opt);
+            }}
           >
             {opt}
           </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1292,6 +1350,17 @@ const css = `
   }
   .fchip:hover { border-color:#9aa0ae !important; background:#f4f5f8 !important; }
   .fchip.on { background:#1a2035 !important; color:#fff !important; border-color:#1a2035 !important; }
+  .fchip.disabled {
+    color:#94a3b8 !important;
+    border-color:#e2e8f0 !important;
+    background:#f8fafc !important;
+    cursor:not-allowed;
+    opacity:0.6;
+  }
+  .fchip.disabled:hover {
+    border-color:#e2e8f0 !important;
+    background:#f8fafc !important;
+  }
 
   .modal-foot {
     display:flex;

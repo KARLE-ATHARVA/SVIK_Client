@@ -349,6 +349,15 @@
         }).join("");
     }
 
+    function buildBulkActionsHtml(panel, filterId) {
+        return "" +
+            "<div class='filter-bulk-actions' style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;'>" +
+                "<button type='button' class='filter-bulk-btn' data-key='" + panel + "' data-filter-id='" + filterId + "' data-action='all' style='background:#fff;border:1px solid #cbd5e1;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;color:#334155;'>All</button>" +
+                "<button type='button' class='filter-bulk-btn' data-key='" + panel + "' data-filter-id='" + filterId + "' data-action='none' style='background:#fff;border:1px solid #cbd5e1;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;color:#334155;'>None</button>" +
+                "<button type='button' class='filter-bulk-btn' data-key='" + panel + "' data-filter-id='" + filterId + "' data-action='invert' style='background:#fff;border:1px solid #cbd5e1;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;color:#334155;'>Invert</button>" +
+            "</div>";
+    }
+
     function replaceOptionsInFilterGroup(panel, filterId, values) {
         if (!global.jQuery) return;
         var $ = global.jQuery;
@@ -358,7 +367,7 @@
         var $group = $modal.find('[data-filter-id="' + filterId + '"]').first().closest(".form-group");
         if (!$group.length || !(values instanceof Array) || !values.length) return;
 
-        var html = "<hr/>";
+        var html = buildBulkActionsHtml(panel, filterId) + "<hr/>";
 
         values.forEach(function(v) {
             var val = esc(v);
@@ -381,7 +390,7 @@
         var $targetInput = $modal.find('[data-filter-id="' + filterId + '"]').first();
         var $group = $targetInput.length ? $targetInput.closest(".form-group") : $();
 
-        var optionHtml = "<hr/>";
+        var optionHtml = buildBulkActionsHtml(panel, filterId) + "<hr/>";
 
         values.forEach(function(v) {
             var val = esc(v);

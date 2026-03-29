@@ -10,9 +10,112 @@ function refreshFilterVisualState(key) {
 
     $('input[data-for="filter"][data-filter-type="option"]', scope)
         .each(function () {
+            var $chip = $(this).closest("span");
+            var isDisabled = !!this.disabled;
+            var isApplied = $chip.attr("data-applied") === "1";
+
+            $chip
+                .toggleClass("is-checked", this.checked)
+                .toggleClass("is-disabled", isDisabled)
+                .toggleClass("is-applied", isApplied)
+                .css({
+                    opacity: isDisabled ? 0.45 : 1,
+                    cursor: isDisabled ? "not-allowed" : "pointer",
+                    background: !this.checked && isApplied ? "#fef3c7" : "",
+                    borderColor: !this.checked && isApplied ? "#f59e0b" : "",
+                    color: !this.checked && isApplied ? "#92400e" : ""
+                });
+        });
+}
+
+function resetFilterOptionAvailability(key) {
+    var scope = $("#filter-section-" + key);
+    if (!scope.length) return;
+
+    $('input[data-for="filter"][data-filter-type="option"]', scope)
+        .each(function () {
+            this.disabled = false;
             $(this)
                 .closest("span")
-                .toggleClass("is-checked", this.checked);
+                .removeClass("is-disabled")
+                .attr("title", "");
+        });
+}
+
+function markCurrentFiltersAsApplied(key) {
+    var scope = $("#filter-section-" + key);
+    if (!scope.length) return;
+
+    $('input[data-for="filter"][data-filter-type="option"]', scope)
+        .each(function () {
+            $(this)
+                .closest("span")
+                .attr("data-applied", this.checked ? "1" : "0");
+        });
+}
+
+function clearAppliedFilterState(key) {
+    var scope = $("#filter-section-" + key);
+    if (!scope.length) return;
+
+    $('input[data-for="filter"][data-filter-type="option"]', scope)
+        .each(function () {
+            $(this).closest("span").attr("data-applied", "0");
+        });
+}
+
+function startFreshEditFromOption(section, currentInput) {
+    var $section = $(section);
+    if (!$section.length || !currentInput) return;
+
+    $('input[data-for="filter"][data-filter-type="option"]', $section)
+        .each(function () {
+            var filterId = String($(this).attr("data-filter-id") || "");
+            if (this === currentInput) return;
+            if (filterId === "34") return;
+            this.checked = false;
+        });
+}
+
+function applyBulkFilterAction(key, filterId, action) {
+    var scope = $("#filter-section-" + key);
+    if (!scope.length) return;
+
+    var $inputs = $('input[data-for="filter"][data-filter-type="option"][data-filter-id="' + filterId + '"]', scope)
+        .filter(function () {
+            return $(this).closest(".form-group").css("display") !== "none";
+        });
+
+    if (!$inputs.length) return;
+
+    var $enabled = $inputs.filter(function () { return !this.disabled; });
+
+    clearAppliedFilterState(key);
+    scope.attr("data-fresh-edit", "0");
+
+    if (action === "all") {
+        $enabled.prop("checked", true);
+    } else if (action === "none") {
+        $inputs.prop("checked", false);
+    } else if (action === "invert") {
+        $enabled.each(function () {
+            this.checked = !this.checked;
+        });
+    }
+
+    refreshFilterVisualState(key);
+    refreshAvailableFilterOptions(key);
+}
+
+function prepareFilterSelectionsForNewEdit(key) {
+    var scope = $("#filter-section-" + key);
+    if (!scope.length) return;
+
+    $('input[data-for="filter"][data-filter-type="option"]', scope)
+        .each(function () {
+            var filterId = String($(this).attr("data-filter-id") || "");
+            if (filterId === "34") return;
+            this.checked = false;
         });
 }
 
@@ -110,6 +213,76 @@ function matchesAnyCheckedValue(itemValues, checkedValues) {
     });
 }
 
+function normalizeFilterValue(raw) {
+    return String(raw || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function doesItemMatchOptionGroups($item, optionGroups, excludedFilterId, candidateValue) {
+    var matches = true;
+
+    Object.keys(optionGroups).forEach(function (fid) {
+        if (!matches) return;
+
+        var group = optionGroups[fid];
+        var checked = group.checked;
+        var total = group.total;
+        var expected = [];
+
+        if (fid === excludedFilterId) {
+            if (!candidateValue) return;
+            expected = [candidateValue];
+        } else {
+            if (total <= 0 || checked.length === total || !checked.length) return;
+            expected = checked;
+        }
+
+        var itemValues = parseItemFilterValues($item.attr("data-filter-" + fid));
+        if (!matchesAnyCheckedValue(itemValues, expected)) {
+            matches = false;
+        }
+    });
+
+    return matches;
+}
+
+function refreshAvailableFilterOptions(key) {
+    var scope = $("#filter-section-" + key);
+    if (!scope.length) return;
+
+    var optionGroups = collectVisibleOptionGroups(key);
+    var items = $(".tile-item-" + key);
+
+    $('input[data-for="filter"][data-filter-type="option"]', scope)
+        .each(function () {
+            var $input = $(this);
+            var $group = $input.closest(".form-group");
+            if ($group.css("display") === "none") return;
+
+            var fid = String($input.attr("data-filter-id") || "");
+            var value = normalizeFilterValue($input.val());
+            if (!fid || !value) return;
+
+            var available = false;
+
+            items.each(function () {
+                if (doesItemMatchOptionGroups($(this), optionGroups, fid, value)) {
+                    available = true;
+                    return false;
+                }
+            });
+
+            var shouldDisable = !available && !this.checked;
+            this.disabled = shouldDisable;
+
+            $input
+                .closest("span")
+                .toggleClass("is-disabled", shouldDisable)
+                .attr("title", shouldDisable ? "No products available for this combination" : "");
+        });
+
+    refreshFilterVisualState(key);
+}
+
 function updateVisualizerTileResultsState(key, message) {
     var $list = $("#tiles-list-" + key);
     if (!$list.length) return;
@@ -142,8 +315,6 @@ function updateVisualizerTileResultsState(key, message) {
 window.updateVisualizerTileResultsState = updateVisualizerTileResultsState;
 
 function applyFilter(key) {
-    ensureApplicationSelectionForKey(key, getPreferredApplicationForPanel(key));
-
     var scope = $("#filter-section-" + key);
     var optionGroups = collectVisibleOptionGroups(key);
     var items = $(".tile-item-" + key);
@@ -180,6 +351,7 @@ function applyFilter(key) {
 $("button.apply-filter").click(function () {
     var key = $(this).attr("data-key");
     applyFilter(key);
+    markCurrentFiltersAsApplied(key);
     refreshFilterVisualState(key);
     $("#filter-section-" + key).modal("hide");
 });
@@ -187,9 +359,16 @@ $("button.apply-filter").click(function () {
 $(document).on("change", 'input[data-for="filter"][data-filter-type="option"]', function () {
     var section = $(this).closest('.modal[id^="filter-section-"]');
     if (!section.length) return;
+    var isFreshEdit = section.attr("data-fresh-edit") === "1";
+    var filterId = String($(this).attr("data-filter-id") || "");
+
+    if (isFreshEdit && this.checked && filterId !== "34") {
+        startFreshEditFromOption(section, this);
+        section.attr("data-fresh-edit", "0");
+    }
 
     // Application (id=34) must be single-select only.
-    if (String($(this).attr("data-filter-id") || "") === "34") {
+    if (filterId === "34") {
         if (this.checked) {
             $('input[data-for="filter"][data-filter-type="option"][data-filter-id="34"]', section)
                 .not(this)
@@ -204,7 +383,17 @@ $(document).on("change", 'input[data-for="filter"][data-filter-type="option"]', 
     }
 
     var key = section.attr("id").replace("filter-section-", "");
+    clearAppliedFilterState(key);
     refreshFilterVisualState(key);
+    refreshAvailableFilterOptions(key);
+});
+
+$(document).on("click", ".filter-bulk-btn", function () {
+    var key = String($(this).attr("data-key") || "");
+    var filterId = String($(this).attr("data-filter-id") || "");
+    var action = String($(this).attr("data-action") || "").toLowerCase();
+    if (!key || !filterId || !action) return;
+    applyBulkFilterAction(key, filterId, action);
 });
 
 function autoApplyApplicationForPanel(key) {
@@ -233,26 +422,6 @@ function ensureApplicationSelectionForKey(key, preferred) {
     var pref = String(preferred || "wall").trim().toLowerCase();
     var $apps = $('input[data-for="filter"][data-filter-type="option"][data-filter-id="34"]', scope);
     if (!$apps.length) return;
-
-    // Always keep Application single-select.
-    var $checked = $apps.filter(":checked");
-    if ($checked.length > 1) {
-        var $preferredChecked = $checked.filter(function () {
-            return String($(this).val() || "").trim().toLowerCase() === pref;
-        }).first();
-        var $keep = $preferredChecked.length ? $preferredChecked : $checked.first();
-        $apps.prop("checked", false);
-        $keep.prop("checked", true);
-        return;
-    }
-
-    // Never allow empty selection at startup.
-    if (!$checked.length) {
-        var $preferred = $apps.filter(function () {
-            return String($(this).val() || "").trim().toLowerCase() === pref;
-        }).first();
-        ($preferred.length ? $preferred : $apps.first()).prop("checked", true);
-    }
 }
 
 function getPreferredApplicationForPanel(key) {
@@ -309,10 +478,11 @@ $(document).on("shown.bs.modal", '.modal[id^="filter-section-"]', function() {
     normalizeFilterFields(key);
     cleanupFilterActionSeparators(key);
 
-    // ✅ APPLY STORED FILTER STATE
-    applyInitialStoredFilters(key);
     ensureApplicationSelectionForKey(key, getPreferredApplicationForPanel(key));
-
+    markCurrentFiltersAsApplied(key);
+    prepareFilterSelectionsForNewEdit(key);
+    resetFilterOptionAvailability(key);
+    $(this).attr("data-fresh-edit", "1");
     refreshFilterVisualState(key);
 });
 
@@ -347,6 +517,7 @@ $(function () {
             }
             ensureApplicationSelectionForKey(key, getPreferredApplicationForPanel(key));
             refreshFilterVisualState(key);
+            refreshAvailableFilterOptions(key);
             applyFilter(key);
         });
 
