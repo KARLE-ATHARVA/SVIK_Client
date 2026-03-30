@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tiles Visualizer</title>
+        <link rel="stylesheet" href="/app/visualizer/css/font-awesome.min.css">
+        <link rel="stylesheet" href="/app/visualizer/viewer.css">
+        <link rel="stylesheet" href="/app/visualizer/engine.css">
+        <link rel="stylesheet" href="/app/visualizer/css/jquery-ui.min.css">
+        <link rel="stylesheet" href="/app/visualizer/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/app/visualizer/css/style.css">
+        <link rel="stylesheet" href="/app/visualizer/css/component.css">
+        <script src="/app/visualizer/js/jquery-2.1.4.min.js"></script>
+        <link rel="stylesheet" href="/app/modules/ui/common-visualizer-ui.css">
+        <script src="/app/modules/ui/common-visualizer-popup.js"></script>
+    </head>
+    <body class="inner_page_bg cbp-spmenu-push" style="padding-right: 15px;">
+        <script src="/app/modules/ui/common-visualizer-ui.js"></script>
+        <script src="/app/modules/shared/modals.js"></script>
+        <script src="/app/modules/shared/mail-config.js"></script>
+        <script src="/app/modules/shared/page-chrome.js"></script>
+<script>document.write(getCommonPreloadersHtml());</script>
+        <div id="page">
+            <script>document.write(getCommonPageChromeHtml("/app/visualizer/images"));</script>
+            <div id="commonLayoutModalsContainer"></div>
+            <script>document.write(getCommonGroutModalsHtml());</script>
+<script>document.write(getCommonFilterModalsHtml());</script>
+<script src="/app/modules/shared/filter-logic.js"></script>
+<script>document.write(getCommonSaveShareModalsHtml());</script>
+        </div>
+<script>document.write(getCommonMailModalHtml(""));</script>
+<div id='cont_for_vis_cvs'>
+    <canvas id='vis_cvs' class="view"></canvas>
+    <a data-isdragging="no" data-left="1140" data-top="730" onclick="showLeftMenu(2);" class="brush_icon" href="#menuPanel2" aria-controls="2" role="tab" data-toggle="tab"><img src="/app/visualizer/images/brush.png"></img></a>
+</div>
+<section id="inverted-contain" style='display:none;'>
+    <div class="panzoom-parent">
+        <div class="canvas-wrap panzoom">
+            <div class='mask view' id='mask' style="height: 100%; width: 100%; position: absolute; top: 0px; left: 0px; display:none;">
+                <canvas id='line_cvs' class="view"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+<script>
+    // loading similar images
+    if (typeof avail_tiles !== "undefined") {
+        $.each(avail_tiles, function(index, tile) {
+            if (tile.similar_images.length) {
+                $.each(tile.similar_images, function(i, img) {
+                    var image = new Image();
+                    image.src = img;
+                });
+            }
+        });
+    }
+
+    var grout_y_img_path = "/app/visualizer/res/grout-y.png";
+    var grout_x_img_path = "/app/visualizer/res/grout-x.png";
+</script>
+<script id='script_0' src="/app/visualizer/js/iscroll.js"></script>
+<script id='script_1' src="/app/visualizer/js/modernizr.custom.js"></script>
+<script id='script_2' src="/app/visualizer/js/jquery-2.1.4.min.js"></script>
+<script id='script_3' src="/app/visualizer/js/respond.min.js"></script>
+<script id='script_4' src="/app/visualizer/js/jquery-ui.min.js"></script>
+<script id='script_5' src="/app/visualizer/js/jquery.validate.min.js"></script>
+<script id='script_6' src="/app/visualizer/js/easyResponsiveTabs.js"></script>
+<script id='script_7' src="/app/visualizer/js/jquery.slimscroll.min.js"></script>
+<script id='script_8' src="/app/visualizer/js/jQueryRotate.js"></script>
+<script id='script_9' src="/app/visualizer/js/jquery.prettySocial.min.js"></script>
+<script id='script_10' src="/app/visualizer/js/jquery.preloader.js"></script>
+<script id='script_11' src="/app/visualizer/js/popup.js"></script>
+<script id='script_12' src="/app/visualizer/js/fullscreen.js"></script>
+<script id='script_13' src="/app/visualizer/js/script.js"></script>
+<script id='script_14' src="/app/visualizer/three.min.js"></script>
+<script id='script_15' src="/app/visualizer/DDSLoader.js"></script>
+<script id='script_16' src="/app/visualizer/MTLLoader.js"></script>
+<script id='script_17' src="/app/visualizer/OBJMTLLoader.js"></script>
+<script id='script_18' src="/app/visualizer/engine.js"></script>
+<script id='script_19' src="/app/visualizer/engine.scene.js"></script>
+<script id='script_20' src="/app/visualizer/engine.tile.js"></script>
+<script id='script_21' src="/app/visualizer/engine.render.js"></script>
+<script id='script_22' src="/app/visualizer/engine.shape.js"></script>
+<script id='script_23' src="/app/visualizer/js/bootstrap.min.js"></script>
+<script id='script_24' src="/app/visualizer/js/masonry.pkgd.min.js"></script>
+<script id='script_25' src="/app/visualizer/js/jquery.slimscroll.min.js"></script>
+<script id='script_26' src="/app/visualizer/js/hideAddressbar.min.js"></script>
+<script id='script_27' src="/app/visualizer/js/classie.js"></script>
+<script src="/app/visualizer/js/qrcode-bundle.js?v=20260330c"></script>
+<script id='script_28' src="/app/visualizer/js/script-2.js?v=20260330d"></script>
+<script id='script_29' src="/app/visualizer/js/jquery.panzoom.js"></script>
+<script id='script_jspdf' src="/app/visualizer/js/jspdf.min.js"></script>
+<script id='script_html2canvas' src="/app/visualizer/js/html2canvas.js"></script>
+<script type="text/javascript">
+    (function() {
+        var $section = $('#inverted-contain');
+        $section.find('.panzoom').panzoom({
+            $zoomIn: $section.find(".zoom-in"),
+            $zoomOut: $section.find(".zoom-out"),
+            $zoomRange: $section.find(".zoom-range"),
+            $reset: $(".reset"),
+            startTransform: 'scale(1.1)',
+            increment: 0.1,
+            contain: 'invert',
+            minScale: 1
+        }).panzoom('zoom');
+    })();
+
+    var $panzoom = $('.panzoom').panzoom();
+    $(window).on('resize', function() {
+        $panzoom.panzoom('resetDimensions');
+    });
+
+    setScene(["\/app\/images\/room_background_38.png","#\/app\/images\/room_foreground_38.png","[{\"0\":1,\"1\":-96,\"2\":-28.199999999999999289457264239899814128875732421875,\"3\":0,\"4\":-85,\"5\":0,\"6\":0,\"7\":200,\"8\":200,\"9\":27,\"10\":27,\"11\":[[0,0],[1600,0],[1600,1280],[0,1280]],\"12\":4,\"13\":2,\"14\":0,\"15\":0,\"16\":1140,\"17\":730,\"177\":1,\"176\":\"Floor\"}]"], function() {
+        render(vis_cvs);
+
+        $('#preloader').hide();
+        $('#preloader2').hide();
+
+        setTimeout(function() {
+            $('.tile-type-label > img').each(function() {
+                if (this.dataset && this.dataset.src) {
+                    this.src = this.dataset.src;
+                    delete this.dataset.src;
+                }
+            });
+
+            if (window.location.hash.lastIndexOf("#design-data:") === 0) {
+                var design_data = JSON.parse(atob(window.location.hash.substring("#design-data:".length)));
+                console.log_(design_data);
+                loadDesign(design_data);
+            }
+        }, 1000);
+    });
+</script>
+<script src="/app/modules/ui/common-visualizer-interactions.js"></script>
+<script src="/app/modules/data/dynamic-tiles-api.js?v=20260330"></script>
+<script>
+$(function() {
+    var panelsLoaded = { "2": false };
+    var apiInitTriggered = false;
+
+    function tryInitApiTiles() {
+        if (apiInitTriggered || !panelsLoaded["2"]) {
+            return;
+        }
+        apiInitTriggered = true;
+
+        if (typeof window.initDynamicTilesFromApi === "function") {
+            window.initDynamicTilesFromApi({
+                roomId: 38
+            }).then(function(result) {
+                if (result) {
+                    console.log("[dynamic-tiles-api] 38.html loaded", result);
+                }
+            });
+        }
+    }
+
+    $("#roomsContainer").load("/app/modules/partials/room.html");
+
+    $("#menuPanel2").load("/app/modules/partials/menu-panel-2.html", function() {
+        if (typeof window.forceEnhanceVisualizerSidebar === "function") {
+            window.forceEnhanceVisualizerSidebar(2);
+        }
+        if (typeof window.setVisualizerTilesLoading === "function") {
+            window.setVisualizerTilesLoading(2);
+        }
+        $('.tile-type-label > img', this).each(function() {
+            if (this.dataset && this.dataset.src) {
+                this.src = this.dataset.src;
+                delete this.dataset.src;
+            }
+        });
+        if ($.fn.preloader) {
+            $("#tiles-list-2").preloader();
+        }
+        panelsLoaded["2"] = true;
+        tryInitApiTiles();
+    });
+
+    $("#productModalContainer").load("/app/modules/partials/product-modal.html");
+    $("#commonLayoutModalsContainer").load("/app/modules/partials/common-layout-modals.html");
+});
+</script>
+</body></html>
+
+
+
