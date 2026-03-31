@@ -1,5 +1,7 @@
 // src/lib/constants.ts
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 function normalizeBase(raw?: string | null) {
   const value = String(raw ?? "").trim();
   if (!value) return "";
@@ -36,7 +38,7 @@ const configuredAssetBase = normalizeBase(
 );
 
 export const ASSET_BASE =
-  isAssetProxyPath(configuredAssetBase)
+  !isDevelopment && isAssetProxyPath(configuredAssetBase)
     ? REMOTE_ASSET_BASE
     : configuredAssetBase || REMOTE_ASSET_BASE;
 

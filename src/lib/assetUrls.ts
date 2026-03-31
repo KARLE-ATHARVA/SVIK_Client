@@ -33,7 +33,7 @@ export function getAssetBase(): string {
 
   const remoteBase = getRemoteAssetBase();
 
-  if (isProxyBase(configuredBase)) {
+  if (process.env.NODE_ENV !== "development" && isProxyBase(configuredBase)) {
     return remoteBase || configuredBase;
   }
 

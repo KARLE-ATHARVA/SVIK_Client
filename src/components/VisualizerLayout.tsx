@@ -189,6 +189,7 @@ export default function VisualizerLayout() {
           : "";
       const assetBase = assetFromWindow || assetFromEnv;
       const sanitizedAssetBase =
+        process.env.NODE_ENV !== "development" &&
         assetBase.startsWith("/__asset_proxy__/")
           ? remoteAssetFromWindow || remoteAssetFromEnv || assetBase
           : assetBase;

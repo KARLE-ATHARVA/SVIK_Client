@@ -91,7 +91,8 @@ export default function StyleFilterOptions({
   const handleProceed = () => {
     onComplete();
     const assetBase = String(ASSET_BASE ?? "").trim();
-    const sanitizedAssetBase = assetBase.startsWith("/__asset_proxy__/")
+    const sanitizedAssetBase =
+      process.env.NODE_ENV !== "development" && assetBase.startsWith("/__asset_proxy__/")
       ? String(REMOTE_ASSET_BASE ?? "").trim() || assetBase
       : assetBase;
     if (sanitizedAssetBase) {
@@ -120,7 +121,8 @@ export default function StyleFilterOptions({
 
   const handleSkip = () => {
     const assetBase = String(ASSET_BASE ?? "").trim();
-    const sanitizedAssetBase = assetBase.startsWith("/__asset_proxy__/")
+    const sanitizedAssetBase =
+      process.env.NODE_ENV !== "development" && assetBase.startsWith("/__asset_proxy__/")
       ? String(REMOTE_ASSET_BASE ?? "").trim() || assetBase
       : assetBase;
     if (sanitizedAssetBase) {

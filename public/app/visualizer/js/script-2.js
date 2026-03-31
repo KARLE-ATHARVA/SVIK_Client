@@ -7,9 +7,14 @@ try {
     if (window.parent && window.parent !== window) {
         var parentAsset = window.parent.NEXT_PUBLIC_ASSET_BASE || window.parent.VISUALIZER_ASSET_BASE || "";
         var parentRemoteAsset = window.parent.NEXT_PUBLIC_REMOTE_ASSET_BASE || "";
+        var isLocalDevHost = false;
+        try {
+            var host = (window.location && window.location.hostname ? window.location.hostname : "").toLowerCase();
+            isLocalDevHost = host === "localhost" || host === "127.0.0.1";
+        } catch (e) {}
         if (typeof parentAsset === "string" && parentAsset.trim()) {
             var base = parentAsset.trim();
-            if (base.indexOf("/__asset_proxy__/") === 0 && typeof parentRemoteAsset === "string" && parentRemoteAsset.trim()) {
+            if (!isLocalDevHost && base.indexOf("/__asset_proxy__/") === 0 && typeof parentRemoteAsset === "string" && parentRemoteAsset.trim()) {
                 base = parentRemoteAsset.trim();
             }
             if (base.slice(-1) !== "/") base += "/";
@@ -1821,6 +1826,11 @@ $(function(){
     function getVisualizerAssetBase() {
         var base = "";
         var remoteBase = "";
+        var isLocalDevHost = false;
+        try {
+            var host = (window.location && window.location.hostname ? window.location.hostname : "").toLowerCase();
+            isLocalDevHost = host === "localhost" || host === "127.0.0.1";
+        } catch (e) {}
         if (typeof window.VISUALIZER_ASSET_BASE === "string" && window.VISUALIZER_ASSET_BASE.trim()) {
             base = window.VISUALIZER_ASSET_BASE.trim();
         } else {
@@ -1835,7 +1845,7 @@ $(function(){
         if (typeof window.NEXT_PUBLIC_REMOTE_ASSET_BASE === "string" && window.NEXT_PUBLIC_REMOTE_ASSET_BASE.trim()) {
             remoteBase = window.NEXT_PUBLIC_REMOTE_ASSET_BASE.trim();
         }
-        if (base.indexOf("/__asset_proxy__/") === 0 && remoteBase) {
+        if (!isLocalDevHost && base.indexOf("/__asset_proxy__/") === 0 && remoteBase) {
             base = remoteBase;
         }
         if (!base) base = (window.location.origin || "") + "/assets/";

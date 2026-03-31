@@ -88,6 +88,11 @@
         var fromStorage = "";
         var fromParent = "";
         var fromParentRemote = "";
+        var isLocalDevHost = false;
+        try {
+            var host = (global.location && global.location.hostname ? global.location.hostname : "").toLowerCase();
+            isLocalDevHost = host === "localhost" || host === "127.0.0.1";
+        } catch (e) {}
         try {
             fromGlobal = typeof global.VISUALIZER_ASSET_BASE === "string" ? global.VISUALIZER_ASSET_BASE : "";
         } catch (e) {}
@@ -108,7 +113,7 @@
         } catch (e) {}
         var base = String(fromGlobal || fromStorage || fromPublicEnv || fromParent || "").trim();
         var remoteBase = String(fromRemoteEnv || fromParentRemote || "").trim();
-        if (base.indexOf("/__asset_proxy__/") === 0 && remoteBase) {
+        if (!isLocalDevHost && base.indexOf("/__asset_proxy__/") === 0 && remoteBase) {
             base = remoteBase;
         }
         if (base.slice(-1) !== "/") base += "/";
