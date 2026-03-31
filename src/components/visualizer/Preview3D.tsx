@@ -84,6 +84,10 @@ const WALL_LABELS: Record<string, string> = {
   [SURFACE_NAMES.wallRight]: "Right Wall",
 };
 
+type PublicEnvWindow = Window & {
+  NEXT_PUBLIC_API_BASE?: string;
+};
+
 type Corner = "tl" | "tr" | "bl" | "br";
 interface HandleDragState {
   corner: Corner;
@@ -436,6 +440,20 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
   const [mailMounted, setMailMounted] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
 
+  const resolveMailEndpoint = () => {
+    const rawBase =
+      String(process.env.NEXT_PUBLIC_API_BASE ?? "").trim() ||
+      (typeof window !== "undefined"
+        ? String((window as PublicEnvWindow).NEXT_PUBLIC_API_BASE ?? "").trim()
+        : "");
+
+    if (!rawBase) {
+      return "/visualizermail";
+    }
+
+    const base = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
+    return `${base}/visualizermail`;
+  };
   const handleSaveImage = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;

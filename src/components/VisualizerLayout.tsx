@@ -179,9 +179,9 @@ export default function VisualizerLayout() {
       const assetFromEnv = String(process.env.NEXT_PUBLIC_ASSET_BASE ?? "").trim();
       const assetFromWindow =
         typeof window !== "undefined"
-          ? String((window as any).NEXT_PUBLIC_ASSET_BASE ?? "").trim()
+          ? String(Reflect.get(window, "NEXT_PUBLIC_ASSET_BASE") ?? "").trim()
           : "";
-      const assetBase = assetFromEnv || assetFromWindow;
+      const assetBase = assetFromWindow || assetFromEnv;
       if (assetBase) {
         localStorage.setItem(
           "visualizer_asset_base",

@@ -20,6 +20,7 @@ import {
   type ChatbotFollowup,
   type ChatbotResponse,
 } from "@/lib/chatbotApi";
+import { buildAssetUrl } from "@/lib/assetUrls";
 
 type ChatRole = "assistant" | "user";
 
@@ -52,11 +53,6 @@ const QUICK_PROMPTS = [
 
 const CHATBOT_WIDTH = "w-[min(94vw,380px)] sm:w-[380px]";
 
-function getAssetBase() {
-  const base = process.env.NEXT_PUBLIC_ASSET_BASE || "";
-  return base.endsWith("/") ? base : `${base}/`;
-}
-
 function buildProductHref(skuCode?: string) {
   if (!skuCode?.trim()) {
     return undefined;
@@ -70,8 +66,7 @@ function buildTileThumbnailFromSku(skuCode?: string) {
     return undefined;
   }
 
-  const assetBase = getAssetBase();
-  return `${assetBase}media/big/${encodeURIComponent(skuCode.trim())}.jpg`;
+  return buildAssetUrl(`media/big/${encodeURIComponent(skuCode.trim())}.jpg`);
 }
 
 function createSessionId() {
