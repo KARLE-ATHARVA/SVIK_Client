@@ -1,5 +1,19 @@
 (function(global) {
-    var DEFAULT_MAIL_ENDPOINT = "/api/visualizer/mail";
+    function buildDefaultMailEndpoint() {
+        var explicit = typeof global.NEXT_PUBLIC_VISUALIZER_MAIL_ENDPOINT === "string"
+            ? global.NEXT_PUBLIC_VISUALIZER_MAIL_ENDPOINT.trim()
+            : "";
+        if (explicit) return explicit;
+
+        var apiBase = typeof global.NEXT_PUBLIC_API_BASE === "string"
+            ? global.NEXT_PUBLIC_API_BASE.trim()
+            : "";
+        if (!apiBase) return "";
+
+        return apiBase.replace(/\/+$/, "") + "/visualizermail";
+    }
+
+    var DEFAULT_MAIL_ENDPOINT = buildDefaultMailEndpoint();
 
     function normalizeMailEndpoint(endpoint) {
         var value = typeof endpoint === "string" ? endpoint.trim() : "";
@@ -12,11 +26,7 @@
             return value;
         }
 
-        if (
-            value.indexOf("/visualizermail") !== -1 ||
-            value.indexOf("/app/admin/visualizer/mail") !== -1 ||
-            value.indexOf(DEFAULT_MAIL_ENDPOINT) !== -1
-        ) {
+        if (value.indexOf("/api/visualizer/mail") !== -1) {
             return DEFAULT_MAIL_ENDPOINT;
         }
 

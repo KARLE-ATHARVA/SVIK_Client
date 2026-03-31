@@ -96,3 +96,4 @@
             '</a>';
     };
 })(window);
+window.avail_tiles = window.avail_tiles || {};

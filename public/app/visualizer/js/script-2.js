@@ -6,8 +6,12 @@ var menuLeft = document.getElementById('cbp-spmenu-s1'),
 try {
     if (window.parent && window.parent !== window) {
         var parentAsset = window.parent.NEXT_PUBLIC_ASSET_BASE || window.parent.VISUALIZER_ASSET_BASE || "";
+        var parentRemoteAsset = window.parent.NEXT_PUBLIC_REMOTE_ASSET_BASE || "";
         if (typeof parentAsset === "string" && parentAsset.trim()) {
             var base = parentAsset.trim();
+            if (base.indexOf("/__asset_proxy__/") === 0 && typeof parentRemoteAsset === "string" && parentRemoteAsset.trim()) {
+                base = parentRemoteAsset.trim();
+            }
             if (base.slice(-1) !== "/") base += "/";
             window.VISUALIZER_ASSET_BASE = base;
             if (window.localStorage) {
@@ -887,19 +891,15 @@ $(function(){
         endpoint = endpoint.trim();
 
         if (!endpoint) {
-            return "/api/visualizer/mail";
+            return "";
         }
 
         if (/^https?:\/\//i.test(endpoint)) {
             return endpoint;
         }
 
-        if (
-            endpoint.indexOf("/visualizermail") !== -1 ||
-            endpoint.indexOf("/app/admin/visualizer/mail") !== -1 ||
-            endpoint.indexOf("/api/visualizer/mail") !== -1
-        ) {
-            return "/api/visualizer/mail";
+        if (endpoint.indexOf("/api/visualizer/mail") !== -1) {
+            return "";
         }
         return endpoint;
     }
@@ -1820,6 +1820,7 @@ $(function(){
 
     function getVisualizerAssetBase() {
         var base = "";
+        var remoteBase = "";
         if (typeof window.VISUALIZER_ASSET_BASE === "string" && window.VISUALIZER_ASSET_BASE.trim()) {
             base = window.VISUALIZER_ASSET_BASE.trim();
         } else {
@@ -1830,6 +1831,12 @@ $(function(){
         }
         if (!base && typeof window.NEXT_PUBLIC_ASSET_BASE === "string" && window.NEXT_PUBLIC_ASSET_BASE.trim()) {
             base = window.NEXT_PUBLIC_ASSET_BASE.trim();
+        }
+        if (typeof window.NEXT_PUBLIC_REMOTE_ASSET_BASE === "string" && window.NEXT_PUBLIC_REMOTE_ASSET_BASE.trim()) {
+            remoteBase = window.NEXT_PUBLIC_REMOTE_ASSET_BASE.trim();
+        }
+        if (base.indexOf("/__asset_proxy__/") === 0 && remoteBase) {
+            base = remoteBase;
         }
         if (!base) base = (window.location.origin || "") + "/assets/";
         return base.replace(/\/+$/, "") + "/";
@@ -1862,8 +1869,8 @@ $(function(){
         function asProxyUrl(rawUrl) {
             var u = String(rawUrl || "").trim();
             if (!u) return "";
-            if (/^https?:\/\//i.test(u)) {
-                return "/api/tile-image?url=" + encodeURIComponent(u);
+            if (u.indexOf("/__asset_proxy__/") === 0) {
+                return getVisualizerAssetBase() + u.replace(/^\/__asset_proxy__\//, "");
             }
             return u;
         }
@@ -1883,7 +1890,7 @@ $(function(){
             img = typeof tile.image === "string" ? tile.image : (tile.image && tile.image.src ? tile.image.src : "");
         }
         if (!img) return "";
-        if (/^data:/i.test(img) || img.indexOf("/api/tile-image?") === 0) return img;
+        if (/^data:/i.test(img)) return img;
         if (/^https?:\/\//i.test(img) || img.charAt(0) === "/") return asProxyUrl(img);
         return "/" + img.replace(/^\.?\//, "");
     }
@@ -1972,7 +1979,7 @@ $(function(){
     function getTileProductLink(tile) {
         var skuCode = readTileSku(tile);
         if (skuCode) {
-            return (window.location.origin || "") + "/product-details/" + encodeURIComponent(skuCode);
+            return (window.location.origin || "") + "/product-details?sku=" + encodeURIComponent(skuCode);
         }
         return readTileLink(tile);
     }
@@ -2179,7 +2186,9 @@ $(function(){
         }
 
         var providers = [
-            "/api/qr-code?size=220&data=" + encodeURIComponent(link)
+            "https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=" + encodeURIComponent(link),
+            "https://quickchart.io/qr?size=220&margin=0&text=" + encodeURIComponent(link),
+            "https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=" + encodeURIComponent(link)
         ];
 
         function tryProvider(index) {
@@ -2867,7 +2876,24 @@ function selectTile(tiles) {
 }
 
 function getDirectUserActivityUrl() {
-    var base = readApiBase();
+    var base = "";
+    if (typeof window.NEXT_PUBLIC_API_BASE === "string" && window.NEXT_PUBLIC_API_BASE.trim()) {
+        base = window.NEXT_PUBLIC_API_BASE.trim();
+    }
+    if (!base) {
+        try {
+            if (window.parent && window.parent !== window) {
+                var parentBase = window.parent.NEXT_PUBLIC_API_BASE || window.parent.VISUALIZER_API_BASE || "";
+                if (typeof parentBase === "string" && parentBase.trim()) base = parentBase.trim();
+            }
+        } catch (e) {}
+    }
+    if (!base && typeof window.VISUALIZER_API_BASE === "string" && window.VISUALIZER_API_BASE.trim()) {
+        base = window.VISUALIZER_API_BASE.trim();
+    }
+    if (!base && typeof window.API_BASE === "string" && window.API_BASE.trim()) {
+        base = window.API_BASE.trim();
+    }
     if (!base) return "";
     if (base.charAt(base.length - 1) !== "/") base += "/";
     return base + "AddUserActivity";

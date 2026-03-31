@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FiChevronRight, FiCheck } from "react-icons/fi";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ASSET_BASE } from "@/lib/constants";
+import { ASSET_BASE, REMOTE_ASSET_BASE } from "@/lib/constants";
 
 const applications = ["Floor", "Wall"];
 
@@ -91,8 +91,11 @@ export default function StyleFilterOptions({
   const handleProceed = () => {
     onComplete();
     const assetBase = String(ASSET_BASE ?? "").trim();
-    if (assetBase) {
-      localStorage.setItem("visualizer_asset_base", assetBase);
+    const sanitizedAssetBase = assetBase.startsWith("/__asset_proxy__/")
+      ? String(REMOTE_ASSET_BASE ?? "").trim() || assetBase
+      : assetBase;
+    if (sanitizedAssetBase) {
+      localStorage.setItem("visualizer_asset_base", sanitizedAssetBase);
     }
 
     if (spaceType) {
@@ -117,8 +120,11 @@ export default function StyleFilterOptions({
 
   const handleSkip = () => {
     const assetBase = String(ASSET_BASE ?? "").trim();
-    if (assetBase) {
-      localStorage.setItem("visualizer_asset_base", assetBase);
+    const sanitizedAssetBase = assetBase.startsWith("/__asset_proxy__/")
+      ? String(REMOTE_ASSET_BASE ?? "").trim() || assetBase
+      : assetBase;
+    if (sanitizedAssetBase) {
+      localStorage.setItem("visualizer_asset_base", sanitizedAssetBase);
     }
     if (spaceType) {
       localStorage.setItem("selected_space_type", spaceType.toLowerCase());

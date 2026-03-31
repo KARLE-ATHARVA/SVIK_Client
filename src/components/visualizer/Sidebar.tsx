@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import ProductCard from "./ProductCard";
 import AuthModal from "./AuthModal";
-import { ASSET_BASE } from "@/lib/constants";
+import { buildAssetUrl } from "@/lib/assetUrls";
 import { isLoggedIn, logout } from "@/lib/auth";
 import {
   addFavoriteAPI,
@@ -209,13 +209,10 @@ function FilterChip({
 }
 
 function mapTilesToProducts(rows: TileListItem[]): Product[] {
-  const assetBase = String(ASSET_BASE ?? "").trim();
-  const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
-
   return rows.map((item) => ({
     id: item.tile_id,
     name: String(item.sku_name ?? ""),
-    image: `${normalizedAssetBase}media/thumb/${String(item.sku_code ?? "")}.jpg`,
+    image: buildAssetUrl(`media/thumb/${String(item.sku_code ?? "")}.jpg`),
     size: String(item.size_name ?? ""),
   }));
 }

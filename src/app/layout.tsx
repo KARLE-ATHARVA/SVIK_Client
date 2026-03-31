@@ -2,7 +2,13 @@
 // Server Component – DO NOT add "use client"
 
 import "./globals.css";
-import { ASSET_BASE, API_BASE, REMOTE_ASSET_BASE } from "@/lib/constants";
+import {
+  ASSET_BASE,
+  API_BASE,
+  FLASK_API_BASE,
+  REMOTE_ASSET_BASE,
+  VISUALIZER_MAIL_ENDPOINT,
+} from "@/lib/constants";
 
 export default function RootLayout({
   children,
@@ -13,6 +19,8 @@ export default function RootLayout({
     NEXT_PUBLIC_API_BASE: API_BASE || "",
     NEXT_PUBLIC_ASSET_BASE: ASSET_BASE || REMOTE_ASSET_BASE || "",
     NEXT_PUBLIC_REMOTE_ASSET_BASE: REMOTE_ASSET_BASE || "",
+    NEXT_PUBLIC_FLASK_API_BASE: FLASK_API_BASE || "",
+    NEXT_PUBLIC_VISUALIZER_MAIL_ENDPOINT: VISUALIZER_MAIL_ENDPOINT || "",
   };
 
   return (
@@ -32,6 +40,12 @@ export default function RootLayout({
                 ";",
               "window.NEXT_PUBLIC_REMOTE_ASSET_BASE = " +
                 JSON.stringify(publicEnv.NEXT_PUBLIC_REMOTE_ASSET_BASE) +
+                ";",
+              "window.NEXT_PUBLIC_FLASK_API_BASE = " +
+                JSON.stringify(publicEnv.NEXT_PUBLIC_FLASK_API_BASE) +
+                ";",
+              "window.NEXT_PUBLIC_VISUALIZER_MAIL_ENDPOINT = " +
+                JSON.stringify(publicEnv.NEXT_PUBLIC_VISUALIZER_MAIL_ENDPOINT) +
                 ";",
             ].join("\n"),
           }}

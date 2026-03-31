@@ -58,7 +58,7 @@ function buildProductHref(skuCode?: string) {
     return undefined;
   }
 
-  return `/product-details/${encodeURIComponent(skuCode.trim())}`;
+  return `/product-details?sku=${encodeURIComponent(skuCode.trim())}`;
 }
 
 function buildTileThumbnailFromSku(skuCode?: string) {

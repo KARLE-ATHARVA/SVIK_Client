@@ -117,7 +117,7 @@ export default function ProductCatalogPage() {
                       {groupItems.map((product) => (
                         <Link
                           key={product.id}
-                          href={`/product-details/${encodeURIComponent(product.skuCode)}`}
+                          href={`/product-details?sku=${encodeURIComponent(product.skuCode)}`}
                           className="group"
                         >
                           <div className="transition hover:-translate-y-1">

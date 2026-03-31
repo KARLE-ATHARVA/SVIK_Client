@@ -84,8 +84,10 @@
     function getAssetBase() {
         var fromGlobal = "";
         var fromPublicEnv = "";
+        var fromRemoteEnv = "";
         var fromStorage = "";
         var fromParent = "";
+        var fromParentRemote = "";
         try {
             fromGlobal = typeof global.VISUALIZER_ASSET_BASE === "string" ? global.VISUALIZER_ASSET_BASE : "";
         } catch (e) {}
@@ -93,12 +95,22 @@
             fromPublicEnv = typeof global.NEXT_PUBLIC_ASSET_BASE === "string" ? global.NEXT_PUBLIC_ASSET_BASE : "";
         } catch (e) {}
         try {
+            fromRemoteEnv = typeof global.NEXT_PUBLIC_REMOTE_ASSET_BASE === "string" ? global.NEXT_PUBLIC_REMOTE_ASSET_BASE : "";
+        } catch (e) {}
+        try {
             fromParent = global.parent && (global.parent.NEXT_PUBLIC_ASSET_BASE || global.parent.VISUALIZER_ASSET_BASE) || "";
+        } catch (e) {}
+        try {
+            fromParentRemote = global.parent && global.parent.NEXT_PUBLIC_REMOTE_ASSET_BASE || "";
         } catch (e) {}
         try {
             fromStorage = global.localStorage && localStorage.getItem("visualizer_asset_base");
         } catch (e) {}
         var base = String(fromGlobal || fromStorage || fromPublicEnv || fromParent || "").trim();
+        var remoteBase = String(fromRemoteEnv || fromParentRemote || "").trim();
+        if (base.indexOf("/__asset_proxy__/") === 0 && remoteBase) {
+            base = remoteBase;
+        }
         if (base.slice(-1) !== "/") base += "/";
         return base;
     }
@@ -180,7 +192,10 @@
         var r = toAbsUrl(remoteUrl);
         if (!r) return "/app/images/saved_placeholder.svg";
         if (r.indexOf("/app/") === 0 || r.indexOf("/images/") === 0) return r;
-        return "/api/tile-image?url=" + encodeURIComponent(r);
+        if (r.indexOf("/__asset_proxy__/") === 0) {
+            return getAssetBase() + r.replace(/^\/__asset_proxy__\//, "");
+        }
+        return r;
     }
 
     function getSimilarImages(item) {
@@ -242,7 +257,7 @@
             "web_url"
         ], ""));
         if (!productLink && skuCode) {
-            productLink = normalizeProductLink("/product-details/" + encodeURIComponent(skuCode));
+            productLink = normalizeProductLink("/product-details?sku=" + encodeURIComponent(skuCode));
         }
 
         return {

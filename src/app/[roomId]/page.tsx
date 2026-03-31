@@ -1,8 +1,44 @@
 import { notFound } from "next/navigation";
 
+const STATIC_ROOM_IDS = [
+  "6",
+  "8",
+  "12",
+  "20",
+  "21",
+  "22",
+  "23",
+  "24",
+  "25",
+  "26",
+  "27",
+  "28",
+  "29",
+  "30",
+  "31",
+  "32",
+  "33",
+  "34",
+  "35",
+  "36",
+  "37",
+  "38",
+  "39",
+  "40",
+  "42",
+  "44",
+  "45",
+  "46",
+  "47",
+] as const;
+
 type RoomPageProps = {
   params: Promise<{ roomId: string }>;
 };
+
+export function generateStaticParams() {
+  return STATIC_ROOM_IDS.map((roomId) => ({ roomId }));
+}
 
 export default async function RoomPage({ params }: RoomPageProps) {
   const { roomId } = await params;

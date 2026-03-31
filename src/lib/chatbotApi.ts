@@ -20,6 +20,23 @@ type ChatbotRequest = {
   sessionId: string;
 };
 
+function resolveChatbotBase() {
+  const base = String(
+    process.env.NEXT_PUBLIC_FLASK_API_BASE ||
+      (typeof window !== "undefined"
+        ? String(Reflect.get(window, "NEXT_PUBLIC_FLASK_API_BASE") ?? "").trim()
+        : "")
+  )
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (!base) {
+    throw new Error("NEXT_PUBLIC_FLASK_API_BASE is not configured.");
+  }
+
+  return base;
+}
+
 function buildErrorMessage(fallback: string, payload: unknown) {
   if (payload && typeof payload === "object" && "error" in payload) {
     const message = payload.error;
@@ -36,7 +53,7 @@ export async function postChatbotQuery({
   query,
   sessionId,
 }: ChatbotRequest): Promise<ChatbotResponse> {
-  const response = await fetch("/api/chatbot", {
+  const response = await fetch(`${resolveChatbotBase()}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -57,7 +74,7 @@ export async function postChatbotQuery({
 }
 
 export async function clearChatbotSession(sessionId: string): Promise<void> {
-  const response = await fetch(`/api/chatbot/session/${encodeURIComponent(sessionId)}`, {
+  const response = await fetch(`${resolveChatbotBase()}/chat/session/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
   });
 

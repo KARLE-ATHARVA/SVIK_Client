@@ -9,6 +9,7 @@ import VisualizerOptions from "./VisualizerOptions";
 import PreviewArea from "./visualizer/PreviewArea";
 import Preview3D from "./visualizer/Preview3D";
 import AuthModal from "./visualizer/AuthModal";
+import { REMOTE_ASSET_BASE } from "@/lib/constants";
 
 const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -181,11 +182,22 @@ export default function VisualizerLayout() {
         typeof window !== "undefined"
           ? String(Reflect.get(window, "NEXT_PUBLIC_ASSET_BASE") ?? "").trim()
           : "";
+      const remoteAssetFromEnv = String(REMOTE_ASSET_BASE ?? "").trim();
+      const remoteAssetFromWindow =
+        typeof window !== "undefined"
+          ? String(Reflect.get(window, "NEXT_PUBLIC_REMOTE_ASSET_BASE") ?? "").trim()
+          : "";
       const assetBase = assetFromWindow || assetFromEnv;
-      if (assetBase) {
+      const sanitizedAssetBase =
+        assetBase.startsWith("/__asset_proxy__/")
+          ? remoteAssetFromWindow || remoteAssetFromEnv || assetBase
+          : assetBase;
+      if (sanitizedAssetBase) {
         localStorage.setItem(
           "visualizer_asset_base",
-          assetBase.endsWith("/") ? assetBase : `${assetBase}/`
+          sanitizedAssetBase.endsWith("/")
+            ? sanitizedAssetBase
+            : `${sanitizedAssetBase}/`
         );
       }
     } catch {

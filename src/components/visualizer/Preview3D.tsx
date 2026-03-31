@@ -22,7 +22,8 @@ import {FaRegFileImage} from "react-icons/fa";
 
 
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { API_BASE } from "@/lib/constants";
+import { API_BASE, VISUALIZER_MAIL_ENDPOINT } from "@/lib/constants";
+import { resolveAssetUrl } from "@/lib/assetUrls";
 import LegacySidebar3D from "./LegacySidebar3D"; // adjust path
 
 import {
@@ -50,7 +51,6 @@ const legacyRightRail =
 const legacyRightBtn =
   "w-[50px] h-[52px] flex items-center justify-center bg-transparent text-[#334155] border-b border-[#d9dde3] hover:bg-[#f5f9f9] hover:-translate-y-[1px] transition";
 
-const IMAGE_PROXY_URL = "/api/tile-image?url=";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type InteractionMode = "orbit" | "pick-wall" | "draw-area" | "draw-area-dragging";
@@ -86,6 +86,7 @@ const WALL_LABELS: Record<string, string> = {
 
 type PublicEnvWindow = Window & {
   NEXT_PUBLIC_API_BASE?: string;
+  NEXT_PUBLIC_VISUALIZER_MAIL_ENDPOINT?: string;
 };
 
 type Corner = "tl" | "tr" | "bl" | "br";
@@ -441,6 +442,19 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
   const [mailOpen, setMailOpen] = useState(false);
 
   const resolveMailEndpoint = () => {
+    const explicit =
+      String(process.env.NEXT_PUBLIC_VISUALIZER_MAIL_ENDPOINT ?? "").trim() ||
+      (typeof window !== "undefined"
+        ? String(
+            (window as PublicEnvWindow).NEXT_PUBLIC_VISUALIZER_MAIL_ENDPOINT ?? ""
+          ).trim()
+        : "") ||
+      String(VISUALIZER_MAIL_ENDPOINT ?? "").trim();
+
+    if (explicit) {
+      return explicit;
+    }
+
     const rawBase =
       String(process.env.NEXT_PUBLIC_API_BASE ?? "").trim() ||
       (typeof window !== "undefined"
@@ -634,8 +648,7 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
         )}`,
       ];
       for (const provider of providers) {
-        const proxied = `/api/tile-image?url=${encodeURIComponent(provider)}`;
-        const res = await loadImg(proxied);
+        const res = await loadImg(provider);
         if (res?.dataUrl) return res.dataUrl;
       }
       return null;
@@ -685,9 +698,10 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
       pdf.rect(imgBox.x, imgBox.y, imgBox.w, imgBox.h);
       pdf.rect(qrBox.x, qrBox.y, qrBox.w, qrBox.h);
 
-      const tileImgUrl = tile.image
-        ? `/api/tile-image?url=${encodeURIComponent(tile.image)}`
+      const normalizedTileImage = tile.image
+        ? resolveAssetUrl(tile.image)
         : "";
+      const tileImgUrl = normalizedTileImage ? normalizedTileImage : "";
       const tileImgData = await loadImg(tileImgUrl);
       if (tileImgData?.dataUrl) {
         const r = Math.min(
@@ -816,7 +830,7 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
         };
       });
 
-      const res = await fetch("/api/visualizer/mail", {
+      const res = await fetch(resolveMailEndpoint(), {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -973,8 +987,7 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
     }
   }, []);
 
-  const getTileImageSrc = (src?: string) =>
-    src ? `${IMAGE_PROXY_URL}${encodeURIComponent(src)}` : "";
+  const getTileImageSrc = (src?: string) => (src ? resolveAssetUrl(src) : "");
 
  
 const buildTexture = useCallback(
@@ -1074,8 +1087,9 @@ const applyTexToMat = useCallback((mat: any, tex: THREE.Texture) => {
     }
     setIsApplying(true);
     setErrorMessage(null);
-    const url = `${IMAGE_PROXY_URL}${encodeURIComponent(tile.image)}`;
+    const url = resolveAssetUrl(tile.image);
     const loader = new THREE.TextureLoader();
+    loader.setCrossOrigin("anonymous");
     loader.load(
       url,
       (tex: THREE.Texture) => {
@@ -1758,8 +1772,9 @@ controls.maxPolarAngle = Math.PI * 0.95;
     (mat: THREE.MeshStandardMaterial, tile: AppliedTile, surface: "wall" | "floor") => {
       if (!tile?.image) return;
       const [rx, ry] = getRepeat(tile.size ?? null, surface);
-      const url = `${IMAGE_PROXY_URL}${encodeURIComponent(tile.image)}`;
+      const url = resolveAssetUrl(tile.image);
       const loader = new THREE.TextureLoader();
+      loader.setCrossOrigin("anonymous");
       loader.load(
         url,
         (base) => {

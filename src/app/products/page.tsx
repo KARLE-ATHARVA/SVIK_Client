@@ -111,7 +111,7 @@ export default function ProductsPage() {
             {items.map((product) => (
               <Link
                 key={product.id}
-                href={`/product-details/${encodeURIComponent(product.skuCode)}`}
+                href={`/product-details?sku=${encodeURIComponent(product.skuCode)}`}
                 className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-lg"
               >
                 <div className="relative h-64">

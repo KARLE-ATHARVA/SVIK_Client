@@ -14,7 +14,7 @@ import {
   sanitizeFilterSelections,
   type TileFilterSelections,
 } from "@/lib/filterQuery";
-import { ASSET_BASE } from "@/lib/constants";
+import { buildAssetUrl } from "@/lib/assetUrls";
 import { isLoggedIn, logout } from "@/lib/auth";
 import { addFavoriteAPI, removeFavoriteAPI, listFavoritesAPI } from "@/lib/favorites";
 import AuthModal from "./AuthModal";
@@ -127,8 +127,6 @@ function pruneSelectionsByAvailable(
 }
 
 function mapTilesToProducts(rows: TileListItem[]): Product[] {
-  const base = String(ASSET_BASE ?? "https://vyr.svikinfotech.in/assets/").trim();
-  const assetBase = base.endsWith("/") ? base : `${base}/`;
   return rows.map((item) => {
     const skuCode = String(item.sku_code ?? "").trim();
     const rawName = String(item.sku_name ?? item.name ?? item.product_name ?? "").trim();
@@ -137,7 +135,7 @@ function mapTilesToProducts(rows: TileListItem[]): Product[] {
     return {
       id: item.tile_id,
       name,
-      image: `${assetBase}media/thumb/${skuCode}.jpg`,
+      image: buildAssetUrl(`media/thumb/${skuCode}.jpg`),
       size,
       skuCode,
     };
@@ -637,11 +635,7 @@ export default function LegacySidebar3D({
                     >
 
                       <div className="tile-img">
-                        <img
-                          src={`/api/tile-image?url=${encodeURIComponent(p.image)}`}
-                          alt={p.name}
-                          loading="lazy"
-                        />
+                        <img src={p.image} alt={p.name} loading="lazy" />
                         {/* ── Per-tile heart ── */}
                         <button
                           type="button"
