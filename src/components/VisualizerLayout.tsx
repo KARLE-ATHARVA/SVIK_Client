@@ -109,6 +109,35 @@ export default function VisualizerLayout() {
     return raw.endsWith("/") ? raw : `${raw}/`;
   };
 
+  const readSavedDesignRoom = (data: any): string | null => {
+    const candidates = [
+      data?.roomId,
+      data?.room_id,
+      data?.RoomId,
+      data?.roomID,
+      data?.room,
+    ];
+    for (const value of candidates) {
+      const room = String(value ?? "").trim();
+      if (room) return room;
+    }
+    return null;
+  };
+
+  const readSavedDesignPayload = (data: any): string | null => {
+    const candidates = [
+      data?.designData,
+      data?.design_data,
+      data?.DesignData,
+      data?.payload,
+    ];
+    for (const value of candidates) {
+      const design = String(value ?? "").trim();
+      if (design) return design;
+    }
+    return null;
+  };
+
   const decodeBase64Json = (encoded: string) => {
     const binary = atob(encoded);
     const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
@@ -234,8 +263,8 @@ export default function VisualizerLayout() {
             const data = await loadFromBase(apiBase);
             if (data) {
               if (cancelled) return;
-              const room = data?.roomId ? String(data.roomId) : null;
-              const design = (data?.designData || "").trim() || null;
+              const room = readSavedDesignRoom(data);
+              const design = readSavedDesignPayload(data);
               localStorage.setItem(
                 `visualizer_design_payload_${shortId}`,
                 design || ""
@@ -276,8 +305,8 @@ export default function VisualizerLayout() {
             );
             if (data) {
               if (cancelled) return;
-              const room = data?.roomId ? String(data.roomId) : null;
-              const design = (data?.designData || "").trim() || null;
+              const room = readSavedDesignRoom(data);
+              const design = readSavedDesignPayload(data);
               localStorage.setItem(
                 `visualizer_design_payload_${shortId}`,
                 design || ""

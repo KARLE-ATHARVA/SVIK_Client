@@ -1994,6 +1994,20 @@ $(function(){
         return readTileLink(tile);
     }
 
+    function getTileSizeText(tile) {
+        if (!tile) return "-";
+        if (typeof tile.size === "string" && tile.size.trim()) return tile.size.trim();
+        if (tile.size && tile.size.length >= 2) {
+            return String(tile.size[0] || "-") + "x" + String(tile.size[1] || "-") + " mm";
+        }
+        var width = tile.width || tile.tile_width || tile.w;
+        var height = tile.height || tile.tile_height || tile.h;
+        if (width || height) {
+            return String(width || "-") + "x" + String(height || "-") + " mm";
+        }
+        return "-";
+    }
+
     function readApiBase() {
         var base = "";
         if (typeof window.NEXT_PUBLIC_API_BASE === "string" && window.NEXT_PUBLIC_API_BASE.trim()) {
@@ -2255,6 +2269,7 @@ $(function(){
             return;
         }
         var tileImage = getTileImageSrc(tile);
+        var tileSku = readTileSku(tile);
         var productLink = normalizeProductLink(getTileProductLink(tile));
         var pageW = 210;
         var margin = 12;
@@ -2262,7 +2277,8 @@ $(function(){
         var cardH = 56;
         var leftX = margin + 6;
         var qrBox = { x: margin + cardW - 44, y: y + 10, w: 36, h: 36 };
-        var productBox = { x: qrBox.x - 48, y: y + 10, w: 40, h: 36 };
+        var imgBox = { x: qrBox.x - 48, y: y + 10, w: 40, h: 36 };
+        var imgPadding = 2;
 
         pdf.setFillColor(248, 251, 252);
         pdf.roundedRect(margin, y, cardW, cardH, 3, 3, "F");
@@ -2278,22 +2294,19 @@ $(function(){
         pdf.setFontStyle("normal");
         pdf.setFontSize(10);
         pdf.text("Name: " + (tile.name || "Tile"), leftX, y + 20);
-        pdf.text("Size: " + ((tile.size && tile.size[0]) || "-") + "x" + ((tile.size && tile.size[1]) || "-") + " mm", leftX, y + 26);
-        pdf.text("Finish: " + ((tile.filters && (tile.filters["25"] || tile.filters["26"])) || "-"), leftX, y + 32);
-        if (card && card.sectionTileCount > 1) {
-            pdf.text("Applied tiles in this section: " + card.sectionTileCount, leftX, y + 38);
-        }
+        pdf.text("Size: " + getTileSizeText(tile), leftX, y + 26);
+        if (tileSku) pdf.text("SKU: " + tileSku, leftX, y + 32);
         pdf.setDrawColor(214, 223, 228);
-        pdf.rect(productBox.x, productBox.y, productBox.w, productBox.h);
+        pdf.rect(imgBox.x, imgBox.y, imgBox.w, imgBox.h);
         pdf.rect(qrBox.x, qrBox.y, qrBox.w, qrBox.h);
 
         loadImageForPdf(tileImage, function(tileImgData) {
             if (tileImgData && tileImgData.dataUrl) {
-                var fit = fitRect(tileImgData.width, tileImgData.height, productBox.w - 2, productBox.h - 2);
-                pdf.addImage(tileImgData.dataUrl, "JPEG", productBox.x + 1 + fit.x, productBox.y + 1 + fit.y, fit.w, fit.h);
+                var fit = fitRect(tileImgData.width, tileImgData.height, imgBox.w - imgPadding * 2, imgBox.h - imgPadding * 2);
+                pdf.addImage(tileImgData.dataUrl, "JPEG", imgBox.x + imgPadding + fit.x, imgBox.y + imgPadding + fit.y, fit.w, fit.h);
             } else {
-                pdf.setFontSize(9);
-                pdf.text("Image unavailable", productBox.x + 6, productBox.y + 16);
+                pdf.setFontSize(8);
+                pdf.text("Image unavailable", imgBox.x + 3, imgBox.y + 18);
             }
 
             fetchGeneratedProductUrl(tile, function(generatedLink) {
