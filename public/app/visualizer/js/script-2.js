@@ -889,14 +889,16 @@ $(function(){
 
     function resolveMailEndpoint() {
         if (typeof getSharedVisualizerMailEndpoint === "function") {
-            return getSharedVisualizerMailEndpoint(send_mail_addr);
+            var sharedEndpoint = getSharedVisualizerMailEndpoint(send_mail_addr);
+            if (sharedEndpoint) return sharedEndpoint;
         }
 
         var endpoint = (typeof send_mail_addr === "string" && send_mail_addr) ? send_mail_addr : "";
         endpoint = endpoint.trim();
 
         if (!endpoint) {
-            return "";
+            var apiBase = typeof readApiBase === "function" ? readApiBase() : "";
+            return apiBase ? apiBase.replace(/\/+$/, "") + "/visualizermail" : "";
         }
 
         if (/^https?:\/\//i.test(endpoint)) {
@@ -904,7 +906,10 @@ $(function(){
         }
 
         if (endpoint.indexOf("/api/visualizer/mail") !== -1) {
-            return "";
+            var normalizedApiBase = typeof readApiBase === "function" ? readApiBase() : "";
+            return normalizedApiBase
+                ? normalizedApiBase.replace(/\/+$/, "") + "/visualizermail"
+                : "";
         }
         return endpoint;
     }
@@ -929,6 +934,23 @@ $(function(){
             "?subject=" + encodeURIComponent(subject || "Tile Visualizer Design") +
             "&body=" + encodeURIComponent(body);
         window.location.href = mailtoHref;
+    }
+
+    function dataUrlToBlob(dataUrl) {
+        var value = String(dataUrl || "");
+        var match = value.match(/^data:([^;]+);base64,(.*)$/);
+        if (!match) return null;
+        try {
+            var mime = match[1] || "image/jpeg";
+            var base64 = match[2] || "";
+            var binary = atob(base64);
+            var len = binary.length;
+            var bytes = new Uint8Array(len);
+            for (var i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+            return new Blob([bytes], { type: mime });
+        } catch (e) {
+            return null;
+        }
     }
 
     function getSelectedGroutId(tileKey) {
@@ -980,10 +1002,11 @@ $(function(){
     function createDesignShareLink() {
         try {
             var bundle = getDesignPayloadBundle();
+            var roomId = getCurrentRoomId();
             var origin = (window.parent && window.parent.location && window.parent.location.origin)
                 ? window.parent.location.origin
                 : window.location.origin;
-            return origin + "/visualizer?d=" + bundle.designId;
+            return origin + "/visualizer?d=" + bundle.designId + (roomId ? "&room=" + encodeURIComponent(roomId) : "");
         } catch (e) {
             return window.location.href.split("#")[0];
         }
@@ -1056,27 +1079,75 @@ $(function(){
         }
     }
 
-    function openSharePopup(service) {
-        var imageUrl = createDesignShareLink() || window.location.href;
-        var encodedUrl = encodeURIComponent(imageUrl);
-        var url = "";
-
-        switch (service) {
-        case "facebook":
-            url = "https://www.facebook.com/sharer/sharer.php?u=";
-            break;
-        case "twitter":
-            url = "https://twitter.com/intent/tweet?url=";
-            break;
-        case "google":
-            url = "https://plus.google.com/share?url=";
-            break;
-        default:
-            return;
+    function shareDesignImageInternal() {
+        function buildWatermarkedShareFile(done) {
+            var sourceDataUrl = vis_cvs.toDataURL_('image/png');
+            var img = new Image();
+            img.onload = function() {
+                try {
+                    var footerHeight = 54;
+                    var exportCanvas = document.createElement("canvas");
+                    exportCanvas.width = img.width;
+                    exportCanvas.height = img.height + footerHeight;
+                    var ctx = exportCanvas.getContext("2d");
+                    if (!ctx) {
+                        done(null);
+                        return;
+                    }
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+                    ctx.drawImage(img, 0, 0, img.width, img.height);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, img.height, exportCanvas.width, footerHeight);
+                    ctx.fillStyle = "#0f172a";
+                    ctx.font = "700 " + Math.max(18, Math.round(exportCanvas.width * 0.028)) + "px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText("SvikInfotech", exportCanvas.width / 2, img.height + footerHeight / 2);
+                    exportCanvas.toBlob(function(blob) {
+                        if (!blob) {
+                            done(null);
+                            return;
+                        }
+                        done(new File([blob], "svik-room-share.png", { type: "image/png" }));
+                    }, "image/png");
+                } catch (e) {
+                    done(null);
+                }
+            };
+            img.onerror = function() { done(null); };
+            img.src = sourceDataUrl;
         }
 
-        setShareOptionsOpen(false);
-        window.open(url + encodedUrl, "sharer", "width=626,height=436");
+        buildWatermarkedShareFile(function(file) {
+            if (!file) {
+                alert("Unable to prepare share image.");
+                return;
+            }
+
+            function downloadFile(withMessage) {
+                var fileUrl = URL.createObjectURL(file);
+                var link = document.createElement("a");
+                link.href = fileUrl;
+                link.download = file.name;
+                link.click();
+                setTimeout(function() {
+                    URL.revokeObjectURL(fileUrl);
+                }, 1000);
+                if (withMessage) alert(withMessage);
+            }
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    files: [file],
+                    title: "SvikInfotech Room Design",
+                    text: "SvikInfotech room design"
+                }).catch(function() {});
+                return;
+            }
+
+            downloadFile("Direct image sharing is not supported in this browser, so the image was downloaded instead.");
+        });
     }
 
     function saveDesignByType(as) {
@@ -1085,10 +1156,10 @@ $(function(){
                 var bundle = getDesignPayloadBundle();
                 var encoded = bundle.encoded;
                 var designId = bundle.designId;
-                var roomId = getCurrentRoomId();
                 var origin = (window.parent && window.parent.location && window.parent.location.origin)
                     ? window.parent.location.origin
                     : window.location.origin;
+                var roomId = getCurrentRoomId();
                 var link = origin + "/visualizer?d=" + designId;
 
                 if (!link) {
@@ -1206,11 +1277,7 @@ $(function(){
             evt.preventDefault();
             evt.stopPropagation();
         }
-
-        var panel = document.getElementById("shareOptionsPanel");
-        if (!panel) return false;
-
-        setShareOptionsOpen(!panel.classList.contains("active"));
+        shareDesignImageInternal();
         return false;
     };
 
@@ -1230,16 +1297,25 @@ $(function(){
         saveDesignByType("link");
     };
 
+    window.shareDesignImage = function(evt) {
+        if (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+        shareDesignImageInternal();
+        return false;
+    };
+
     window.shareDesignOnFacebook = function() {
-        openSharePopup("facebook");
+        shareDesignImageInternal();
     };
 
     window.shareDesignOnTwitter = function() {
-        openSharePopup("twitter");
+        shareDesignImageInternal();
     };
 
     window.shareDesignOnGoogle = function() {
-        openSharePopup("google");
+        shareDesignImageInternal();
     };
 
     $(document).on("click", function(e) {
@@ -1247,9 +1323,15 @@ $(function(){
         if (!$target.closest("#saveOptionsPanel, .save-options-toggle").length) {
             setSaveOptionsOpen(false);
         }
-        if (!$target.closest("#shareOptionsPanel, .share-options-toggle").length) {
+        if (!$target.closest(".share-options-toggle").length) {
             setShareOptionsOpen(false);
         }
+    });
+
+    $("#modal_mail").on("show.bs.modal", function() {
+        $(this).find(".mail-success-message").hide();
+        $(this).find(".mail-form-fields").show();
+        $("#sendMail").show().removeAttr("disabled").text("Send");
     });
 
 
@@ -1292,58 +1374,62 @@ $(function(){
             var imgUrl  = vis_cvs.toDataURL_('image/jpeg');
             var roomname = $.trim($(".rooms-tabs li.active a").text());
             var designLink = createDesignShareLink();
-            var tiles = {};
-            for(var i in tile_datas) {
-                if(isFinite(i)) {
-                    tiles[i] = tile_datas[i].map(function(tile) {
-                        var tileInfo = ['id', 'name', 'price', 'cat_a_title', 'cat_b_title', 'link', 'size'].reduce(function(t, prop) {
-                            t[prop] = tile[prop];
-                            return t;
-                        }, {});
-                        tileInfo.image = typeof tile.image === 'string' ? tile.image : tile.image.src;
-                        return tileInfo;
-                    });
-                }
+            var imageBlob = dataUrlToBlob(imgUrl);
+            if (!imageBlob) {
+                alert("Unable to prepare preview image.");
+                return;
             }
-            //var withinfo = $(".withinfo").is(":checked");
 
-            /*if(withinfo)
-            {
-                patternwithInfo("email");
-            }*/
-            /*else{*/
-                $("#sendMail").attr("disabled","disabled").val("sending...");
-                $.ajax({
-                    url: endpoint,
-                    type: "POST",
-                    data : {"full_name":fullname, "to" : to, "subject" : subject , "message" : message, "roomname" : roomname, tiles: JSON.stringify(tiles), "imgpath" : imgUrl, "design_link": designLink},
-                    success : function(data){
-                        console.log("Email is sent");
-                        alert("Email is sent.");
-                        $("#mailform")[0].reset();
+            var formData = new FormData();
+            formData.append("FullName", fullname || "");
+            formData.append("To", to || "");
+            formData.append("Subject", subject || "");
+            formData.append("Message", message || "");
+            formData.append("RoomName", roomname || "");
+            formData.append("DesignLink", designLink || "");
+            formData.append("Image", imageBlob, "visualizer-2d.jpg");
+
+            $("#sendMail").attr("disabled","disabled").text("SENDING...");
+            $.ajax({
+                url: endpoint,
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                timeout: 30000,
+                success : function(data){
+                    console.log("Email is sent");
+                    $("#mailform")[0].reset();
+                    $("#modal_mail").find(".mail-form-fields").hide();
+                    $("#modal_mail").find(".mail-success-message").show();
+                    $("#sendMail").hide();
+                    setTimeout(function() {
                         $("#modal_mail").modal('hide');
-                        $("#sendMail").removeAttr("disabled").val("Send");
-                    },
-                    error: function(xhr) {
-                        $("#sendMail").removeAttr("disabled").val("Send");
-                        var serverError = "";
-                        try {
-                            var payload = xhr && xhr.responseJSON ? xhr.responseJSON : null;
-                            if (payload && payload.error) {
-                                serverError = payload.error;
-                                if (payload.details) {
-                                    serverError += " (" + payload.details + ")";
-                                }
+                    }, 2000);
+                },
+                error: function(xhr) {
+                    var serverError = "";
+                    try {
+                        var payload = xhr && xhr.responseJSON ? xhr.responseJSON : null;
+                        if (payload && payload.error) {
+                            serverError = payload.error;
+                            if (payload.details) {
+                                serverError += " (" + payload.details + ")";
                             }
-                        } catch (e) {}
-                        if (serverError) {
-                            alert("Email send failed: " + serverError);
+                        } else if (xhr && xhr.responseText) {
+                            serverError = String(xhr.responseText);
                         }
-                        $("#modal_mail").modal('hide');
-                        fallbackToMailClient(fullname, to, subject, message, roomname, designLink);
+                    } catch (e) {}
+                    if (serverError) {
+                        alert("Email send failed: " + serverError);
                     }
-                });
-            //}
+                    $("#modal_mail").modal('hide');
+                    fallbackToMailClient(fullname, to, subject, message, roomname, designLink);
+                },
+                complete: function() {
+                    $("#sendMail").removeAttr("disabled").text("Send");
+                }
+            });
         }
     });
 
@@ -1353,34 +1439,14 @@ $(function(){
     });
 
     (function() {
-        var imageUrl = createDesignShareLink();
-
         $(".share-link").click(function(e) {
-            var url;
-
             e.preventDefault();
-            if (!imageUrl) imageUrl = window.location.href;
-            var encodedUrl = encodeURIComponent(imageUrl);
-            switch($(this).data("service")) {
-            case "facebook":
-                url = "https://www.facebook.com/sharer/sharer.php?u=";
-                break;
-
-            case "twitter":
-                url = "https://twitter.com/intent/tweet?url=";
-                break;
-
-            case "google":
-                url = "https://plus.google.com/share?url=";
-                break;
-            }
-
-            window.open(url + encodedUrl, "sharer", "width=626,height=436");
+            shareDesignImageInternal();
         });
 
         $(".share-toggle").click(function(e) {
             e.preventDefault();
-            setShareOptionsOpen(true);
+            shareDesignImageInternal();
         });
     }());
 

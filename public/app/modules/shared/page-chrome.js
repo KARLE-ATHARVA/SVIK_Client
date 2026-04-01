@@ -57,7 +57,7 @@
             <img src="${base}/mail_icon.png" alt="">
         </a>
         <br class="mobile_br_hide">
-        <a href="#" class="share-options-toggle" onclick="return toggleShareOptions(event);">
+        <a href="#" class="share-options-toggle" onclick="return shareDesignImage(event);">
             <img src="${base}/share_icon.png" alt="">
         </a>
         <br class="mobile_br_hide">
@@ -77,20 +77,6 @@
         <button type="button" class="save-option" onclick="saveDesignForLater()">
             <span class="save-icon fa fa-bookmark-o" aria-hidden="true"></span>
             <span>Save For Later</span>
-        </button>
-    </div>
-    <div id="shareOptionsPanel" class="share-options-panel" aria-hidden="true">
-        <button type="button" class="share-option" onclick="shareDesignOnFacebook()">
-            <img src="${base}/share_icon.png" class="share-icon" alt="">
-            <span>Facebook</span>
-        </button>
-        <button type="button" class="share-option" onclick="shareDesignOnTwitter()">
-            <img src="${base}/share_icon.png" class="share-icon" alt="">
-            <span>Twitter</span>
-        </button>
-        <button type="button" class="share-option" onclick="shareDesignOnGoogle()">
-            <img src="${base}/share_icon.png" class="share-icon" alt="">
-            <span>Google+</span>
         </button>
     </div>
 </div>

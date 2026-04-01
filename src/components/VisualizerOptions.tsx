@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaBath, FaBed, FaCouch, FaHeart, FaHome, FaUtensils } from "react-icons/fa";
 import StyleFilterOptions from "./StyleFilterOptions";
-import { useSearchParams } from "next/navigation";
 import livingRoom3D from "@/assets/living_room_3d.png";
 import kitchen3D from "@/assets/kitchen_3d.png";
 import bedroom3D from "@/assets/bedroom_3d.png";
@@ -47,15 +46,26 @@ const THUMBNAIL_3D: Record<string, string> = {
 
 const SAVED_PLACEHOLDER = "/app/images/saved_placeholder.svg";
 
+function normalizeVisualizerCategory(raw?: string | null): string {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return "";
+  if (value.includes("kitchen")) return "kitchen";
+  if (value.includes("bed")) return "bedroom";
+  if (value.includes("bath")) return "bathroom";
+  if (value.includes("outdoor")) return "outdoor";
+  if (value.includes("living")) return "living";
+  if (value === "saved") return "saved";
+  return value;
+}
+
 export default function VisualizerOptions() {
-  const searchParams = useSearchParams();
-  const queryCategory = (searchParams.get("category") || "").toLowerCase();
-  let initialCategory = queryCategory;
-  if (!initialCategory && typeof window !== "undefined") {
-    const sticky = localStorage.getItem("visualizer_category_sticky") === "1";
+  let initialCategory = "";
+  if (typeof window !== "undefined") {
     const intent = sessionStorage.getItem("visualizer_category_intent") === "1";
-    if (sticky || intent) {
-      initialCategory = (localStorage.getItem("selected_space_type") || "").toLowerCase();
+    if (intent) {
+      initialCategory = normalizeVisualizerCategory(
+        localStorage.getItem("selected_space_type")
+      );
     }
   }
   const validInitialCategory = CATEGORIES.some((c) => c.key === initialCategory) ? initialCategory : "";
@@ -128,17 +138,15 @@ export default function VisualizerOptions() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const categoryIntent = sessionStorage.getItem("visualizer_category_intent") === "1";
-    const sticky = localStorage.getItem("visualizer_category_sticky") === "1";
-    if (!categoryIntent && !sticky) return;
-    const stored = (localStorage.getItem("selected_space_type") || "").toLowerCase();
+    if (!categoryIntent) return;
+    const stored = normalizeVisualizerCategory(
+      localStorage.getItem("selected_space_type")
+    );
     if (CATEGORIES.some((c) => c.key === stored)) {
       setSelectedCategory(stored);
       setShowPicker(true);
       setShowFilters(false);
       setSelectedRoomId(null);
-    }
-    if (categoryIntent) {
-      sessionStorage.removeItem("visualizer_category_intent");
     }
   }, []);
 
@@ -166,7 +174,6 @@ export default function VisualizerOptions() {
     setSelectedCategory(spaceKey);
     if (typeof window !== "undefined") {
       localStorage.setItem("selected_space_type", spaceKey.toLowerCase());
-      localStorage.removeItem("visualizer_category_sticky");
     }
     setShowPicker(true);
     setShowFilters(false);
@@ -367,9 +374,6 @@ export default function VisualizerOptions() {
               <button
                 onClick={() => {
                   setShowPicker(false);
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem("visualizer_category_sticky");
-                  }
                 }}
                 className="group flex items-center gap-3 text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-all uppercase tracking-[0.2em]"
               >

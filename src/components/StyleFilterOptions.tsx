@@ -75,7 +75,6 @@ export default function StyleFilterOptions({
           localStorage.removeItem("visualizer_design_hash");
         }
         sessionStorage.setItem("visualizer_intent", "1");
-        localStorage.setItem("visualizer_intent_once", "1");
         window.dispatchEvent(
           new CustomEvent("visualizer-room-select", {
             detail: { room, design },

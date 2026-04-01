@@ -56,8 +56,7 @@ export default function VisualizerLayout() {
       return { room, design, loading: !!design };
     }
     const sessionIntent = sessionStorage.getItem("visualizer_intent") === "1";
-    const localIntent = localStorage.getItem("visualizer_intent_once") === "1";
-    if (sessionIntent || localIntent) {
+    if (sessionIntent) {
       const storedRoom = localStorage.getItem("visualizer_room_id");
       const storedDesign = localStorage.getItem("visualizer_design_hash");
       if (storedRoom) {
@@ -109,31 +108,85 @@ export default function VisualizerLayout() {
     return raw.endsWith("/") ? raw : `${raw}/`;
   };
 
+  const getSavedDesignContainers = (data: any) => {
+    const containers = [data];
+    const nested = [data?.data, data?.result, data?.payload, data?.design];
+    for (const item of nested) {
+      if (item && typeof item === "object") containers.push(item);
+    }
+    if (Array.isArray(data) && data.length) {
+      containers.push(data[0]);
+    }
+    return containers;
+  };
+
+  const readRoomFromUrl = (raw?: string | null): string | null => {
+    const value = String(raw ?? "").trim();
+    if (!value || typeof window === "undefined") return null;
+    try {
+      const parsed = new URL(value, window.location.origin);
+      const fromQuery =
+        parsed.searchParams.get("room") ||
+        parsed.searchParams.get("roomId") ||
+        parsed.searchParams.get("room_id");
+      if (fromQuery) return String(fromQuery).trim();
+      const hash = parsed.hash.replace(/^#/, "");
+      const hashParams = new URLSearchParams(hash.replace(/&/g, "&"));
+      const fromHash = hashParams.get("room");
+      if (fromHash) return String(fromHash).trim();
+      const pathMatch = parsed.pathname.match(/\/(\d+)(?:\.html)?$/);
+      return pathMatch ? pathMatch[1] : null;
+    } catch {
+      return null;
+    }
+  };
+
   const readSavedDesignRoom = (data: any): string | null => {
-    const candidates = [
-      data?.roomId,
-      data?.room_id,
-      data?.RoomId,
-      data?.roomID,
-      data?.room,
-    ];
-    for (const value of candidates) {
-      const room = String(value ?? "").trim();
-      if (room) return room;
+    for (const container of getSavedDesignContainers(data)) {
+      const candidates = [
+        container?.roomId,
+        container?.room_id,
+        container?.RoomId,
+        container?.roomID,
+        container?.room,
+      ];
+      for (const value of candidates) {
+        const room = String(value ?? "").trim();
+        if (room) return room;
+      }
+      const roomFromUrl = readRoomFromUrl(
+        container?.redirect_url ||
+          container?.redirectUrl ||
+          container?.url ||
+          container?.link
+      );
+      if (roomFromUrl) return roomFromUrl;
     }
     return null;
   };
 
   const readSavedDesignPayload = (data: any): string | null => {
-    const candidates = [
-      data?.designData,
-      data?.design_data,
-      data?.DesignData,
-      data?.payload,
-    ];
-    for (const value of candidates) {
-      const design = String(value ?? "").trim();
-      if (design) return design;
+    for (const container of getSavedDesignContainers(data)) {
+      const candidates = [
+        container?.designData,
+        container?.design_data,
+        container?.DesignData,
+        container?.payload,
+      ];
+      for (const value of candidates) {
+        const design = String(value ?? "").trim();
+        if (design) return design;
+      }
+      const link = String(
+        container?.redirect_url ||
+          container?.redirectUrl ||
+          container?.url ||
+          container?.link ||
+          ""
+      ).trim();
+      if (link.includes("#design-data:")) {
+        return link.split("#design-data:")[1]?.trim() || null;
+      }
     }
     return null;
   };
@@ -248,6 +301,10 @@ export default function VisualizerLayout() {
     const updateFromUrl = async () => {
       const search = new URLSearchParams(window.location.search);
       const shortId = search.get("d");
+      const roomFromQuery =
+        search.get("room") ||
+        search.get("roomId") ||
+        search.get("room_id");
       if (shortId) {
         setDesignLoading(true);
         const apiBase = getApiBase();
@@ -263,8 +320,11 @@ export default function VisualizerLayout() {
             const data = await loadFromBase(apiBase);
             if (data) {
               if (cancelled) return;
-              const room = readSavedDesignRoom(data);
+              const room = readSavedDesignRoom(data) || roomFromQuery;
               const design = readSavedDesignPayload(data);
+              if (!room && !design) {
+                throw new Error("Saved design response missing room and design payload");
+              }
               localStorage.setItem(
                 `visualizer_design_payload_${shortId}`,
                 design || ""
@@ -305,8 +365,11 @@ export default function VisualizerLayout() {
             );
             if (data) {
               if (cancelled) return;
-              const room = readSavedDesignRoom(data);
+              const room = readSavedDesignRoom(data) || roomFromQuery;
               const design = readSavedDesignPayload(data);
+              if (!room && !design) {
+                throw new Error("Saved design response missing room and design payload");
+              }
               localStorage.setItem(
                 `visualizer_design_payload_${shortId}`,
                 design || ""
@@ -347,8 +410,8 @@ export default function VisualizerLayout() {
         if (cachedDesign) {
           setDesignHash(cachedDesign.trim() || null);
         }
-        if (cachedRoom) {
-          setRoomId(cachedRoom);
+        if (cachedRoom || roomFromQuery) {
+          setRoomId(cachedRoom || roomFromQuery);
         }
         setDesignLoading(false);
         window.history.replaceState({}, "", "/visualizer");
@@ -432,14 +495,14 @@ export default function VisualizerLayout() {
 
     const loadFromStorage = () => {
       const sessionIntent = sessionStorage.getItem("visualizer_intent") === "1";
-      const localIntent = localStorage.getItem("visualizer_intent_once") === "1";
-      const hasIntent = sessionIntent || localIntent;
+      const hasIntent = sessionIntent;
       if (!hasExplicitVisualizerIntent() && !hasIntent) {
         localStorage.removeItem("visualizer_room_id");
         localStorage.removeItem("visualizer_design_hash");
         localStorage.removeItem("visualizer_3d_design_hash");
         localStorage.removeItem("force_3d_mode");
         localStorage.removeItem("selected_3d_sub_scene");
+        localStorage.removeItem("visualizer_intent_once");
         setIs3DMode(false);
         setHas3DRoomSelected(false);
         return;
@@ -454,9 +517,7 @@ export default function VisualizerLayout() {
       if (sessionIntent) {
         sessionStorage.removeItem("visualizer_intent");
       }
-      if (localIntent) {
-        localStorage.removeItem("visualizer_intent_once");
-      }
+      localStorage.removeItem("visualizer_intent_once");
     };
 
     loadFromStorage();
@@ -634,11 +695,11 @@ export default function VisualizerLayout() {
             design.link = `${window.location.origin}/visualizer?d=${linkData.designId}${
               is3D ? "&view=3d" : ""
             }`;
+            const resolvedRoom = design.roomId ?? roomId ?? null;
             localStorage.setItem(
               `visualizer_design_payload_${linkData.designId}`,
               design.designData
             );
-            const resolvedRoom = design.roomId ?? roomId ?? null;
             if (resolvedRoom) {
               localStorage.setItem(
                 `visualizer_design_room_${linkData.designId}`,

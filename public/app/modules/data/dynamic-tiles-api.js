@@ -143,7 +143,8 @@
     function ensureTopHeaderActions(roomId, spaceName) {
         if (!global.jQuery) return;
         var $ = global.jQuery;
-        var targetUrl = "/visualizer?category=" + encodeURIComponent(spaceName || detectSpaceName(roomId));
+        var targetUrl = "/visualizer";
+        var nextSpaceName = (spaceName || detectSpaceName(roomId) || "living").toLowerCase();
 
         $("a[data-target='#roomsModal']").each(function() {
             var $a = $(this);
@@ -159,6 +160,19 @@
 
             $a.on("click", function(e) {
                 e.preventDefault();
+                try {
+                    if (global.localStorage) {
+                        localStorage.setItem("selected_space_type", nextSpaceName);
+                        localStorage.removeItem("visualizer_room_id");
+                        localStorage.removeItem("visualizer_design_hash");
+                        localStorage.removeItem("force_3d_mode");
+                        localStorage.removeItem("selected_3d_sub_scene");
+                    }
+                    if (global.sessionStorage) {
+                        sessionStorage.removeItem("visualizer_intent");
+                        sessionStorage.setItem("visualizer_category_intent", "1");
+                    }
+                } catch (err) {}
                 if (global.top && global.top.location) {
                     global.top.location.href = targetUrl;
                 } else {

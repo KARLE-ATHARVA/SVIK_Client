@@ -493,14 +493,8 @@
             </div>
             <div class="modal-body">
                 <div class="row share-actions" align="center">
-                    <a href="#" class="fa fa-facebook share-link" title="Share on Facebook" aria-label="Share on Facebook" data-service="facebook" data-dismiss="modal">
-                        <span class="share-label">Facebook</span>
-                    </a>
-                    <a href="#" class="fa fa-twitter share-link" title="Share on Twitter" aria-label="Share on Twitter" data-service="twitter" data-dismiss="modal">
-                        <span class="share-label">Twitter</span>
-                    </a>
-                    <a href="#" class="fa fa-google-plus share-link" title="Share on Google Plus" aria-label="Share on Google Plus" data-service="google" data-dismiss="modal">
-                        <span class="share-label">Google+</span>
+                    <a href="#" class="fa fa-share-alt share-link" title="Share image" aria-label="Share image" data-dismiss="modal">
+                        <span class="share-label">Share</span>
                     </a>
                 </div>
             </div>
@@ -525,6 +519,10 @@
                     <h4 class="modal-title custom_modal_title" id="mail-dialog-label">Email</h4>
                 </div>
                 <div class="modal-body">
+                    <div class="mail-success-message text-success" style="display:none;text-align:center;padding:24px 0;font-weight:700;font-size:14px;">
+                        ✓ Email sent successfully!
+                    </div>
+                    <div class="mail-form-fields">
                     <div class="form-group">
                         <input type="text" placeholder="Your Full Name" name="full_name" class="full_name form-control"/>
                     </div>
@@ -537,9 +535,10 @@
                     <div class="form-group">
                         <textarea name="message" placeholder="Write your message here" class="message form-control"></textarea>
                     </div>
+                    </div>
                 </div>
                 <div class="modal-footer custome_modal_footer">
-                    <input type="submit" id="sendMail" value="Send" name="submit" class="btn btn-default btn-sm custom_default_btn">
+                    <button type="submit" id="sendMail" name="submit" class="btn btn-default btn-sm custom_default_btn">Send</button>
                     <button type="button" class="btn btn-default btn-sm custom_default_btn" data-dismiss="modal">Close</button>
                 </div>
             </form>

@@ -13,11 +13,11 @@ export default function TopRightButtons({
 }: TopRightButtonsProps) {
   return (
     <div className={className ?? "top-right"}>
-      <button className="tr-btn" onClick={onSelectRoom}>
+      <button type="button" className="tr-btn" onClick={onSelectRoom}>
         <span className="tr-btn-icon fa fa-th-large" aria-hidden="true"></span>
         <span className="tr-btn-label">Select Room</span>
       </button>
-      <button className="tr-btn" onClick={onProductInfo}>
+      <button type="button" className="tr-btn" onClick={onProductInfo}>
         <span className="tr-btn-icon fa fa-info-circle" aria-hidden="true"></span>
         <span className="tr-btn-label">Product Info</span>
       </button>

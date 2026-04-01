@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Loader2,
   Square,
@@ -215,6 +216,7 @@ const modalInputStyle: React.CSSProperties = {
  
  
 export default function Preview3D() {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -427,7 +429,7 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
   }, []);
 
   // ── Toolbar actions ───────────────────────────────────────────────────────
-  const [activModal, setActivModal] = useState<"save" | "share" | "mail" | null>(
+  const [activModal, setActivModal] = useState<"save" | "mail" | null>(
     null
   );
   const [mailForm, setMailForm] = useState({
@@ -769,80 +771,114 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
     }
   };
 
-  const handleShareSocial = (service: string) => {
-    const designLink = createDesignShareLink();
-    const encodedUrl = encodeURIComponent(designLink);
-    let url = "";
-    if (service === "facebook")
-      url = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
-    else if (service === "twitter")
-      url = `https://twitter.com/intent/tweet?url=${encodedUrl}`;
-    else if (service === "google")
-      url = `https://plus.google.com/share?url=${encodedUrl}`;
-    else if (service === "whatsapp")
-      url = `https://wa.me/?text=${encodeURIComponent(
-        "Check out my tile design! " + designLink
-      )}`;
-    if (url) window.open(url, "sharer", "width=626,height=436");
-    setActivModal(null);
+  const handleShareImage = () => {
+    const buildWatermarkedShareFile = async () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+      const footerHeight = 54;
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height + footerHeight;
+      const ctx = exportCanvas.getContext("2d");
+      if (!ctx) return null;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, canvas.height, exportCanvas.width, footerHeight);
+      ctx.fillStyle = "#0f172a";
+      ctx.font = `700 ${Math.max(18, Math.round(exportCanvas.width * 0.028))}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("SvikInfotech", exportCanvas.width / 2, canvas.height + footerHeight / 2);
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        exportCanvas.toBlob((nextBlob) => resolve(nextBlob), "image/png");
+      });
+      if (!blob) return null;
+      return new File([blob], "svik-room-share.png", { type: "image/png" });
+    };
+
+    const run = async () => {
+      const file = await buildWatermarkedShareFile();
+      if (!file) {
+        alert("Unable to prepare share image.");
+        return;
+      }
+
+      try {
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: "SvikInfotech Room Design",
+            text: "SvikInfotech room design",
+          });
+        } else {
+          const url = URL.createObjectURL(file);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = file.name;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            alert("Direct image sharing is not supported in this browser, so the image was downloaded instead.");
+        }
+      } catch {
+        // ignore cancellation
+      }
+    };
+
+    void run();
   };
 
   const handleMailSend = async () => {
-    if (!mailForm.to || !mailForm.subject) {
-      alert("Please fill in recipient email and subject.");
+    if (!mailForm.to || !mailForm.subject || !mailForm.message) {
+      alert("Please fill in recipient email, subject, and message.");
       return;
     }
     setMailSending(true);
     try {
       const canvas = canvasRef.current;
-      const imgUrl = canvas
-        ? (() => {
-            const c = document.createElement("canvas");
-            c.width = canvas.width;
-            c.height = canvas.height;
-            const ctx = c.getContext("2d")!;
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, c.width, c.height);
-            ctx.drawImage(canvas, 0, 0, c.width, c.height);
-            return c.toDataURL("image/jpeg");
-          })()
-        : "";
+      if (!canvas) {
+        alert("Preview image is not available.");
+        return;
+      }
+
+      const c = document.createElement("canvas");
+      c.width = canvas.width;
+      c.height = canvas.height;
+      const ctx = c.getContext("2d");
+      if (!ctx) {
+        alert("Unable to prepare preview image.");
+        return;
+      }
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(canvas, 0, 0, c.width, c.height);
 
       const designLink = window.location.href;
       const sceneKey =
         localStorage.getItem("selected_3d_sub_scene") || "living_room";
+      const imageBlob = await new Promise<Blob | null>((resolve) => {
+        c.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
+      });
+      if (!imageBlob) {
+        alert("Unable to prepare preview image.");
+        return;
+      }
 
-      const tilesPayload: Record<string, any> = {};
-      appliedWallTiles.forEach((t, i) => {
-        tilesPayload[`wall_${i}`] = {
-          name: t.name,
-          image: t.image,
-          size: t.size,
-          skuCode: t.skuCode,
-        };
-      });
-      appliedFloorTiles.forEach((t, i) => {
-        tilesPayload[`floor_${i}`] = {
-          name: t.name,
-          image: t.image,
-          size: t.size,
-          skuCode: t.skuCode,
-        };
-      });
+      const formData = new FormData();
+      formData.append("FullName", mailForm.name || "");
+      formData.append("To", mailForm.to || "");
+      formData.append("Subject", mailForm.subject || "");
+      formData.append("Message", mailForm.message || "");
+      formData.append("RoomName", sceneKey || "");
+      formData.append("DesignLink", designLink || "");
+      formData.append("Image", imageBlob, "visualizer-3d.jpg");
 
       const res = await fetch(resolveMailEndpoint(), {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          full_name: mailForm.name,
-          to: mailForm.to,
-          subject: mailForm.subject,
-          message: mailForm.message,
-          roomname: sceneKey,
-          tiles: JSON.stringify(tilesPayload),
-          imgpath: imgUrl,
-          design_link: designLink,
-        }),
+        body: formData,
       });
 
       if (res.ok) {
@@ -935,17 +971,30 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
   };
 
   const handleSelectRoom = () => {
-    const space = (
-      localStorage.getItem("selected_space_type") || "living"
-    ).toLowerCase();
+    const rawSpace =
+      localStorage.getItem("selected_space_type") ||
+      localStorage.getItem("selected_3d_sub_scene") ||
+      "living";
+    const space = String(rawSpace).toLowerCase().includes("kitchen")
+      ? "kitchen"
+      : String(rawSpace).toLowerCase().includes("bed")
+        ? "bedroom"
+        : String(rawSpace).toLowerCase().includes("bath")
+          ? "bathroom"
+          : String(rawSpace).toLowerCase().includes("outdoor")
+            ? "outdoor"
+            : "living";
+    localStorage.removeItem("visualizer_room_id");
+    localStorage.removeItem("visualizer_design_hash");
+    localStorage.removeItem("visualizer_3d_design_hash");
     localStorage.removeItem("force_3d_mode");
     localStorage.removeItem("selected_3d_sub_scene");
     window.dispatchEvent(new Event("storage"));
     window.dispatchEvent(new CustomEvent("force3DMode"));
     localStorage.setItem("selected_space_type", space);
+    sessionStorage.removeItem("visualizer_intent");
     sessionStorage.setItem("visualizer_category_intent", "1");
-    localStorage.setItem("visualizer_category_sticky", "1");
-    window.location.href = "/visualizer";
+    router.push("/visualizer");
   };
 
   const handleProductInfo = () => setIsProductInfoOpen(true);
@@ -2349,7 +2398,7 @@ controls.maxPolarAngle = Math.PI * 0.95;
         onSave={() => setActivModal("save")}
         onPrint={handlePrint}
         onEmail={() => setActivModal("mail")}
-        onShare={() => setActivModal("share")}
+        onShare={handleShareImage}
         onFullscreen={toggleFullscreen}
       />
 
@@ -2662,33 +2711,6 @@ controls.maxPolarAngle = Math.PI * 0.95;
         </div>
       )}
 
-
-
-      
-       {activModal === "share" && (
-        <div className="fixed inset-0 z-[9998]" onClick={() => setActivModal(null)}>
-          <div className="share-options-panel active" onClick={(e) => e.stopPropagation()}>
-            {[
-              { label: "Facebook", service: "facebook" },
-              { label: "Twitter", service: "twitter" },
-              { label: "Google+", service: "google" },
-            ].map(({ label, service }, i, arr) => (
-              <button
-                key={service}
-                type="button"
-                onClick={() => {
-                  handleShareSocial(service);
-                  setActivModal(null);
-                }}
-                className="share-option"
-              >
-                <img src="/app/visualizer/images/share_icon.png" alt="" className="share-icon" />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
 
       

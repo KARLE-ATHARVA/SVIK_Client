@@ -150,7 +150,18 @@ export default function Hero() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             {...fadeUp(0.9)}
-            onClick={() => router.push("/visualizer")}
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                sessionStorage.removeItem("visualizer_category_intent");
+                sessionStorage.removeItem("visualizer_intent");
+                localStorage.removeItem("visualizer_room_id");
+                localStorage.removeItem("visualizer_design_hash");
+                localStorage.removeItem("visualizer_3d_design_hash");
+                localStorage.removeItem("force_3d_mode");
+                localStorage.removeItem("selected_3d_sub_scene");
+              }
+              router.push("/visualizer");
+            }}
             className="mt-6 w-full flex items-center justify-center gap-2 py-4 bg-amber-600 hover:bg-amber-700 transition rounded-full font-semibold shadow-xl"
           >
             <FiCamera size={20} /> Visualizer
