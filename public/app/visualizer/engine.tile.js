@@ -932,39 +932,69 @@ grout_alpha = 0.7;
 grout_y_img = null;
 grout_x_img = v39999.x3(null);
 tile_datas = v39999.c3({});
+tile_set_requests = v39999.c3({});
 setTile = function(P4, Q4, B4) {
     var pending = 0;
     var doneCalled = false;
+    var requestId = (tile_set_requests[P4] || 0) + 1;
+    var tilesForRequest = Q4;
+
+    tile_set_requests[P4] = requestId;
+    tile_datas["_" + P4] = tilesForRequest;
+
+    var isLatestRequest = function() {
+        return tile_set_requests[P4] === requestId;
+    };
+
+    var finish = function() {
+        if (doneCalled || !isLatestRequest()) {
+            return;
+        }
+        doneCalled = true;
+        tile_datas[P4] = tilesForRequest;
+        B4(P4, tile_datas[P4]);
+    };
+
     var doneOne = function() {
+        if (doneCalled || !isLatestRequest()) {
+            return;
+        }
         pending--;
-        if (!doneCalled && pending <= 0) {
-            doneCalled = true;
-            tile_datas[P4] = tile_datas["_" + P4];
-            B4(P4, tile_datas[P4]);
+        if (pending <= 0) {
+            finish();
         }
     };
 
-    tile_datas["_" + P4] = Q4;
-
-    if (!(Q4 instanceof Array) || Q4.length === 0) {
-        tile_datas[P4] = tile_datas["_" + P4];
-        B4(P4, tile_datas[P4]);
+    if (!(tilesForRequest instanceof Array) || tilesForRequest.length === 0) {
+        finish();
         return;
     }
 
-    Q4.forEach(function(tile) {
+    tilesForRequest.forEach(function(tile) {
         pending++;
-        tile.image = lmage(typeof tile.image === "string" ? tile.image : tile.image.src, doneOne);
-        tile.image.onerror = doneOne;
+        tile.image = lmage(typeof tile.image === "string" ? tile.image : tile.image.src, function() {
+            doneOne();
+        });
+        tile.image.onerror = function() {
+            doneOne();
+        };
 
         if (!(tile.similar_images instanceof Array)) tile.similar_images = [];
         tile.similar_images.forEach(function(sim, idx) {
             pending++;
             var simSrc = (typeof sim === "string") ? sim : sim.src;
-            tile.similar_images[idx] = lmage(simSrc, doneOne);
-            tile.similar_images[idx].onerror = doneOne;
+            tile.similar_images[idx] = lmage(simSrc, function() {
+                doneOne();
+            });
+            tile.similar_images[idx].onerror = function() {
+                doneOne();
+            };
         });
     });
+
+    if (pending <= 0) {
+        finish();
+    }
 }
 ;
 tmp_c = v39999.e0(document[v39999.u(32)](v39999.Y(41)));
