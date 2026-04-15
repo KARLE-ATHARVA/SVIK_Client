@@ -1,4 +1,9 @@
 import { notFound } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const RoomIframePage = dynamic(() => import("@/components/RoomIframePage"), {
+  ssr: false,
+});
 
 const STATIC_ROOM_IDS = [
   "6",
@@ -49,13 +54,6 @@ export default async function RoomPage({ params }: RoomPageProps) {
   }
 
   return (
-    <iframe
-      src={`/app/${roomId}.html#`}
-      style={{
-        width: "100%",
-        height: "100vh",
-        border: "none",
-      }}
-    />
+    <RoomIframePage roomId={roomId} />
   );
 }
