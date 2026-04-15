@@ -17,14 +17,24 @@ export const LAMP_NAMES = {
   rightShade: "lamp_shade_right",
 } as const;
 
+export const TUBE_LIGHT_NAMES = {
+  tube1: "bedroom_tube_light_1",
+  tube2: "bedroom_tube_light_2",
+} as const;
+
 export interface BedroomRefs {
-  leftLampLight:   THREE.PointLight;
-  rightLampLight:  THREE.PointLight;
-  leftShadeMat:    THREE.MeshStandardMaterial;
-  rightShadeMat:   THREE.MeshStandardMaterial;
-  ambientLight:    THREE.AmbientLight;
-  hemisphereLight: THREE.HemisphereLight;
-  movables:        THREE.Group[];
+  leftLampLight:    THREE.PointLight;
+  rightLampLight:   THREE.PointLight;
+  leftShadeMat:     THREE.MeshStandardMaterial;
+  rightShadeMat:    THREE.MeshStandardMaterial;
+  ambientLight:     THREE.AmbientLight;
+  hemisphereLight:  THREE.HemisphereLight;
+  movables:         THREE.Group[];
+  tubeLight1:       THREE.PointLight;
+  tubeLight2:       THREE.PointLight;
+  tubeMat1:         THREE.MeshStandardMaterial;
+  tubeMat2:         THREE.MeshStandardMaterial;
+  handleLightClick: (name: string) => boolean;
 }
 
 interface SceneBuilderProps {
@@ -82,10 +92,26 @@ export function buildBedroomScene({
   sunLight.shadow.bias = -0.0001;
   scene.add(sunLight);
 
+  // const ceilingLight = new THREE.PointLight(0xfff8f0, 15, 30, 2);
+  // ceilingLight.position.set(0, 5.5, 0);
+  // ceilingLight.castShadow = true;
+  // scene.add(ceilingLight);
   const ceilingLight = new THREE.PointLight(0xfff8f0, 15, 30, 2);
   ceilingLight.position.set(0, 5.5, 0);
   ceilingLight.castShadow = true;
   scene.add(ceilingLight);
+
+  const tubeLight1PL = new THREE.PointLight(0xfff8f0, 20, 28, 1.5);
+  tubeLight1PL.position.set(-4.0, 5.4, 0);
+  tubeLight1PL.castShadow = true;
+  scene.add(tubeLight1PL);
+
+  const tubeLight2PL = new THREE.PointLight(0xfff8f0, 20, 28, 1.5);
+  tubeLight2PL.position.set(4.0, 5.4, 0);
+  tubeLight2PL.castShadow = true;
+  scene.add(tubeLight2PL);
+
+  // NOTE: leftLampLight / rightLampLight are created INSIDE their lamp groups
 
   // NOTE: leftLampLight / rightLampLight are created INSIDE their lamp groups
   // below so they automatically follow when the nightstand is dragged.
@@ -122,10 +148,23 @@ export function buildBedroomScene({
     side: THREE.DoubleSide,
   });
 
-  const woodMat  = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.7,  metalness: 0.05 });
+  // const woodMat  = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.7,  metalness: 0.05 });
+  // const metalMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.3,  metalness: 0.8  }); // eslint-disable-line @typescript-eslint/no-unused-vars
+  // const goldMat  = new THREE.MeshStandardMaterial({ color: 0xc8960c, roughness: 0.2,  metalness: 0.9, envMapIntensity: 1.5 });
+const woodMat  = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.7,  metalness: 0.05 });
   const metalMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.3,  metalness: 0.8  }); // eslint-disable-line @typescript-eslint/no-unused-vars
   const goldMat  = new THREE.MeshStandardMaterial({ color: 0xc8960c, roughness: 0.2,  metalness: 0.9, envMapIntensity: 1.5 });
 
+  const tubeMat1 = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.12, metalness: 0.1,
+    emissive: new THREE.Color(0xfff8f0), emissiveIntensity: 3.0,
+    transparent: true, opacity: 0.92,
+  });
+  const tubeMat2 = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.12, metalness: 0.1,
+    emissive: new THREE.Color(0xfff8f0), emissiveIntensity: 3.0,
+    transparent: true, opacity: 0.92,
+  });
   // ─────────────────────────────────────────────
   // Floor
   // ─────────────────────────────────────────────
@@ -183,6 +222,14 @@ export function buildBedroomScene({
   // ─────────────────────────────────────────────
   // Ceiling
   // ─────────────────────────────────────────────
+  // const ceiling = new THREE.Mesh(
+  //   new THREE.PlaneGeometry(14, 12),
+  //   new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, side: THREE.DoubleSide })
+  // );
+  // ceiling.rotation.x = Math.PI / 2;
+  // ceiling.position.y = 6;
+  // ceiling.receiveShadow = true;
+  // scene.add(ceiling);
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(14, 12),
     new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, side: THREE.DoubleSide })
@@ -191,6 +238,58 @@ export function buildBedroomScene({
   ceiling.position.y = 6;
   ceiling.receiveShadow = true;
   scene.add(ceiling);
+
+  // ─────────────────────────────────────────────
+  // Tube light fixtures
+  // ─────────────────────────────────────────────
+  function createBedTubeLight(
+    x: number,
+    mat: THREE.MeshStandardMaterial,
+    tubeName: string
+  ) {
+    const g = new THREE.Group();
+
+    const housing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.07, 3.0),
+      new THREE.MeshStandardMaterial({ color: 0xe0e0e4, roughness: 0.3, metalness: 0.7 })
+    );
+    housing.position.y = -0.035;
+    g.add(housing);
+
+    const diffuser = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, 0.025, 2.9),
+      mat
+    );
+    diffuser.position.y = -0.06;
+    diffuser.name = tubeName;
+    g.add(diffuser);
+
+    for (const ez of [-1.52, 1.52]) {
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(0.18, 0.07, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0xb8b8bc, roughness: 0.4, metalness: 0.5 })
+      );
+      cap.position.set(0, -0.035, ez);
+      g.add(cap);
+    }
+
+    g.position.set(x, 5.95, 0);
+    scene.add(g);
+
+    const proxy = new THREE.Mesh(
+      new THREE.SphereGeometry(1.2, 8, 8),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+    );
+    proxy.name = tubeName;
+    proxy.position.set(x, 1.8, 0);
+    scene.add(proxy);
+  }
+
+  createBedTubeLight(-4.0, tubeMat1, TUBE_LIGHT_NAMES.tube1);
+  createBedTubeLight( 4.0, tubeMat2, TUBE_LIGHT_NAMES.tube2);
+
+  // ─────────────────────────────────────────────
+  // Lamp shade materials (shared so toggle works)
 
   // ─────────────────────────────────────────────
   // Lamp shade materials (shared so toggle works)
@@ -631,6 +730,32 @@ export function buildBedroomScene({
   markMovable(plantGroup, "furniture_plant", "Plant");
   scene.add(plantGroup);
 
+const lightStates = { tube1: true, tube2: true };
+  const defaults = {
+    tube1: { light: 20, emissive: 3.0 },
+    tube2: { light: 20, emissive: 3.0 },
+  };
+
+  function handleLightClick(name: string): boolean {
+    if (name === TUBE_LIGHT_NAMES.tube1) {
+      lightStates.tube1 = !lightStates.tube1;
+      const on = lightStates.tube1;
+      tubeLight1PL.intensity     = on ? defaults.tube1.light : 0;
+      tubeMat1.emissiveIntensity = on ? defaults.tube1.emissive : 0;
+      tubeMat1.emissive.set(on ? 0xfff8f0 : 0x000000);
+      return true;
+    }
+    if (name === TUBE_LIGHT_NAMES.tube2) {
+      lightStates.tube2 = !lightStates.tube2;
+      const on = lightStates.tube2;
+      tubeLight2PL.intensity     = on ? defaults.tube2.light : 0;
+      tubeMat2.emissiveIntensity = on ? defaults.tube2.emissive : 0;
+      tubeMat2.emissive.set(on ? 0xfff8f0 : 0x000000);
+      return true;
+    }
+    return false;
+  }
+
   return {
     leftLampLight,
     rightLampLight,
@@ -639,6 +764,11 @@ export function buildBedroomScene({
     ambientLight,
     hemisphereLight,
     movables,
+    tubeLight1: tubeLight1PL,
+    tubeLight2: tubeLight2PL,
+    tubeMat1,
+    tubeMat2,
+    handleLightClick,
   };
 }
 
@@ -655,114 +785,297 @@ export function buildBedroomScene({
 //   dragger.update();
 // ═══════════════════════════════════════════════════════════════════════════
 
+// export interface FurnitureDragger {
+//   /** Call every frame inside requestAnimationFrame to apply damped movement. */
+//   update: () => void;
+//   /** Clean up event listeners. */
+//   dispose: () => void;
+// }
+
+// export function createFurnitureDragger(
+//   camera: THREE.Camera,
+//   domElement: HTMLElement,
+//   scene: THREE.Scene,
+//   movables: THREE.Group[],
+// ): FurnitureDragger {
+//   const DAMPING    = 0.12;  // 0 = no movement, 1 = instant (lower = smoother)
+//   const FLOOR_Y    = 0;
+//   const raycaster  = new THREE.Raycaster();
+//   const pointer    = new THREE.Vector2();
+
+//   // Invisible drag plane at floor level
+//   const dragPlane  = new THREE.Plane(new THREE.Vector3(0, 1, 0), -FLOOR_Y);
+//   const _intersect = new THREE.Vector3();
+
+//   let dragging:     THREE.Group | null = null;
+//   let targetPos:    THREE.Vector3      = new THREE.Vector3();
+//   let dragOffset:   THREE.Vector3      = new THREE.Vector3();
+
+//   function getNDC(e: PointerEvent) {
+//     const rect = domElement.getBoundingClientRect();
+//     pointer.x =  ((e.clientX - rect.left)  / rect.width)  * 2 - 1;
+//     pointer.y = -((e.clientY - rect.top)   / rect.height) * 2 + 1;
+//   }
+
+//   function getRayPlaneHit(): THREE.Vector3 | null {
+//     raycaster.setFromCamera(pointer, camera);
+//     const hit = new THREE.Vector3();
+//     if (raycaster.ray.intersectPlane(dragPlane, hit)) return hit;
+//     return null;
+//   }
+
+//   function findMovableAncestor(object: THREE.Object3D): THREE.Group | null {
+//     let o: THREE.Object3D | null = object;
+//     while (o) {
+//       if (o.userData.movable) return o as THREE.Group;
+//       o = o.parent;
+//     }
+//     return null;
+//   }
+
+//   function onPointerDown(e: PointerEvent) {
+//     if (e.button !== 0) return;
+//     getNDC(e);
+//     raycaster.setFromCamera(pointer, camera);
+
+//     // Collect all meshes inside movable groups for hit-testing
+//     const meshes: THREE.Object3D[] = [];
+//     movables.forEach(g => g.traverse(c => { if ((c as THREE.Mesh).isMesh) meshes.push(c); }));
+
+//     const hits = raycaster.intersectObjects(meshes, true);
+//     if (!hits.length) return;
+
+//     const ancestor = findMovableAncestor(hits[0].object);
+//     if (!ancestor) return;
+
+//     const hit = getRayPlaneHit();
+//     if (!hit) return;
+
+//     dragging  = ancestor;
+//     dragOffset.copy(ancestor.position).sub(hit);
+//     targetPos.copy(ancestor.position);
+//     domElement.setPointerCapture(e.pointerId);
+//   }
+
+//   function onPointerMove(e: PointerEvent) {
+//     if (!dragging) return;
+//     getNDC(e);
+//     const hit = getRayPlaneHit();
+//     if (!hit) return;
+//     // Update the TARGET, not the object directly — lerp in update()
+//     targetPos.copy(hit).add(dragOffset);
+//     targetPos.y = FLOOR_Y; // keep on floor
+//   }
+
+//   function onPointerUp(e: PointerEvent) {
+//     if (!dragging) return;
+//     domElement.releasePointerCapture(e.pointerId);
+//     dragging = null;
+//   }
+
+//   domElement.addEventListener("pointerdown", onPointerDown);
+//   domElement.addEventListener("pointermove", onPointerMove);
+//   domElement.addEventListener("pointerup",   onPointerUp);
+
+//   function update() {
+//     if (!dragging) return;
+//     // Lerp current position toward target — this is the smoothness
+//     dragging.position.lerp(targetPos, DAMPING);
+//   }
+
+//   function dispose() {
+//     domElement.removeEventListener("pointerdown", onPointerDown);
+//     domElement.removeEventListener("pointermove", onPointerMove);
+//     domElement.removeEventListener("pointerup",   onPointerUp);
+//   }
+
+//   return { update, dispose };
+// }
+
 export interface FurnitureDragger {
   /** Call every frame inside requestAnimationFrame to apply damped movement. */
   update: () => void;
   /** Clean up event listeners. */
   dispose: () => void;
 }
-
+ 
+// ── Tuning constants ────────────────────────────────────────────────────────
+const MIN_DAMPING  = 0.18;   // floor — prevents micro-lag at rest
+const MAX_DAMPING  = 0.40;   // ceiling — prevents over-shoot on fast drag
+const SPEED_SCALE  = 0.18;   // how strongly distance boosts damping
+const SNAP_GRID    = 0;      // set e.g. 0.25 for grid snapping, 0 = off
+const HIGHLIGHT    = 0x333333; // emissive boost while dragging (subtle glow)
+// ───────────────────────────────────────────────────────────────────────────
+ 
 export function createFurnitureDragger(
-  camera: THREE.Camera,
+  camera:     THREE.Camera,
   domElement: HTMLElement,
-  scene: THREE.Scene,
-  movables: THREE.Group[],
+  scene:      THREE.Scene,         // kept for API compatibility
+  movables:   THREE.Group[],
 ): FurnitureDragger {
-  const DAMPING    = 0.12;  // 0 = no movement, 1 = instant (lower = smoother)
-  const FLOOR_Y    = 0;
+ 
   const raycaster  = new THREE.Raycaster();
   const pointer    = new THREE.Vector2();
-
-  // Invisible drag plane at floor level
-  const dragPlane  = new THREE.Plane(new THREE.Vector3(0, 1, 0), -FLOOR_Y);
+ 
+  // ── Dynamic drag plane (camera-facing, placed at click point) ──────────
+  // This is the #1 reason objects feel "attached" to the cursor.
+  // Instead of always projecting onto y=0, we project onto a plane that:
+  //   • faces the camera
+  //   • passes through the exact 3-D point where the user clicked
+  // Result: the grabbed point under the cursor never drifts.
+  const dragPlane  = new THREE.Plane();
   const _intersect = new THREE.Vector3();
-
-  let dragging:     THREE.Group | null = null;
-  let targetPos:    THREE.Vector3      = new THREE.Vector3();
-  let dragOffset:   THREE.Vector3      = new THREE.Vector3();
-
+ 
+  let dragging:   THREE.Group | null = null;
+  let targetPos   = new THREE.Vector3();
+  let dragOffset  = new THREE.Vector3();
+ 
+  // Track original emissive values so we can restore them on release
+  const savedEmissive = new Map<THREE.MeshStandardMaterial, THREE.Color>();
+ 
+  // ── Helpers ────────────────────────────────────────────────────────────
   function getNDC(e: PointerEvent) {
-    const rect = domElement.getBoundingClientRect();
-    pointer.x =  ((e.clientX - rect.left)  / rect.width)  * 2 - 1;
-    pointer.y = -((e.clientY - rect.top)   / rect.height) * 2 + 1;
+    const r = domElement.getBoundingClientRect();
+    pointer.x =  ((e.clientX - r.left) / r.width)  * 2 - 1;
+    pointer.y = -((e.clientY - r.top)  / r.height) * 2 + 1;
   }
-
+ 
   function getRayPlaneHit(): THREE.Vector3 | null {
     raycaster.setFromCamera(pointer, camera);
     const hit = new THREE.Vector3();
-    if (raycaster.ray.intersectPlane(dragPlane, hit)) return hit;
-    return null;
+    return raycaster.ray.intersectPlane(dragPlane, hit) ? hit : null;
   }
-
-  function findMovableAncestor(object: THREE.Object3D): THREE.Group | null {
-    let o: THREE.Object3D | null = object;
+ 
+  function findMovableAncestor(obj: THREE.Object3D): THREE.Group | null {
+    let o: THREE.Object3D | null = obj;
     while (o) {
       if (o.userData.movable) return o as THREE.Group;
       o = o.parent;
     }
     return null;
   }
-
+ 
+  function snap(v: number): number {
+    return SNAP_GRID > 0 ? Math.round(v / SNAP_GRID) * SNAP_GRID : v;
+  }
+ 
+  // Lift emissive on all child meshes while dragging
+  function applyHighlight(group: THREE.Group) {
+    group.traverse(child => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      if (!mat || !('emissive' in mat)) return;
+      if (!savedEmissive.has(mat)) {
+        savedEmissive.set(mat, mat.emissive.clone());
+      }
+      mat.emissive.set(HIGHLIGHT);
+    });
+  }
+ 
+  function removeHighlight() {
+    savedEmissive.forEach((saved, mat) => {
+      mat.emissive.copy(saved);
+    });
+    savedEmissive.clear();
+  }
+ 
+  // ── Pointer events ──────────────────────────────────────────────────────
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return;
     getNDC(e);
     raycaster.setFromCamera(pointer, camera);
-
-    // Collect all meshes inside movable groups for hit-testing
+ 
+    // Hit-test against all meshes inside movable groups
     const meshes: THREE.Object3D[] = [];
     movables.forEach(g => g.traverse(c => { if ((c as THREE.Mesh).isMesh) meshes.push(c); }));
-
+ 
     const hits = raycaster.intersectObjects(meshes, true);
     if (!hits.length) return;
-
+ 
     const ancestor = findMovableAncestor(hits[0].object);
     if (!ancestor) return;
-
-    const hit = getRayPlaneHit();
-    if (!hit) return;
-
-    dragging  = ancestor;
-    dragOffset.copy(ancestor.position).sub(hit);
+ 
+    // ── Camera-facing drag plane through the exact click point ────────────
+    // planeNormal = direction from camera toward scene (reversed = facing us)
+    const planeNormal = new THREE.Vector3();
+    camera.getWorldDirection(planeNormal);        // points INTO screen
+    // We want the plane to face the camera, so negate:
+    planeNormal.negate();
+    dragPlane.setFromNormalAndCoplanarPoint(planeNormal, hits[0].point);
+ 
+    // ── Exact hit-point offset — ZERO jump on pickup ──────────────────────
+    // Use hits[0].point (mesh surface) not a re-projected plane hit.
+    dragOffset.copy(ancestor.position).sub(hits[0].point);
+ 
     targetPos.copy(ancestor.position);
+ 
+    dragging = ancestor;
+    applyHighlight(ancestor);
+    domElement.style.cursor = "grabbing";
     domElement.setPointerCapture(e.pointerId);
   }
-
+ 
   function onPointerMove(e: PointerEvent) {
-    if (!dragging) return;
+    if (!dragging) {
+      // Show "grab" cursor when hovering a movable
+      getNDC(e);
+      raycaster.setFromCamera(pointer, camera);
+      const meshes: THREE.Object3D[] = [];
+      movables.forEach(g => g.traverse(c => { if ((c as THREE.Mesh).isMesh) meshes.push(c); }));
+      const hits = raycaster.intersectObjects(meshes, true);
+      const overMovable = hits.length > 0 && !!findMovableAncestor(hits[0].object);
+      domElement.style.cursor = overMovable ? "grab" : "";
+      return;
+    }
+ 
     getNDC(e);
     const hit = getRayPlaneHit();
     if (!hit) return;
-    // Update the TARGET, not the object directly — lerp in update()
-    targetPos.copy(hit).add(dragOffset);
-    targetPos.y = FLOOR_Y; // keep on floor
+ 
+    // Apply drag offset and optional grid snap
+    targetPos.set(
+      snap(hit.x + dragOffset.x),
+      dragging.position.y,          // keep Y locked — no vertical drift
+      snap(hit.z + dragOffset.z),
+    );
   }
-
+ 
   function onPointerUp(e: PointerEvent) {
     if (!dragging) return;
+    removeHighlight();
     domElement.releasePointerCapture(e.pointerId);
+    domElement.style.cursor = "";
     dragging = null;
   }
-
+ 
   domElement.addEventListener("pointerdown", onPointerDown);
   domElement.addEventListener("pointermove", onPointerMove);
   domElement.addEventListener("pointerup",   onPointerUp);
-
+  domElement.addEventListener("pointercancel", onPointerUp);
+ 
+  // ── Per-frame update ────────────────────────────────────────────────────
   function update() {
     if (!dragging) return;
-    // Lerp current position toward target — this is the smoothness
-    dragging.position.lerp(targetPos, DAMPING);
+ 
+    // Adaptive damping: farther from target → snappier response
+    const dist = dragging.position.distanceTo(targetPos);
+    const t    = THREE.MathUtils.clamp(dist * SPEED_SCALE, MIN_DAMPING, MAX_DAMPING);
+ 
+    dragging.position.lerp(targetPos, t);
   }
+ 
 
   function dispose() {
-    domElement.removeEventListener("pointerdown", onPointerDown);
-    domElement.removeEventListener("pointermove", onPointerMove);
-    domElement.removeEventListener("pointerup",   onPointerUp);
+    domElement.removeEventListener("pointerdown",   onPointerDown);
+    domElement.removeEventListener("pointermove",   onPointerMove);
+    domElement.removeEventListener("pointerup",     onPointerUp);
+    domElement.removeEventListener("pointercancel", onPointerUp);
+    domElement.style.cursor = "";
   }
-
+ 
   return { update, dispose };
 }
-
-
 // ═══════════════════════════════════════════════════════════════════════════
 // LAMP TOGGLE HELPER
 //

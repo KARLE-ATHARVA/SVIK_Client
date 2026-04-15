@@ -20,8 +20,11 @@ import { addFavoriteAPI, removeFavoriteAPI, listFavoritesAPI } from "@/lib/favor
 import AuthModal from "./AuthModal";
 import TopRightButtons from "./TopRightButtons";
 import { Loader2 } from "lucide-react";
+import { API_BASE } from "@/lib/constants";
 
-type Product = { id: string | number; name: string; image: string; size: string; skuCode: string };
+
+//type Product = { id: string | number; name: string; image: string; size: string; skuCode: string };
+type Product = { id: string | number; name: string; image: string; size: string; skuCode: string; finish?: string };
 
 type Handlers = {
   onSelectRoom?: () => void;
@@ -131,11 +134,13 @@ function mapTilesToProducts(rows: TileListItem[]): Product[] {
     const skuCode = String(item.sku_code ?? "").trim();
     const rawName = String(item.sku_name ?? item.name ?? item.product_name ?? "").trim();
     const name = rawName || skuCode || "Tile";
+    const finish = String((item as any).finish_name ?? (item as any).finish ?? "").trim();
     const size = String(item.size_name ?? item.size ?? "").trim();
     return {
       id: item.tile_id,
       name,
       image: buildAssetUrl(`media/thumb/${skuCode}.jpg`),
+      finish,
       size,
       skuCode,
     };
@@ -335,13 +340,40 @@ export default function LegacySidebar3D({
 
 
 
-  const handleProductApply = (product: Product) => {
-    const tile = { id: product.id, name: product.name, image: product.image, skuCode: product.skuCode };
-    localStorage.setItem("selected_tile", JSON.stringify(tile));
-    localStorage.setItem("selected_tile_size", product.size);
-    window.dispatchEvent(new StorageEvent("storage", { key: "selected_tile", newValue: JSON.stringify(tile) }));
-    setSelectedTileId(product.id);
+ const handleProductApply = async (product: Product) => {
+  let finish = String(product.finish ?? "").trim();
+
+  if (!finish && product.skuCode) {
+    try {
+      const rawBase = String(API_BASE ?? "").trim();
+      const apiBase = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+      const url = `${apiBase}GetTileBySku?skuCode=${encodeURIComponent(product.skuCode)}`;
+      const res = await fetch(url, { method: "GET", cache: "no-store" });
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        finish = String(data?.finish_name ?? data?.finish ?? "").trim();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const tile = {
+    id: product.id,
+    name: product.name,
+    image: product.image,
+    skuCode: product.skuCode,
+    finish,
   };
+
+  localStorage.setItem("selected_tile", JSON.stringify(tile));
+  localStorage.setItem("selected_tile_size", product.size);
+  window.dispatchEvent(
+    new StorageEvent("storage", { key: "selected_tile", newValue: JSON.stringify(tile) })
+  );
+  setSelectedTileId(product.id);
+};
+
 
   const handleFavouriteToggle = async (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();

@@ -32,7 +32,8 @@ import {
   BathroomRefs,
   TUBE_LIGHT_NAMES as BATH_TUBE_NAMES,
 } from "@/3d-scenes/bathroom";
-import { buildBedroomScene, LAMP_NAMES, BedroomRefs } from "@/3d-scenes/bedroom";
+//import { buildBedroomScene, LAMP_NAMES, BedroomRefs } from "@/3d-scenes/bedroom";
+import { buildBedroomScene, LAMP_NAMES, TUBE_LIGHT_NAMES as BED_TUBE_NAMES, BedroomRefs } from "@/3d-scenes/bedroom";
 import {
   buildKitchenScene,
   KitchenRefs,
@@ -110,6 +111,7 @@ type AppliedTile = {
   image?: string;
   skuCode?: string;
   size?: string | null;
+  finish?: string;
 };
 
 type Saved3DDesignPayload = {
@@ -578,6 +580,24 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
     const pdf = new JsPDF("p", "mm", "a4");
     const pageW = 210;
     const margin = 12;
+    const getRoomKey = () =>
+  String(localStorage.getItem("selected_3d_sub_scene") || "living_room")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const today = new Date();
+const dateStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
+
+const baseName = `${getRoomKey()}-${dateStr}`;
+const countKey = `svik_pdf_count:${baseName}`;
+const prevCount = Number(localStorage.getItem(countKey) || "0"); // 0 = first time
+localStorage.setItem(countKey, String(prevCount + 1));
+
+const suffix = prevCount === 0 ? "" : `(${prevCount})`;
+const fileName = `${baseName}${suffix}.pdf`;
+
 
     pdf.setFillColor(14, 70, 69);
     pdf.rect(0, 0, pageW, 24, "F");
@@ -656,10 +676,19 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
       return null;
     };
 
-    const allTiles = [
-      ...appliedWallTiles.map((t) => ({ ...t, section: "Wall Tile" })),
-      ...appliedFloorTiles.map((t) => ({ ...t, section: "Floor Tile" })),
-    ];
+    // const allTiles = [
+    //   ...appliedWallTiles.map((t) => ({ ...t, section: "Wall Tile" })),
+    //   ...appliedFloorTiles.map((t) => ({ ...t, section: "Floor Tile" })),
+    // ];
+    const currentWallTiles = (Object.values(appliedWallBySurface).filter(Boolean) as AppliedTile[])
+  .map((t) => ({ ...t, section: "Wall Tile" }));
+
+const currentFloorTile = appliedFloorTiles[0]
+  ? [{ ...appliedFloorTiles[0], section: "Floor Tile" }]
+  : [];
+
+const allTiles = [...currentWallTiles, ...currentFloorTile];
+
 
     let y = 132;
     const cardH = 56;
@@ -694,11 +723,18 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
       pdf.setFontSize(10);
       pdf.text(`Name: ${tile.name || "Tile"}`, leftX, y + 20);
       pdf.text(`Size: ${tile.size || "-"}`, leftX, y + 26);
-      if (tile.skuCode) pdf.text(`SKU: ${tile.skuCode}`, leftX, y + 32);
+      //if (tile.skuCode) pdf.text(`SKU: ${tile.skuCode}`, leftX, y + 32);
+      const finish =
+  (tile as any).finish ??
+  (tile as any).finish_name ??
+  (tile as any).surface_finish ??
+  (tile as any).finishType ??
+  "";
+
+pdf.text(`Finish: ${tile.finish || "-"}`, leftX, y + 32);
+
 
       pdf.setDrawColor(214, 223, 228);
-      pdf.rect(imgBox.x, imgBox.y, imgBox.w, imgBox.h);
-      pdf.rect(qrBox.x, qrBox.y, qrBox.w, qrBox.h);
 
       const normalizedTileImage = tile.image
         ? resolveAssetUrl(tile.image)
@@ -758,7 +794,8 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
       pdf.text("No applied tiles found for wall/floor.", margin, 136);
     }
 
-    pdf.save("Design-with-info.pdf");
+    pdf.save(fileName);
+
   };
 
   const handleSaveLink = async () => {
@@ -1016,6 +1053,8 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
       image: tile.image ?? "",
       skuCode: tile.sku_code ?? tile.skuCode ?? "",
       size,
+      finish: tile.finish ?? tile.finish_name ?? "",
+
     };
   };
 
@@ -1782,6 +1821,19 @@ controls.maxPolarAngle = Math.PI * 0.95;
     const animate = () => {
       frameId = requestAnimationFrame(animate);
       controls.update();
+      // Smooth furniture drag
+if (furnitureDragging.current && selectedFurniture.current) {
+  const obj = selectedFurniture.current;
+  if (obj.userData.targetX !== undefined) {
+    const dist = Math.hypot(
+      obj.position.x - obj.userData.targetX,
+      obj.position.z - obj.userData.targetZ
+    );
+    const t = THREE.MathUtils.clamp(dist * 0.18, 0.18, 0.40);
+    obj.position.x += (obj.userData.targetX - obj.position.x) * t;
+    obj.position.z += (obj.userData.targetZ - obj.position.z) * t;
+  }
+}
       camera.position.x = Math.max(-ROOM_X, Math.min(ROOM_X, camera.position.x));
       camera.position.z = Math.max(
         ROOM_Z_MIN,
@@ -1950,73 +2002,139 @@ controls.maxPolarAngle = Math.PI * 0.95;
   }, []);
 
   // ── Light toggles ─────────────────────────────────────────────────────────
+  // const toggleLamp = useCallback((lampName: string) => {
+  //   const refs = bedroomRefsRef.current;
+  //   if (!refs) return;
+  //   const isLeft = lampName === LAMP_NAMES.leftShade;
+  //   const light = isLeft ? refs.leftLampLight : refs.rightLampLight;
+  //   const shadeMat = isLeft ? refs.leftShadeMat : refs.rightShadeMat;
+  //   const turningOn = light.intensity === 0;
+  //   light.intensity = turningOn ? 12 : 0;
+  //   shadeMat.emissiveIntensity = turningOn ? 1.0 : 0.0;
+  //   shadeMat.needsUpdate = true;
+  //   const bothOff =
+  //     refs.leftLampLight.intensity === 0 && refs.rightLampLight.intensity === 0;
+  //   refs.ambientLight.intensity = bothOff ? 0.25 : 0.5;
+  //   refs.hemisphereLight.intensity = bothOff ? 0.3 : 0.6;
+  // }, []);
   const toggleLamp = useCallback((lampName: string) => {
     const refs = bedroomRefsRef.current;
     if (!refs) return;
-    const isLeft = lampName === LAMP_NAMES.leftShade;
-    const light = isLeft ? refs.leftLampLight : refs.rightLampLight;
-    const shadeMat = isLeft ? refs.leftShadeMat : refs.rightShadeMat;
+
+    // Tube light click — delegate to handleLightClick
+    if (refs.handleLightClick(lampName)) {
+      const allOff =
+        refs.leftLampLight.intensity  === 0 &&
+        refs.rightLampLight.intensity === 0 &&
+        refs.tubeLight1.intensity     === 0 &&
+        refs.tubeLight2.intensity     === 0;
+      refs.ambientLight.intensity    = allOff ? 0.25 : 1.2;
+      refs.hemisphereLight.intensity = allOff ? 0.3  : 1.0;
+      return;
+    }
+
+    // Bedside lamp click
+    const isLeft   = lampName === LAMP_NAMES.leftShade;
+    const light    = isLeft ? refs.leftLampLight : refs.rightLampLight;
+    const shadeMat = isLeft ? refs.leftShadeMat  : refs.rightShadeMat;
     const turningOn = light.intensity === 0;
-    light.intensity = turningOn ? 12 : 0;
+    light.intensity            = turningOn ? 12  : 0;
     shadeMat.emissiveIntensity = turningOn ? 1.0 : 0.0;
     shadeMat.needsUpdate = true;
-    const bothOff =
-      refs.leftLampLight.intensity === 0 && refs.rightLampLight.intensity === 0;
-    refs.ambientLight.intensity = bothOff ? 0.25 : 0.5;
-    refs.hemisphereLight.intensity = bothOff ? 0.3 : 0.6;
+    const allOff =
+      refs.leftLampLight.intensity  === 0 &&
+      refs.rightLampLight.intensity === 0 &&
+      refs.tubeLight1.intensity     === 0 &&
+      refs.tubeLight2.intensity     === 0;
+    refs.ambientLight.intensity    = allOff ? 0.25 : 1.2;
+    refs.hemisphereLight.intensity = allOff ? 0.3  : 1.0;
   }, []);
 
-  const toggleTubeLight = useCallback((tubeName: string) => {
+  // const toggleTubeLight = useCallback((tubeName: string) => {
+  //   const refs = kitchenRefsRef.current ?? bathroomRefsRef.current;
+  //   if (!refs) return;
+  //   const isFirst =
+  //     tubeName === KIT_TUBE_NAMES.tube1 || tubeName === BATH_TUBE_NAMES.tube1;
+  //   const light = isFirst ? refs.tubeLight1 : refs.tubeLight2;
+  //   const tubeMat = isFirst ? refs.tubeMat1 : refs.tubeMat2;
+  //   const turningOn = light.intensity === 0;
+  //   light.intensity = turningOn ? 18 : 0;
+  //   tubeMat.emissiveIntensity = turningOn ? 2.5 : 0.0;
+  //   tubeMat.needsUpdate = true;
+  //   const bothOff =
+  //     refs.tubeLight1.intensity === 0 && refs.tubeLight2.intensity === 0;
+  //   refs.ambientLight.intensity = bothOff ? 0.15 : 0.35;
+  //   refs.hemisphereLight.intensity = bothOff ? 0.2 : 0.45;
+  // }, []);
+  const toggleTubeLight = useCallback((lightName: string) => {
     const refs = kitchenRefsRef.current ?? bathroomRefsRef.current;
     if (!refs) return;
-    const isFirst =
-      tubeName === KIT_TUBE_NAMES.tube1 || tubeName === BATH_TUBE_NAMES.tube1;
-    const light = isFirst ? refs.tubeLight1 : refs.tubeLight2;
-    const tubeMat = isFirst ? refs.tubeMat1 : refs.tubeMat2;
-    const turningOn = light.intensity === 0;
-    light.intensity = turningOn ? 18 : 0;
-    tubeMat.emissiveIntensity = turningOn ? 2.5 : 0.0;
-    tubeMat.needsUpdate = true;
-    const bothOff =
+    refs.handleLightClick(lightName);
+    const allOff =
       refs.tubeLight1.intensity === 0 && refs.tubeLight2.intensity === 0;
-    refs.ambientLight.intensity = bothOff ? 0.15 : 0.35;
-    refs.hemisphereLight.intensity = bothOff ? 0.2 : 0.45;
+    refs.ambientLight.intensity    = allOff ? 0.15 : 0.6;
+    refs.hemisphereLight.intensity = allOff ? 0.2  : 0.5;
   }, []);
 
-  const toggleLivingLight = useCallback((lightName: string) => {
+  // const toggleLivingLight = useCallback((lightName: string) => {
+  //   const refs = livingRoomRefsRef.current;
+  //   if (!refs) return;
+  //   if (
+  //     lightName === LIVING_LIGHT_NAMES.tubeLight1 ||
+  //     lightName === LIVING_LIGHT_NAMES.tubeLight2
+  //   ) {
+  //     const isFirst = lightName === LIVING_LIGHT_NAMES.tubeLight1;
+  //     const light = isFirst ? refs.tubeLight1 : refs.tubeLight2;
+  //     const mat = isFirst ? refs.tubeMat1 : refs.tubeMat2;
+  //     const turningOn = light.intensity === 0;
+  //     light.intensity = turningOn ? 22 : 0;
+  //     mat.emissiveIntensity = turningOn ? 2.5 : 0.0;
+  //     mat.needsUpdate = true;
+  //   } else if (lightName === LIVING_LIGHT_NAMES.floorShade) {
+  //     const turningOn = refs.floorLampLight.intensity === 0;
+  //     refs.floorLampLight.intensity = turningOn ? 12 : 0;
+  //     refs.floorShadeMat.emissiveIntensity = turningOn ? 1.0 : 0.0;
+  //     refs.floorShadeMat.needsUpdate = true;
+  //   } else if (lightName === LIVING_LIGHT_NAMES.pendantShade) {
+  //     const turningOn = refs.pendantLight.intensity === 0;
+  //     refs.pendantLight.intensity = turningOn ? 15 : 0;
+  //     refs.pendantShadeMat.emissiveIntensity = turningOn ? 0.6 : 0.0;
+  //     refs.pendantShadeMat.needsUpdate = true;
+  //   }
+  //   const allOff =
+  //     refs.floorLampLight.intensity === 0 &&
+  //     refs.pendantLight.intensity === 0 &&
+  //     refs.tubeLight1.intensity === 0 &&
+  //     refs.tubeLight2.intensity === 0;
+  //   refs.ambientLight.intensity = allOff ? 0.1 : 0.5;
+  //   refs.hemisphereLight.intensity = allOff ? 0.2 : 0.7;
+  // }, []);
+//   const toggleLivingLight = useCallback((lightName: string) => {
+//   const refs = livingRoomRefsRef.current;
+//   if (!refs) return;
+//   // Delegate entirely to the scene's own handler which tracks state correctly
+//   refs.handleLightClick(lightName);
+//   // Sync ambient/hemisphere after any toggle
+//   const allOff =
+//     refs.floorLampLight.intensity === 0 &&
+//     refs.pendantLight.intensity === 0 &&
+//     refs.tubeLight1.intensity === 0 &&
+//     refs.tubeLight2.intensity === 0;
+//   refs.ambientLight.intensity = allOff ? 0.1 : 0.5;
+//   refs.hemisphereLight.intensity = allOff ? 0.2 : 0.7;
+// }, []);
+const toggleLivingLight = useCallback((lightName: string) => {
     const refs = livingRoomRefsRef.current;
     if (!refs) return;
-    if (
-      lightName === LIVING_LIGHT_NAMES.tubeLight1 ||
-      lightName === LIVING_LIGHT_NAMES.tubeLight2
-    ) {
-      const isFirst = lightName === LIVING_LIGHT_NAMES.tubeLight1;
-      const light = isFirst ? refs.tubeLight1 : refs.tubeLight2;
-      const mat = isFirst ? refs.tubeMat1 : refs.tubeMat2;
-      const turningOn = light.intensity === 0;
-      light.intensity = turningOn ? 22 : 0;
-      mat.emissiveIntensity = turningOn ? 2.5 : 0.0;
-      mat.needsUpdate = true;
-    } else if (lightName === LIVING_LIGHT_NAMES.floorShade) {
-      const turningOn = refs.floorLampLight.intensity === 0;
-      refs.floorLampLight.intensity = turningOn ? 12 : 0;
-      refs.floorShadeMat.emissiveIntensity = turningOn ? 1.0 : 0.0;
-      refs.floorShadeMat.needsUpdate = true;
-    } else if (lightName === LIVING_LIGHT_NAMES.pendantShade) {
-      const turningOn = refs.pendantLight.intensity === 0;
-      refs.pendantLight.intensity = turningOn ? 15 : 0;
-      refs.pendantShadeMat.emissiveIntensity = turningOn ? 0.6 : 0.0;
-      refs.pendantShadeMat.needsUpdate = true;
-    }
+    refs.handleLightClick(lightName);
     const allOff =
       refs.floorLampLight.intensity === 0 &&
-      refs.pendantLight.intensity === 0 &&
-      refs.tubeLight1.intensity === 0 &&
-      refs.tubeLight2.intensity === 0;
-    refs.ambientLight.intensity = allOff ? 0.1 : 0.5;
-    refs.hemisphereLight.intensity = allOff ? 0.2 : 0.7;
+      refs.pendantLight.intensity   === 0 &&
+      refs.tubeLight1.intensity     === 0 &&
+      refs.tubeLight2.intensity     === 0;
+    refs.ambientLight.intensity    = allOff ? 0.0 : 1.2;
+    refs.hemisphereLight.intensity = allOff ? 0.0 : 1.0;
   }, []);
-
   // ── NDC + Raycast helpers ─────────────────────────────────────────────────
   const getNDC = (e: React.MouseEvent): THREE.Vector2 => {
     const r = canvasRef.current!.getBoundingClientRect();
@@ -2058,7 +2176,13 @@ controls.maxPolarAngle = Math.PI * 0.95;
     if (!cameraRef.current || !sceneRef.current) return null;
     raycasterRef.current.setFromCamera(ndc, cameraRef.current);
     const targetNames: string[] = [];
-    if (bedroomRefsRef.current) targetNames.push(LAMP_NAMES.leftShade, LAMP_NAMES.rightShade);
+    //if (bedroomRefsRef.current) targetNames.push(LAMP_NAMES.leftShade, LAMP_NAMES.rightShade);
+    if (bedroomRefsRef.current) targetNames.push(
+      LAMP_NAMES.leftShade,
+      LAMP_NAMES.rightShade,
+      BED_TUBE_NAMES.tube1,
+      BED_TUBE_NAMES.tube2,
+    );
     if (kitchenRefsRef.current) targetNames.push(KIT_TUBE_NAMES.tube1, KIT_TUBE_NAMES.tube2);
     if (bathroomRefsRef.current) targetNames.push(BATH_TUBE_NAMES.tube1, BATH_TUBE_NAMES.tube2);
     if (livingRoomRefsRef.current)
@@ -2073,7 +2197,7 @@ controls.maxPolarAngle = Math.PI * 0.95;
       .map((n) => sceneRef.current!.getObjectByName(n))
       .filter(Boolean) as THREE.Object3D[];
     if (targets.length === 0) return null;
-    const hits = raycasterRef.current.intersectObjects(targets, true);
+    const hits = raycasterRef.current.intersectObjects(targets, false);
     if (hits.length === 0) return null;
     return findLightName(hits[0].object, targetNames);
   };
@@ -2121,14 +2245,19 @@ controls.maxPolarAngle = Math.PI * 0.95;
           : { x: 9.2, z: 7.2 };
         const newX = objStart.x + fp.x - start.x;
         const newZ = objStart.z + fp.z - start.z;
-        selectedFurniture.current.position.x = Math.max(
-          -bounds.x,
-          Math.min(bounds.x, newX)
-        );
-        selectedFurniture.current.position.z = Math.max(
-          -bounds.z,
-          Math.min(bounds.z, newZ)
-        );
+        // selectedFurniture.current.position.x = Math.max(
+        //   -bounds.x,
+        //   Math.min(bounds.x, newX)
+        // );
+        // selectedFurniture.current.position.z = Math.max(
+        //   -bounds.z,
+        //   Math.min(bounds.z, newZ)
+        // );
+        const clampedX = Math.max(-bounds.x, Math.min(bounds.x, newX));
+const clampedZ = Math.max(-bounds.z, Math.min(bounds.z, newZ));
+// Store target, lerp in animation loop
+selectedFurniture.current.userData.targetX = clampedX;
+selectedFurniture.current.userData.targetZ = clampedZ;
         syncFurnitureOutline();
         return;
       }
@@ -2201,104 +2330,247 @@ controls.maxPolarAngle = Math.PI * 0.95;
   );
 
 
+  // const handleMouseDown = useCallback(
+  //   (e: React.MouseEvent) => {
+  //     const m = modeRef.current;
+  //     mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+
+  //     if (m === "orbit") {
+  //       const hit = hitMovable(e);
+  //       if (hit) {
+  //         if (hit !== selectedFurniture.current) selectFurniture(hit);
+  //         const objY = hit.position.y;
+  //         furnitureDragging.current = true;
+  //         furnitureDragFloorStart.current = getFloorPoint(e, objY);
+  //         furnitureDragObjStart.current = hit.position.clone();
+  //         e.stopPropagation();
+  //         return;
+  //       }
+  //       if (selectedFurniture.current) deselectFurniture();
+  //     }
+
+  //     if (m === "draw-area") {
+  //       const hit = raycastAnyWall(getNDC(e));
+  //       if (!hit) return;
+  //       const wall = hit.name as WallTarget;
+  //       const pt = raycastWallHit(getNDC(e), wall);
+  //       if (!pt) return;
+  //       areaWallRef.current = wall;
+  //       drawStartHitRef.current = pt;
+  //       setAreaWallChosen(wall);
+  //       modeRef.current = "draw-area-dragging";
+  //       setMode("draw-area-dragging");
+  //       e.stopPropagation();
+  //     }
+  //   },
+  //   [hitMovable, getFloorPoint, deselectFurniture, selectFurniture]
+  // );
+
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      const m = modeRef.current;
-      mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+  (e: React.MouseEvent) => {
+    const m = modeRef.current;
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
 
-      if (m === "orbit") {
-        const hit = hitMovable(e);
-        if (hit) {
-          if (hit !== selectedFurniture.current) selectFurniture(hit);
-          const objY = hit.position.y;
-          furnitureDragging.current = true;
-          furnitureDragFloorStart.current = getFloorPoint(e, objY);
-          furnitureDragObjStart.current = hit.position.clone();
-          e.stopPropagation();
-          return;
-        }
-        if (selectedFurniture.current) deselectFurniture();
-      }
-
-      if (m === "draw-area") {
-        const hit = raycastAnyWall(getNDC(e));
-        if (!hit) return;
-        const wall = hit.name as WallTarget;
-        const pt = raycastWallHit(getNDC(e), wall);
-        if (!pt) return;
-        areaWallRef.current = wall;
-        drawStartHitRef.current = pt;
-        setAreaWallChosen(wall);
-        modeRef.current = "draw-area-dragging";
-        setMode("draw-area-dragging");
+    // Only drag if furniture is already selected and clicking on it
+    if (m === "orbit" && selectedFurniture.current) {
+      const hit = hitMovable(e);
+      if (hit && hit === selectedFurniture.current) {
+        furnitureDragging.current = true;
+        hit.traverse((c) => {
+  const m = (c as THREE.Mesh).material as THREE.MeshStandardMaterial;
+  if (m?.emissive) m.emissive.set(0x333333);
+});
+        const objY = hit.position.y;
+        // furnitureDragFloorStart.current = getFloorPoint(e, objY);
+        // furnitureDragObjStart.current = hit.position.clone();
+        // Camera-facing plane through the exact click point — no depth mismatch
+const planeNormal = new THREE.Vector3();
+cameraRef.current!.getWorldDirection(planeNormal).negate();
+floorPlaneRef.current.setFromNormalAndCoplanarPoint(planeNormal, hit.position);
+furnitureDragFloorStart.current = getFloorPoint(e, objY);
+furnitureDragObjStart.current = hit.position.clone();
+if (canvasRef.current) canvasRef.current.style.cursor = "grabbing"; 
         e.stopPropagation();
+        return;
       }
-    },
-    [hitMovable, getFloorPoint, deselectFurniture, selectFurniture]
-  );
+    }
+
+    if (m === "draw-area") {
+      const hit = raycastAnyWall(getNDC(e));
+      if (!hit) return;
+      const wall = hit.name as WallTarget;
+      const pt = raycastWallHit(getNDC(e), wall);
+      if (!pt) return;
+      areaWallRef.current = wall;
+      drawStartHitRef.current = pt;
+      setAreaWallChosen(wall);
+      modeRef.current = "draw-area-dragging";
+      setMode("draw-area-dragging");
+      e.stopPropagation();
+    }
+  },
+  [hitMovable, getFloorPoint, selectFurniture]
+);
+  // const handleMouseUp = useCallback(
+  //   (e: React.MouseEvent) => {
+  //     const m = modeRef.current;
+  //     if (furnitureDragging.current) {
+  //       furnitureDragging.current = false;
+  //       furnitureDragFloorStart.current = null;
+  //       return;
+  //     }
+  //     if (handleDragRef.current) {
+  //       handleDragRef.current = null;
+  //       return;
+  //     }
+  //     if (m === "pick-wall") {
+  //       const hit = raycastAnyWall(getNDC(e));
+  //       if (hit && selectedTileRef.current) {
+  //         applyWall(hit.name);
+  //         setMode("orbit");
+  //         setHoveredWall(null);
+  //         if (canvasRef.current) canvasRef.current.style.cursor = "grab";
+  //       }
+  //       return;
+  //     }
+  //     if (m === "orbit") {
+  //       const down = mouseDownPosRef.current;
+  //       const moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) : 999;
+  //       if (moved < 5) {
+  //         const lightName = raycastLamp(getNDC(e));
+  //         if (lightName) {
+  //           if (bedroomRefsRef.current) toggleLamp(lightName);
+  //           else if (livingRoomRefsRef.current) toggleLivingLight(lightName);
+  //           else toggleTubeLight(lightName);
+  //           return;
+  //         }
+  //       }
+  //     }
+  //     if (m === "draw-area-dragging") {
+  //       const wall = areaWallRef.current;
+  //       const p1 = drawStartHitRef.current;
+  //       clearPreviewBox();
+  //       if (wall && p1) {
+  //         const pt = raycastWallHit(getNDC(e), wall);
+  //         if (pt) {
+  //           const isBack = wall === SURFACE_NAMES.wallBack;
+  //           const hSize = Math.abs(isBack ? pt.x - p1.x : pt.z - p1.z);
+  //           const vSize = Math.abs(pt.y - p1.y);
+  //           if (hSize > 0.2 && vSize > 0.2) {
+  //             setPendingAreaData({ wall, p1, p2: pt });
+  //             setAreaConfirmPending(true);
+  //             return;
+  //           }
+  //         }
+  //       }
+  //       drawStartHitRef.current = null;
+  //       modeRef.current = "draw-area";
+  //       setMode("draw-area");
+  //     }
+  //   },
+  //   [applyWall, clearPreviewBox, toggleLamp, toggleTubeLight, toggleLivingLight]
+  // );
 
   const handleMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      const m = modeRef.current;
-      if (furnitureDragging.current) {
-        furnitureDragging.current = false;
-        furnitureDragFloorStart.current = null;
-        return;
-      }
-      if (handleDragRef.current) {
-        handleDragRef.current = null;
-        return;
-      }
-      if (m === "pick-wall") {
-        const hit = raycastAnyWall(getNDC(e));
-        if (hit && selectedTileRef.current) {
-          applyWall(hit.name);
-          setMode("orbit");
-          setHoveredWall(null);
-          if (canvasRef.current) canvasRef.current.style.cursor = "grab";
-        }
-        return;
-      }
-      if (m === "orbit") {
+  (e: React.MouseEvent) => {
+    const m = modeRef.current;
+
+    if (furnitureDragging.current) {
+      furnitureDragging.current = false;
+      selectedFurniture.current?.traverse((c) => {
+  const m = (c as THREE.Mesh).material as THREE.MeshStandardMaterial;
+  if (m?.emissive) m.emissive.set(0x000000);
+});
+      furnitureDragFloorStart.current = null;
+      if (canvasRef.current) canvasRef.current.style.cursor = "grab"; 
         const down = mouseDownPosRef.current;
-        const moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) : 999;
-        if (moved < 5) {
-          const lightName = raycastLamp(getNDC(e));
-          if (lightName) {
-            if (bedroomRefsRef.current) toggleLamp(lightName);
-            else if (livingRoomRefsRef.current) toggleLivingLight(lightName);
-            else toggleTubeLight(lightName);
-            return;
+  const moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) : 999;
+  if (moved < 5) {
+    const lightName = raycastLamp(getNDC(e));
+    if (lightName) {
+      if (bedroomRefsRef.current) toggleLamp(lightName);
+      else if (livingRoomRefsRef.current) toggleLivingLight(lightName);
+      else toggleTubeLight(lightName);
+    }
+  }
+
+      return;
+    }
+    if (handleDragRef.current) {
+      handleDragRef.current = null;
+      return;
+    }
+    if (m === "pick-wall") {
+      const hit = raycastAnyWall(getNDC(e));
+      if (hit && selectedTileRef.current) {
+        applyWall(hit.name);
+        setMode("orbit");
+        setHoveredWall(null);
+        if (canvasRef.current) canvasRef.current.style.cursor = "grab";
+      }
+      return;
+    }
+
+    // Single click → lights only
+    if (m === "orbit") {
+      const down = mouseDownPosRef.current;
+      const moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) : 999;
+      if (moved < 5) {
+        const lightName = raycastLamp(getNDC(e));
+        if (lightName) {
+          if (bedroomRefsRef.current) toggleLamp(lightName);
+          else if (livingRoomRefsRef.current) toggleLivingLight(lightName);
+          else toggleTubeLight(lightName);
+          return;
+        }
+      }
+    }
+
+    // Area draw — immediately apply tile on mouse up, no popup
+    if (m === "draw-area-dragging") {
+      const wall = areaWallRef.current;
+      const p1 = drawStartHitRef.current;
+      clearPreviewBox();
+      if (wall && p1) {
+        const pt = raycastWallHit(getNDC(e), wall);
+        if (pt) {
+          const isBack = wall === SURFACE_NAMES.wallBack;
+          const hSize = Math.abs(isBack ? pt.x - p1.x : pt.z - p1.z);
+          const vSize = Math.abs(pt.y - p1.y);
+          if (hSize > 0.2 && vSize > 0.2) {
+            // Directly apply — no popup
+            applyAreaTileOnWall(wall, p1, pt);
           }
         }
       }
-      if (m === "draw-area-dragging") {
-        const wall = areaWallRef.current;
-        const p1 = drawStartHitRef.current;
-        clearPreviewBox();
-        if (wall && p1) {
-          const pt = raycastWallHit(getNDC(e), wall);
-          if (pt) {
-            const isBack = wall === SURFACE_NAMES.wallBack;
-            const hSize = Math.abs(isBack ? pt.x - p1.x : pt.z - p1.z);
-            const vSize = Math.abs(pt.y - p1.y);
-            if (hSize > 0.2 && vSize > 0.2) {
-              setPendingAreaData({ wall, p1, p2: pt });
-              setAreaConfirmPending(true);
-              return;
-            }
-          }
-        }
-        drawStartHitRef.current = null;
-        modeRef.current = "draw-area";
-        setMode("draw-area");
+      drawStartHitRef.current = null;
+      areaWallRef.current = null;
+      setAreaWallChosen(null);
+      modeRef.current = "draw-area";
+      setMode("draw-area");
+    }
+  },
+  [applyWall, clearPreviewBox, toggleLamp, toggleTubeLight, toggleLivingLight, applyAreaTileOnWall]
+);
+  //const handleDoubleClick = useCallback((_e: React.MouseEvent) => {}, []);
+const handleDoubleClick = useCallback(
+  (e: React.MouseEvent) => {
+    if (modeRef.current !== "orbit") return;
+
+    const hit = hitMovable(e);
+    if (hit) {
+      if (hit === selectedFurniture.current) {
+        deselectFurniture(); // double-click selected furniture → deselect
+      } else {
+        selectFurniture(hit); // double-click new furniture → select
       }
-    },
-    [applyWall, clearPreviewBox, toggleLamp, toggleTubeLight, toggleLivingLight]
-  );
-
-  const handleDoubleClick = useCallback((_e: React.MouseEvent) => {}, []);
-
+      return;
+    }
+    // Double-click empty space → deselect
+    if (selectedFurniture.current) deselectFurniture();
+  },
+  [hitMovable, selectFurniture, deselectFurniture]
+);
   const confirmAreaTile = useCallback(() => {
     if (!pendingAreaData) return;
     applyAreaTileOnWall(pendingAreaData.wall, pendingAreaData.p1, pendingAreaData.p2);
@@ -2485,7 +2757,7 @@ controls.maxPolarAngle = Math.PI * 0.95;
         </div>
       )}
 
-      {areaConfirmPending && pendingAreaData && (
+      {/* {areaConfirmPending && pendingAreaData && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 flex flex-col items-center gap-4 min-w-[280px]">
             <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center">
@@ -2508,7 +2780,7 @@ controls.maxPolarAngle = Math.PI * 0.95;
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {furnitureLabel && !areaConfirmPending && mode === "orbit" && (
         <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
