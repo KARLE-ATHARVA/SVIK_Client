@@ -305,7 +305,15 @@ $(function(){
         }
         if (window.__highlightImageLoading[src]) return;
         var img = new Image();
-        img.crossOrigin = "anonymous";
+        if (typeof resolveVisualizerImageSrc === "function") {
+            src = resolveVisualizerImageSrc(src);
+        }
+        try {
+            var parsedSrc = new URL(src, window.location.href);
+            if (parsedSrc.origin !== window.location.origin) {
+                img.crossOrigin = "anonymous";
+            }
+        } catch (e) {}
         window.__highlightImageLoading[src] = true;
         img.onload = function() {
             window.__highlightImageCache[src] = img;
@@ -1749,12 +1757,57 @@ $(function(){
         }
     });
 
+    function resolveSceneTargetByPanel(panelId) {
+        var target = null;
+        if (panelId === "menuPanel2") {
+            if (window.scene_data && scene_data.length) {
+                for (var i = 0; i < scene_data.length; i++) {
+                    var scene = scene_data[i];
+                    if (!scene) continue;
+                    var sceneType = Number(scene[0]);
+                    var sceneName = String(scene[176] || "").toLowerCase();
+                    if (Number(scene[177]) === 1 || sceneName.indexOf("floor") !== -1) {
+                        target = sceneType;
+                        break;
+                    }
+                }
+            }
+        } else if (panelId === "menuPanel1") {
+            if (window.__wallTileTypes && window.__wallTileTypes.length) {
+                target = Number(window.__wallTargetTileType || window.__wallTileTypes[0] || 1);
+            } else if (window.scene_data && scene_data.length) {
+                for (var j = 0; j < scene_data.length; j++) {
+                    var wallScene = scene_data[j];
+                    if (!wallScene) continue;
+                    var wallType = Number(wallScene[0]);
+                    var wallName = String(wallScene[176] || "").toLowerCase();
+                    if (Number(wallScene[177]) !== 1 && wallName.indexOf("floor") === -1) {
+                        target = wallType;
+                        break;
+                    }
+                }
+            }
+        }
+        return isFinite(target) && target > 0 ? target : null;
+    }
+
     $(document).on("change", ".tile-type-input", function(e) {
         if(!dont_hide_leftmenu_on_tile_click_for_one_time)
             classie.remove(menuLeft, 'cbp-spmenu-open');
         else
             console.log_("asd");
         dont_hide_leftmenu_on_tile_click_for_one_time=false;
+
+        try {
+            var panelId = $(this).closest(".tab-pane").attr("id");
+            var resolvedTarget = resolveSceneTargetByPanel(panelId);
+            if (resolvedTarget !== null) {
+                window.__targetTileType = resolvedTarget;
+                if (window.__wallTileTypes && window.__wallTileTypes.indexOf(resolvedTarget) !== -1) {
+                    window.__wallTargetTileType = resolvedTarget;
+                }
+            }
+        } catch (err) {}
 
         var $allCheckboxes = $(this).closest(".tiles-list").find(".tile-type-input"),
             $checkedCheckboxes = $allCheckboxes.filter(":checked"),

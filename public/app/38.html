@@ -133,9 +133,73 @@
 <script src="/app/modules/ui/common-visualizer-interactions.js"></script>
 <script src="/app/modules/data/dynamic-tiles-api.js"></script>
 <script>
+window.__targetTileType = 1;
+
+function normalizeRoom38FloorTiles() {
+    if (!window.avail_tiles) {
+        return;
+    }
+
+    Object.keys(avail_tiles).forEach(function(key) {
+        var tile = avail_tiles[key];
+        if (!tile) {
+            return;
+        }
+        tile.tile_type = 1;
+        tile.fixed_tile_type = 0;
+    });
+}
+
+function enforceRoom38FloorPanel() {
+    $('#menuPanel1').removeClass('active').hide().empty();
+    $('#menuPanel2').addClass('active').show();
+    $("a[href='#menuPanel1']").closest('li').removeClass('active').hide();
+    $("a[href='#menuPanel2']").closest('li').addClass('active');
+    window.__targetTileType = 1;
+}
+
+function enforceRoom38FloorFilters() {
+    var $scope = $('#filter-section-2');
+    if (!$scope.length) {
+        return;
+    }
+
+    var $apps = $('input[data-for="filter"][data-filter-type="option"][data-filter-id="34"]', $scope);
+    if (!$apps.length) {
+        return;
+    }
+
+    $apps.prop('checked', false);
+    $apps.filter(function() {
+        return String($(this).val() || '').trim().toLowerCase() === 'floor';
+    }).prop('checked', true);
+
+    if (typeof window.refreshFilterVisualState === 'function') {
+        window.refreshFilterVisualState("2");
+    }
+    if (typeof window.refreshAvailableFilterOptions === 'function') {
+        window.refreshAvailableFilterOptions("2");
+    }
+    if (typeof window.applyFilter === 'function') {
+        window.applyFilter("2");
+    }
+}
+
+if (typeof window.showLeftMenu === "function" && !window.__room38ShowLeftMenuPatched) {
+    window.__room38ShowLeftMenuPatched = true;
+    window.__room38OriginalShowLeftMenu = window.showLeftMenu;
+    window.showLeftMenu = function(sk) {
+        enforceRoom38FloorPanel();
+        enforceRoom38FloorFilters();
+        return window.__room38OriginalShowLeftMenu(2);
+    };
+}
+
 $(function() {
     var panelsLoaded = { "2": false };
     var apiInitTriggered = false;
+
+    enforceRoom38FloorPanel();
 
     function tryInitApiTiles() {
         if (apiInitTriggered || !panelsLoaded["2"]) {
@@ -147,6 +211,10 @@ $(function() {
             window.initDynamicTilesFromApi({
                 roomId: 38
             }).then(function(result) {
+                normalizeRoom38FloorTiles();
+                enforceRoom38FloorPanel();
+                setTimeout(enforceRoom38FloorFilters, 0);
+                setTimeout(enforceRoom38FloorFilters, 150);
                 if (result) {
                     console.log("[dynamic-tiles-api] 38.html loaded", result);
                 }
@@ -173,6 +241,8 @@ $(function() {
             $("#tiles-list-2").preloader();
         }
         panelsLoaded["2"] = true;
+        enforceRoom38FloorPanel();
+        setTimeout(enforceRoom38FloorFilters, 0);
         tryInitApiTiles();
     });
 
@@ -181,5 +251,3 @@ $(function() {
 });
 </script>
 </body></html>
-
-

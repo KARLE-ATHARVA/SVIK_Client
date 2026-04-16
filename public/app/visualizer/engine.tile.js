@@ -1255,6 +1255,21 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
     floorGeometry[v39999.V(6)][1][v39999.R(49)] += Z2;
     floorGeometry[v39999.V(6)][3][v39999.u(49)] += Z2;
     obj = k39999.P7(new THREE[(v39999.u(66))]());
+    var cloneTileGeometry = function() {
+        var tileGeometry = floorGeometry.clone();
+        if (floorGeometry.faceVertexUvs && floorGeometry.faceVertexUvs.length) {
+            tileGeometry.faceVertexUvs = floorGeometry.faceVertexUvs.map(function(layer) {
+                return layer.map(function(face) {
+                    return face.map(function(uv) {
+                        return uv.clone();
+                    });
+                });
+            });
+        }
+        tileGeometry.verticesNeedUpdate = true;
+        tileGeometry.uvsNeedUpdate = true;
+        return tileGeometry;
+    };
     var groutVerticalGeometry = null;
     var groutHorizontalGeometry = null;
     var groutVerticalMaterial = null;
@@ -1276,6 +1291,7 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
             color: groutColorValue,
             transparent: groutOpacity < 1,
             opacity: groutOpacity,
+            side: THREE.DoubleSide,
             depthTest: true,
             depthWrite: false,
             polygonOffset: true,
@@ -1286,6 +1302,7 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
             color: groutColorValue,
             transparent: groutOpacity < 1,
             opacity: groutOpacity,
+            side: THREE.DoubleSide,
             depthTest: true,
             depthWrite: false,
             polygonOffset: true,
@@ -1299,7 +1316,8 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
             v6 = [k39999.Q7(r2, 256), Math[v39999.R(9)](r2 / 256), F6];
             O2 = {
                 transparent: true,
-                depthTest: false
+                depthTest: false,
+                side: THREE.DoubleSide
             };
             if (i6)
                 O2[v39999.u(53)] = v39999.o(15) + v6 + v39999.o(87);
@@ -1311,37 +1329,42 @@ blendTile = function(W6, V2, Q6, i6, F6, K2, j6) {
                     a6 = false;
             }
             if (a6) {
-                if (k39999.L7(G2, 45) && typeof O2[v39999.o(45)] == v39999.Y(55))
-                    rotateTexture(floorGeometry, N6, G2);
+                var tileGeometry = cloneTileGeometry();
                 N6 = new THREE[(v39999.o(80))](O2);
-                floor = new THREE[(v39999.Y(36))](floorGeometry,N6);
-                floor[v39999.Y(75)][v39999.V(51)] = u2 * stepX + p2 / 2 + c2 * Y2;
-                floor[v39999.u(75)][(584.58,
-                2870) <= 219.72 ? v39999.V(35) : v39999.Y(49)] = Y2 * stepY + x2 / 2 + Z2 * u2;
-                floor[v39999.o(75)][v39999.R(73)] = -F6 * 0.0001;
+                if (k39999.L7(G2, 45) && N6 && N6[v39999.o(45)])
+                    rotateTexture(tileGeometry, N6[v39999.o(45)], G2);
+                floor = new THREE[(v39999.Y(36))](tileGeometry,N6);
+                var layoutOffsetX = 0;
+                var layoutOffsetY = 0;
                 switch (D2) {
                 case v39999.Y(92):
-                    floor[v39999.Y(75)][v39999.R(51)] -= (stepX + c2) / 2 * (Y2 % 2);
-                    floor[v39999.o(75)][v39999.R(49)] -= k39999.V7(k39999.Y7(Z2, 2) * (Y2 % 2));
+                    layoutOffsetX = -((stepX + c2) / 2) * (Y2 % 2);
+                    layoutOffsetY = -k39999.V7(k39999.Y7(Z2, 2) * (Y2 % 2));
                     break;
                 case v39999.R(84):
-                    floor[v39999.u(75)][v39999.o(49)] -= (stepY + Z2) / 2 * (u2 % 2);
-                    floor[v39999.Y(75)][v39999.u(51)] -= k39999.u7(c2 / 2 * k39999.R7(u2, 2));
+                    layoutOffsetY = -((stepY + Z2) / 2) * (u2 % 2);
+                    layoutOffsetX = -k39999.u7(c2 / 2 * k39999.R7(u2, 2));
                     break;
                 }
+                var tileCenterX = u2 * stepX + p2 / 2 + c2 * Y2 + layoutOffsetX;
+                var tileCenterY = Y2 * stepY + x2 / 2 + Z2 * u2 + layoutOffsetY;
+                floor[v39999.Y(75)][v39999.V(51)] = tileCenterX;
+                floor[v39999.u(75)][(584.58,
+                2870) <= 219.72 ? v39999.V(35) : v39999.Y(49)] = tileCenterY;
+                floor[v39999.o(75)][v39999.R(73)] = -F6 * 0.0001;
                 obj[v39999.o(40)](floor);
                 if (groutEnabled && (u2 + 1) * stepX <= k39999.i7(h6, 1)) {
                     var groutV = new THREE[(v39999.Y(36))](groutVerticalGeometry,groutVerticalMaterial);
-                    groutV[v39999.Y(75)][v39999.V(51)] = floor[v39999.Y(75)][v39999.V(51)] + p2 / 2 + tileGapX / 2;
-                    groutV[v39999.Y(75)][v39999.V(49)] = floor[v39999.Y(75)][v39999.V(49)];
+                    groutV[v39999.Y(75)][v39999.V(51)] = tileCenterX + p2 / 2 + tileGapX / 2;
+                    groutV[v39999.Y(75)][v39999.V(49)] = tileCenterY;
                     groutV[v39999.Y(75)][v39999.u(73)] = floor[v39999.Y(75)][v39999.u(73)] + 0.00002;
                     groutV.renderOrder = 2;
                     obj[v39999.o(40)](groutV);
                 }
                 if (groutEnabled && (Y2 + 1) * stepY <= M6 + 1) {
                     var groutH = new THREE[(v39999.Y(36))](groutHorizontalGeometry,groutHorizontalMaterial);
-                    groutH[v39999.Y(75)][v39999.V(51)] = floor[v39999.Y(75)][v39999.V(51)];
-                    groutH[v39999.Y(75)][v39999.V(49)] = floor[v39999.Y(75)][v39999.V(49)] + x2 / 2 + tileGapY / 2;
+                    groutH[v39999.Y(75)][v39999.V(51)] = tileCenterX;
+                    groutH[v39999.Y(75)][v39999.V(49)] = tileCenterY + x2 / 2 + tileGapY / 2;
                     groutH[v39999.Y(75)][v39999.u(73)] = floor[v39999.Y(75)][v39999.u(73)] + 0.00002;
                     groutH.renderOrder = 2;
                     obj[v39999.o(40)](groutH);

@@ -447,6 +447,14 @@ $(function() {
     setVisibleLayoutForWall(window.__wallTileTypes[0] || 1);
     syncWallTileSelectionUi(window.__wallTileTypes[0] || 1);
 });
+
+$(document).on('mousedown touchstart click', '#menuPanel1 .tile-type-input, #menuPanel1 .tile-type-label', function() {
+    window.__targetTileType = Number(window.__wallTargetTileType || window.__wallTileTypes[0] || 1);
+});
+
+$(document).on('mousedown touchstart click', '#menuPanel2 .tile-type-input, #menuPanel2 .tile-type-label', function() {
+    window.__targetTileType = 3;
+});
 </script>
 <script>
 $(function() {

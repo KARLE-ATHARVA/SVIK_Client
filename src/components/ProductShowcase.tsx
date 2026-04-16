@@ -51,13 +51,14 @@ function mapTiles(rows: ShowcaseApiRow[]): ShowcaseTile[] {
   const assetBase = String(ASSET_BASE ?? "").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
 
-  return rows.map((item) => {
+  return rows.map((item, index) => {
     const skuCode = String(item.sku_code ?? "").trim();
     const tileName = String(item.sku_name ?? "").trim();
     const categoryName = String(item.cat_name ?? "").trim();
+    const fallbackId = skuCode || tileName || `showcase-tile-${index}`;
 
     return {
-      id: item.tile_id,
+      id: item.tile_id ?? fallbackId,
       name: tileName || "Product",
       image: `${normalizedAssetBase}media/thumb/${skuCode}.jpg`,
       subtitle: categoryName || "Category unavailable",

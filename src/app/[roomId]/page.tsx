@@ -1,9 +1,5 @@
 import { notFound } from "next/navigation";
-import dynamic from "next/dynamic";
-
-const RoomIframePage = dynamic(() => import("@/components/RoomIframePage"), {
-  ssr: false,
-});
+import RoomIframePage from "@/components/RoomIframePage";
 
 const STATIC_ROOM_IDS = [
   "6",

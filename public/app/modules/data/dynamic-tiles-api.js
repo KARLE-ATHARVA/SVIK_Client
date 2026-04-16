@@ -81,6 +81,34 @@
         return s;
     }
 
+    function isLocalDevHost() {
+        try {
+            var host = (global.location && global.location.hostname ? global.location.hostname : "").toLowerCase();
+            return host === "localhost" || host === "127.0.0.1";
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function toProxyAssetUrl(input) {
+        var s = String(input || "").trim();
+        if (!s) return "";
+        if (!/^https?:\/\//i.test(s)) return s;
+
+        var remoteBase = normalizeApiBase(
+            (typeof global.NEXT_PUBLIC_REMOTE_ASSET_BASE === "string" && global.NEXT_PUBLIC_REMOTE_ASSET_BASE) ||
+            (global.parent && global.parent.NEXT_PUBLIC_REMOTE_ASSET_BASE) ||
+            (typeof global.NEXT_PUBLIC_ASSET_BASE === "string" && global.NEXT_PUBLIC_ASSET_BASE) ||
+            (global.parent && global.parent.NEXT_PUBLIC_ASSET_BASE) ||
+            ""
+        );
+
+        if (!remoteBase) return s;
+        if (s.indexOf(remoteBase) !== 0) return s;
+
+        return "/__asset_proxy__/" + s.slice(remoteBase.length).replace(/^\/+/, "");
+    }
+
     function getAssetBase() {
         var fromGlobal = "";
         var fromPublicEnv = "";
@@ -210,8 +238,12 @@
     function toRenderableUrl(remoteUrl) {
         var r = toAbsUrl(remoteUrl);
         if (!r) return "/app/images/saved_placeholder.svg";
+        if (isLocalDevHost()) {
+            r = toProxyAssetUrl(r);
+        }
         if (r.indexOf("/app/") === 0 || r.indexOf("/images/") === 0) return r;
         if (r.indexOf("/__asset_proxy__/") === 0) {
+            if (isLocalDevHost()) return r;
             return getAssetBase() + r.replace(/^\/__asset_proxy__\//, "");
         }
         return r;

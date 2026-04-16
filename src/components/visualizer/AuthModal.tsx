@@ -239,7 +239,14 @@ export default function AuthModal({ open, onClose, onSuccess }: Props) {
 
   if (!open) return null;
 
-
+  function resolveAuthUrl(endpoint: string) {
+    const rawBase = String(API_BASE ?? "").trim();
+    const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+    if (!rawBase) {
+      throw new Error("API base URL not configured (NEXT_PUBLIC_API_BASE).");
+    }
+    return `${base}${endpoint}`;
+  }
 
 const handleSubmit = async () => {
   setError("");
@@ -249,27 +256,7 @@ const handleSubmit = async () => {
   setLoading(true);
   try {
     const endpoint = mode === "login" ? "cust_login" : "cust_signup";
-
-    // build URL safely
-    const rawBase = String(API_BASE ?? "");
-    const base = rawBase.trim().replace(/\/+$/, "");
-    if (!base) {
-      setError("API base URL not configured (NEXT_PUBLIC_API_BASE).");
-      setLoading(false);
-      return;
-    }
-
-    let url = "";
-    try {
-      url = new URL(`/${endpoint}`, base).toString();
-    } catch (e) {
-      console.error("Bad API URL parts:", { rawBase, base, endpoint, e });
-      setError("Invalid API base URL.");
-      setLoading(false);
-      return;
-    }
-
-    console.log("Auth URL =", url);
+    const url = resolveAuthUrl(endpoint);
 
     const payload = mode === "login"
       ? { email, password }

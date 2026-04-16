@@ -7,6 +7,15 @@ import { isValidMobile, validateAuthForm } from "@/lib/authValidation";
 
 type Mode = "login" | "signup";
 
+function resolveAuthUrl(endpoint: string) {
+  const rawBase = String(API_BASE ?? "").trim();
+  if (!rawBase) {
+    throw new Error("API base URL not configured (NEXT_PUBLIC_API_BASE).");
+  }
+  const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+  return `${base}${endpoint}`;
+}
+
 function LoginPageContent() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -55,7 +64,7 @@ function LoginPageContent() {
               password,
             };
 
-      const res = await fetch(`${API_BASE}${endpoint}`, {
+      const res = await fetch(resolveAuthUrl(endpoint), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
