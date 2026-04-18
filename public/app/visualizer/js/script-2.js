@@ -1037,7 +1037,44 @@ $(function(){
         return match ? match[1] : "";
     }
 
+    var ROOM_NAME_BY_ID = {
+        "6": "living-room",
+        "20": "living-room",
+        "21": "living-room",
+        "22": "living-room",
+        "30": "living-room",
+        "33": "living-room",
+        "47": "living-room",
+        "8": "kitchen",
+        "26": "kitchen",
+        "29": "kitchen",
+        "34": "kitchen",
+        "35": "kitchen",
+        "45": "kitchen",
+        "46": "kitchen",
+        "12": "bathroom",
+        "23": "bathroom",
+        "24": "bathroom",
+        "25": "bathroom",
+        "40": "bathroom",
+        "42": "bathroom",
+        "44": "bathroom",
+        "27": "outdoor",
+        "28": "outdoor",
+        "31": "outdoor",
+        "32": "outdoor",
+        "36": "bedroom",
+        "37": "bedroom",
+        "38": "bedroom",
+        "39": "bedroom"
+    };
+
     function getCurrentRoomName() {
+        var roomId = getCurrentRoomId();
+        if (roomId && ROOM_NAME_BY_ID[roomId]) {
+            return ROOM_NAME_BY_ID[roomId];
+        }
+
         var roomLabel = $.trim($(".rooms-tabs li.active a").text() || "");
         if (roomLabel) {
             return slugifyFilenamePart(roomLabel, "room");
@@ -1166,7 +1203,7 @@ $(function(){
                 navigator.share({
                     files: [file],
                     title: "SvikInfotech Room Design PDF",
-                    text: "Sharing the room design PDF. You can choose WhatsApp if it is available on your device."
+                    text: "Sharing the room design."
                 }).catch(function(err) {
                     if (err && err.name === "AbortError") return;
                     fallbackToWhatsApp("Direct PDF sharing is not supported on this device, so the PDF was downloaded and WhatsApp was opened with the design link.");
