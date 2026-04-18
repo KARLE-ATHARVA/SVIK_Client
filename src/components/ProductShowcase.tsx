@@ -5,8 +5,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FiChevronRight } from "react-icons/fi";
-import { ASSET_BASE } from "@/lib/constants";
-import { fetchFilterTileList, type TileListItem } from "@/lib/filterApi";
+import { API_BASE, ASSET_BASE } from "@/lib/constants";
 
 type ShowcaseTile = {
   id: string | number;
@@ -15,39 +14,54 @@ type ShowcaseTile = {
   subtitle: string;
 };
 
-function normalizeSpaceName(rawSpace: string | null | undefined): string {
-  const normalized = String(rawSpace ?? "").trim().toLowerCase();
+type ShowcaseApiRow = {
+  tile_id?: string | number;
+  sku_name?: string;
+  sku_code?: string;
+  cat_name?: string;
+};
 
-  switch (normalized) {
-    case "kitchen":
-      return "Kitchen";
-    case "living":
-    case "living room":
-    case "living_room":
-      return "Living Room";
-    case "bedroom":
-      return "Bedroom";
-    case "bathroom":
-      return "Bathroom";
-    default:
-      return "Kitchen";
+function resolveApiBase(): string {
+  const apiBase = String(API_BASE ?? "").trim();
+  if (!apiBase) {
+    throw new Error("NEXT_PUBLIC_API_BASE is not configured.");
   }
+  return apiBase.endsWith("/") ? apiBase : `${apiBase}/`;
 }
 
-function mapTiles(rows: TileListItem[]): ShowcaseTile[] {
+async function fetchOneTilePerCategory(signal?: AbortSignal): Promise<ShowcaseApiRow[]> {
+  const response = await fetch(`${resolveApiBase()}GetOneTilePerGroup?groupBy=category`, {
+    method: "GET",
+    cache: "no-store",
+    signal,
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `GetOneTilePerGroup failed with status ${response.status}${body ? `: ${body}` : ""}`
+    );
+  }
+
+  const raw = (await response.json()) as unknown;
+  return Array.isArray(raw) ? (raw as ShowcaseApiRow[]) : [];
+}
+
+function mapTiles(rows: ShowcaseApiRow[]): ShowcaseTile[] {
   const assetBase = String(ASSET_BASE ?? "").trim();
   const normalizedAssetBase = assetBase.endsWith("/") ? assetBase : `${assetBase}/`;
 
-  return rows.map((item) => {
+  return rows.map((item, index) => {
     const skuCode = String(item.sku_code ?? "").trim();
     const tileName = String(item.sku_name ?? "").trim();
-    const size = String(item.size_name ?? "").trim();
+    const categoryName = String(item.cat_name ?? "").trim();
+    const fallbackId = skuCode || tileName || `showcase-tile-${index}`;
 
     return {
-      id: item.tile_id,
+      id: item.tile_id ?? fallbackId,
       name: tileName || "Product",
       image: `${normalizedAssetBase}media/thumb/${skuCode}.jpg`,
-      subtitle: size || "Size unavailable",
+      subtitle: categoryName || "Category unavailable",
     };
   });
 }
@@ -90,16 +104,9 @@ export default function ProductShowcase() {
 
   useEffect(() => {
     let isMounted = true;
-    const selectedSpace = normalizeSpaceName(localStorage.getItem("selected_space_type"));
+    const controller = new AbortController();
 
-    fetchFilterTileList({
-      spaceName: selectedSpace,
-      catNames: [],
-      appNames: [],
-      finishNames: [],
-      sizeNames: [],
-      colorNames: [],
-    })
+    fetchOneTilePerCategory(controller.signal)
       .then((rows) => {
         if (!isMounted) return;
         setTiles(ensureTileCount(mapTiles(rows), 12));
@@ -115,6 +122,7 @@ export default function ProductShowcase() {
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, []);
 
@@ -188,15 +196,14 @@ export default function ProductShowcase() {
                   key={`${tile.id}-${index}`}
                   className="min-w-[280px] flex flex-col items-center group cursor-pointer"
                 >
-                  <div className="relative w-full overflow-hidden rounded-xl shadow-2xl mb-4 bg-white">
+                  <div className="relative flex h-[280px] w-full items-center justify-center mb-4">
                     <Image
                       src={tile.image}
                       alt={tile.name}
                       width={900}
                       height={700}
-                      className="h-auto w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                      className="max-h-full w-auto max-w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                     />
-                    <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
                   </div>
 
                   <h3 className="text-xl font-semibold mb-1 group-hover:text-amber-700 transition">

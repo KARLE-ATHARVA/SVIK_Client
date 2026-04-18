@@ -281,7 +281,7 @@ const wallMatsRef = useRef<any[]>([]);
   const ownedMapsRef = useRef<Set<THREE.Texture>>(new Set());
 
   // Area patch meshes
-  const areaMeshesRef = useRef<Partial<Record<WallTarget, THREE.Mesh>>>({});
+  const areaMeshesRef = useRef<Partial<Record<WallTarget, THREE.Mesh[]>>>({});
 
   // Draw-area state
   const modeRef = useRef<InteractionMode>("orbit");
@@ -330,6 +330,9 @@ const wallMatsRef = useRef<any[]>([]);
   const [appliedWallBySurface, setAppliedWallBySurface] = useState<
     Partial<Record<WallTarget, AppliedTile>>
   >({});
+  const [appliedAreaTiles, setAppliedAreaTiles] = useState<
+    { id: string; wall: WallTarget; tile: AppliedTile }[]
+  >([]);
 
   // ── REFS for tile — always fresh, no stale closure issues ─────────────────
   const selectedTileRef = useRef<any>(null);
@@ -558,16 +561,15 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180;
     }
   };
 
-  const handleSavePDF = async () => {
+  const buildPdfDoc = async (): Promise<{ pdf: any; fileName: string } | null> => {
     const jsPDFModule = await import("jspdf").catch(() => null);
     const JsPDF = jsPDFModule?.jsPDF ?? null;
     if (!JsPDF) {
-      window.print();
-      return;
+      return null;
     }
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
     const c = document.createElement("canvas");
     c.width = canvas.width;
     c.height = canvas.height;
@@ -681,19 +683,35 @@ const fileName = `${baseName}${suffix}.pdf`;
     //   ...appliedFloorTiles.map((t) => ({ ...t, section: "Floor Tile" })),
     // ];
     const currentWallTiles = (Object.values(appliedWallBySurface).filter(Boolean) as AppliedTile[])
-  .map((t) => ({ ...t, section: "Wall Tile" }));
+      .map((t) => ({ ...t, section: "Wall Tile" }));
 
-const currentFloorTile = appliedFloorTiles[0]
-  ? [{ ...appliedFloorTiles[0], section: "Floor Tile" }]
-  : [];
+    const currentAreaTiles = appliedAreaTiles.map(({ wall, tile }) => ({
+      ...tile,
+      section: `Highlighter Tile (${WALL_LABELS[wall] ?? "Wall"})`,
+    }));
 
-const allTiles = [...currentWallTiles, ...currentFloorTile];
+    const currentFloorTile = appliedFloorTiles[0]
+      ? [{ ...appliedFloorTiles[0], section: "Floor Tile" }]
+      : [];
+
+    const allTiles = [...currentWallTiles, ...currentAreaTiles, ...currentFloorTile];
+    const uniqueTiles = (() => {
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const t of allTiles) {
+    const key = `${t.section}__${getTileKey(t as AppliedTile)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+  }
+  return out;
+})();
 
 
     let y = 132;
     const cardH = 56;
 
-    for (const tile of allTiles) {
+    for (const tile of uniqueTiles) {
       if (y + cardH + 6 > 285) {
         pdf.addPage();
         y = 16;
@@ -788,14 +806,22 @@ pdf.text(`Finish: ${tile.finish || "-"}`, leftX, y + 32);
       y += cardH + 6;
     }
 
-    if (!allTiles.length) {
+    if (!uniqueTiles.length) {
       pdf.setFontSize(10);
       pdf.setFont("helvetica", "normal");
       pdf.text("No applied tiles found for wall/floor.", margin, 136);
     }
 
-    pdf.save(fileName);
+    return { pdf, fileName };
+  };
 
+  const handleSavePDF = async () => {
+    const built = await buildPdfDoc();
+    if (!built) {
+      window.print();
+      return;
+    }
+    built.pdf.save(built.fileName);
   };
 
   const handleSaveLink = async () => {
@@ -808,41 +834,17 @@ pdf.text(`Finish: ${tile.finish || "-"}`, leftX, y + 32);
     }
   };
 
-  const handleShareImage = () => {
-    const buildWatermarkedShareFile = async () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return null;
-      const footerHeight = 54;
-      const exportCanvas = document.createElement("canvas");
-      exportCanvas.width = canvas.width;
-      exportCanvas.height = canvas.height + footerHeight;
-      const ctx = exportCanvas.getContext("2d");
-      if (!ctx) return null;
-
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-      ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, canvas.height, exportCanvas.width, footerHeight);
-      ctx.fillStyle = "#0f172a";
-      ctx.font = `700 ${Math.max(18, Math.round(exportCanvas.width * 0.028))}px Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("SvikInfotech", exportCanvas.width / 2, canvas.height + footerHeight / 2);
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        exportCanvas.toBlob((nextBlob) => resolve(nextBlob), "image/png");
-      });
-      if (!blob) return null;
-      return new File([blob], "svik-room-share.png", { type: "image/png" });
-    };
-
+  const handleSharePDF = () => {
     const run = async () => {
-      const file = await buildWatermarkedShareFile();
-      if (!file) {
-        alert("Unable to prepare share image.");
+      const built = await buildPdfDoc();
+      if (!built) {
+        alert("Unable to generate PDF.");
         return;
       }
+
+      const pdfArrayBuffer = built.pdf.output("arraybuffer") as ArrayBuffer;
+      const pdfBlob = new Blob([pdfArrayBuffer], { type: "application/pdf" });
+      const file = new File([pdfBlob], built.fileName, { type: "application/pdf" });
 
       try {
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -852,13 +854,15 @@ pdf.text(`Finish: ${tile.finish || "-"}`, leftX, y + 32);
             text: "SvikInfotech room design",
           });
         } else {
-          const url = URL.createObjectURL(file);
+          const url = URL.createObjectURL(pdfBlob);
           const link = document.createElement("a");
           link.href = url;
-          link.download = file.name;
-            link.click();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            alert("Direct image sharing is not supported in this browser, so the image was downloaded instead.");
+          link.download = built.fileName;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          alert(
+            "Direct PDF sharing is not supported in this browser, so the PDF was downloaded instead."
+          );
         }
       } catch {
         // ignore cancellation
@@ -875,34 +879,14 @@ pdf.text(`Finish: ${tile.finish || "-"}`, leftX, y + 32);
     }
     setMailSending(true);
     try {
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        alert("Preview image is not available.");
+      const built = await buildPdfDoc();
+      if (!built) {
+        alert("Unable to generate PDF.");
         return;
       }
 
-      const c = document.createElement("canvas");
-      c.width = canvas.width;
-      c.height = canvas.height;
-      const ctx = c.getContext("2d");
-      if (!ctx) {
-        alert("Unable to prepare preview image.");
-        return;
-      }
-      ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, c.width, c.height);
-      ctx.drawImage(canvas, 0, 0, c.width, c.height);
-
-      const designLink = window.location.href;
       const sceneKey =
         localStorage.getItem("selected_3d_sub_scene") || "living_room";
-      const imageBlob = await new Promise<Blob | null>((resolve) => {
-        c.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
-      });
-      if (!imageBlob) {
-        alert("Unable to prepare preview image.");
-        return;
-      }
 
       const formData = new FormData();
       formData.append("FullName", mailForm.name || "");
@@ -910,8 +894,10 @@ pdf.text(`Finish: ${tile.finish || "-"}`, leftX, y + 32);
       formData.append("Subject", mailForm.subject || "");
       formData.append("Message", mailForm.message || "");
       formData.append("RoomName", sceneKey || "");
-      formData.append("DesignLink", designLink || "");
-      formData.append("Image", imageBlob, "visualizer-3d.jpg");
+
+      const pdfArrayBuffer = built.pdf.output("arraybuffer") as ArrayBuffer;
+      const pdfBlob = new Blob([pdfArrayBuffer], { type: "application/pdf" });
+      formData.append("Pdf", pdfBlob, built.fileName);
 
       const res = await fetch(resolveMailEndpoint(), {
         method: "POST",
@@ -926,35 +912,15 @@ pdf.text(`Finish: ${tile.finish || "-"}`, leftX, y + 32);
           setMailForm({ name: "", to: "", subject: "", message: "" });
         }, 2000);
       } else {
-        const body = [
-          `Name: ${mailForm.name}`,
-          `Room: ${sceneKey}`,
-          "",
-          mailForm.message,
-          "",
-          `Design URL: ${designLink}`,
-        ].join("\n");
-        window.location.href = `mailto:${encodeURIComponent(
-          mailForm.to
-        )}?subject=${encodeURIComponent(
-          mailForm.subject
-        )}&body=${encodeURIComponent(body)}`;
-        setActivModal(null);
+        const errText = await res.text().catch(() => "");
+        alert(
+          errText
+            ? `Failed to send email (${res.status}). ${errText}`
+            : `Failed to send email (${res.status}).`
+        );
       }
     } catch {
-      const body = [
-        `Name: ${mailForm.name}`,
-        "",
-        mailForm.message,
-        "",
-        `Design URL: ${window.location.href}`,
-      ].join("\n");
-      window.location.href = `mailto:${encodeURIComponent(
-        mailForm.to
-      )}?subject=${encodeURIComponent(
-        mailForm.subject
-      )}&body=${encodeURIComponent(body)}`;
-      setActivModal(null);
+      alert("Failed to send email. Please try again.");
     } finally {
       setMailSending(false);
     }
@@ -1273,22 +1239,22 @@ const applyWall = useCallback(
       const [rx, ry] = getRepeat(selectedTileSizeRef.current, "wall");
       const wallMesh = scene.getObjectByName(wall);
       const wallPos = wallMesh ? wallMesh.position : new THREE.Vector3();
+      const areaTile = buildAppliedTile(
+        selectedTileRef.current,
+        selectedTileSizeRef.current
+      );
 
       markCloseSidebarOnApply();
       loadAndApply((base) => {
-        registerAppliedTile("wall");
-        if (areaMeshesRef.current[wall]) {
-          scene.remove(areaMeshesRef.current[wall]!);
-          areaMeshesRef.current[wall]!.geometry.dispose();
-          const oldMat = areaMeshesRef.current[wall]!
-            .material as THREE.MeshStandardMaterial;
-          if (oldMat.map && ownedMapsRef.current.has(oldMat.map)) {
-            oldMat.map.dispose();
-            ownedMapsRef.current.delete(oldMat.map);
-          }
-          oldMat.dispose();
-          delete areaMeshesRef.current[wall];
+        if (areaTile) {
+          const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+          //setAppliedAreaTiles((prev) => [...prev, { id, wall, tile: areaTile }]);
+        setAppliedAreaTiles((prev) => {
+  const filtered = prev.filter((t) => t.wall !== wall);
+  return [...filtered, { id, wall, tile: areaTile }];
+});
         }
+        registerAppliedTile("wall");
         const isBackWall = wall === SURFACE_NAMES.wallBack;
         const isLeftWall = wall === SURFACE_NAMES.wallLeft;
         const horizDiff = isBackWall ? Math.abs(p2.x - p1.x) : Math.abs(p2.z - p1.z);
@@ -1321,9 +1287,10 @@ const applyWall = useCallback(
           mesh.rotation.y = -Math.PI / 2;
           mesh.position.set(wallPos.x - OFFSET, cy, (p1.z + p2.z) / 2);
         }
-        mesh.name = `area_patch_${wall}`;
+        mesh.name = `area_patch_${wall}_${Date.now()}`;
         scene.add(mesh);
-        areaMeshesRef.current[wall] = mesh;
+        const prevMeshes = areaMeshesRef.current[wall] ?? [];
+        areaMeshesRef.current[wall] = [...prevMeshes, mesh];
         setHasAreaPatch((prev) => ({ ...prev, [wall]: true }));
       });
     },
@@ -1356,16 +1323,18 @@ const applyWall = useCallback(
 
   const clearAreaPatch = useCallback((wall: WallTarget) => {
     if (!sceneRef.current) return;
-    const mesh = areaMeshesRef.current[wall];
-    if (mesh) {
-      sceneRef.current.remove(mesh);
-      mesh.geometry.dispose();
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (mat.map && ownedMapsRef.current.has(mat.map)) {
-        mat.map.dispose();
-        ownedMapsRef.current.delete(mat.map);
-      }
-      mat.dispose();
+    const meshes = areaMeshesRef.current[wall];
+    if (meshes?.length) {
+      meshes.forEach((mesh) => {
+        sceneRef.current!.remove(mesh);
+        mesh.geometry.dispose();
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (mat.map && ownedMapsRef.current.has(mat.map)) {
+          mat.map.dispose();
+          ownedMapsRef.current.delete(mat.map);
+        }
+        mat.dispose();
+      });
       delete areaMeshesRef.current[wall];
       setHasAreaPatch((prev) => {
         const n = { ...prev };
@@ -1373,6 +1342,8 @@ const applyWall = useCallback(
         return n;
       });
     }
+
+    setAppliedAreaTiles((prev) => prev.filter((t) => t.wall !== wall));
   }, []);
 
   const clearPreviewBox = useCallback(() => {
@@ -1540,23 +1511,26 @@ const applyWall = useCallback(
     // Remove all area patches
     if (sceneRef.current) {
       (Object.keys(areaMeshesRef.current) as WallTarget[]).forEach((wall) => {
-        const mesh = areaMeshesRef.current[wall];
-        if (!mesh) return;
+        const meshes = areaMeshesRef.current[wall];
+        if (!meshes?.length) return;
 
-        sceneRef.current!.remove(mesh);
-        mesh.geometry.dispose();
+        meshes.forEach((mesh) => {
+          sceneRef.current!.remove(mesh);
+          mesh.geometry.dispose();
 
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-        if (mat.map && ownedMapsRef.current.has(mat.map)) {
-          mat.map.dispose();
-          ownedMapsRef.current.delete(mat.map);
-        }
-        mat.dispose();
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          if (mat.map && ownedMapsRef.current.has(mat.map)) {
+            mat.map.dispose();
+            ownedMapsRef.current.delete(mat.map);
+          }
+          mat.dispose();
+        });
 
         delete areaMeshesRef.current[wall];
       });
     }
     setHasAreaPatch({});
+    setAppliedAreaTiles([]);
 
     // Restore floor
     const floorMat = floorMatRef.current;
@@ -1611,6 +1585,7 @@ const applyWall = useCallback(
 
     setAppliedWallTiles([]);
     setAppliedFloorTiles([]);
+    setAppliedWallBySurface({});
 
     localStorage.removeItem("selected_tile");
     localStorage.removeItem("selected_tile_size");
@@ -2658,8 +2633,26 @@ const handleDoubleClick = useCallback(
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, [resizeRenderer]);
 
-  const activeProductTiles = productInfoTab === "wall" ? appliedWallTiles : appliedFloorTiles;
+  //const activeProductTiles = productInfoTab === "wall" ? appliedWallTiles : appliedFloorTiles;
+const activeProductTiles = (() => {
+  const raw =
+    productInfoTab === "wall"
+      ? [
+          ...Object.values(appliedWallBySurface).filter(Boolean) as AppliedTile[],
+          ...appliedAreaTiles.map(({ tile }) => tile), // ← add this
+        ]
+      : appliedFloorTiles[0]
+      ? [appliedFloorTiles[0]]
+      : [];
 
+  const seen = new Set<string>();
+  return raw.filter((t) => {
+    const key = getTileKey(t);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+})();
   // ─── UI ──────────────────────────────────────────────────────────────────
   return (
     <div ref={containerRef} className="relative w-full h-full bg-[#F9F7F2] overflow-hidden">
@@ -2670,7 +2663,7 @@ const handleDoubleClick = useCallback(
         onSave={() => setActivModal("save")}
         onPrint={handlePrint}
         onEmail={() => setActivModal("mail")}
-        onShare={handleShareImage}
+        onShare={handleSharePDF}
         onFullscreen={toggleFullscreen}
       />
 

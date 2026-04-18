@@ -7,6 +7,8 @@ type SavedDesign = {
   link: string;
   image: string | null;
   designId?: string;
+  designData?: string;
+  roomId?: string | null;
 };
 
 type RoomIframePageProps = {
@@ -71,6 +73,21 @@ function pushLocalSavedRoom(design: { link: string; image: string | null }) {
   }
 }
 
+function tryParse3DDesignPayload(encoded: string) {
+  try {
+    const decoded = atob(encoded);
+    const json = decodeURIComponent(
+      Array.from(decoded)
+        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+        .join("")
+    );
+    const parsed = JSON.parse(json);
+    return parsed?.kind === "svik-3d-v1" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function RoomIframePage({ roomId }: RoomIframePageProps) {
   const [designHash, setDesignHash] = useState<string | null>(null);
   const [savedDesign, setSavedDesign] = useState<SavedDesign | null>(null);
@@ -96,6 +113,8 @@ export default function RoomIframePage({ roomId }: RoomIframePageProps) {
         link: payload.link,
         image: payload.image ?? null,
         designId: payload.designId,
+        designData: payload.designData,
+        roomId: payload.roomId ?? null,
       });
       setShowModal(true);
     };
@@ -131,6 +150,43 @@ export default function RoomIframePage({ roomId }: RoomIframePageProps) {
         return;
       }
 
+      if (design.designData) {
+        try {
+          const linkRes = await fetch(`${apiBase}saved_rooms/designs`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              designData: design.designData,
+              roomId: design.roomId ?? roomId ?? null,
+            }),
+          });
+          const linkData = await linkRes.json().catch(() => null);
+          if (linkRes.ok && linkData?.designId) {
+            design.designId = linkData.designId;
+            const is3D = !!tryParse3DDesignPayload(String(design.designData ?? ""));
+            design.link = `${window.location.origin}/visualizer?d=${linkData.designId}${
+              is3D ? "&view=3d" : ""
+            }`;
+            const resolvedRoom = design.roomId ?? roomId ?? null;
+            localStorage.setItem(
+              `visualizer_design_payload_${linkData.designId}`,
+              design.designData
+            );
+            if (resolvedRoom) {
+              localStorage.setItem(
+                `visualizer_design_room_${linkData.designId}`,
+                String(resolvedRoom)
+              );
+            }
+          }
+        } catch {
+          // If design linking fails, continue saving the image anyway.
+        }
+      }
+
       setIsSaving(true);
 
       let file: File | null = null;
@@ -162,7 +218,7 @@ export default function RoomIframePage({ roomId }: RoomIframePageProps) {
       const timePart =
         String(now.getHours()).padStart(2, "0") +
         String(now.getMinutes()).padStart(2, "0");
-      const fileName = `room${roomId}_${datePart}_${timePart}`;
+      const fileName = `room${design.roomId ?? roomId}_${datePart}_${timePart}`;
       formData.append("imageName", fileName);
 
       const res = await fetch(`${apiBase}saved_rooms/save`, {

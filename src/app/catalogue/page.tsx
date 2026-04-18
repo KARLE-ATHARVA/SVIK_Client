@@ -5,10 +5,9 @@ import Image from "next/image";
 import { listCatalogueItems, removeFromCatalogue, type LocalCatalogueItem } from "@/lib/localCatalogue";
 
 export default function CataloguePage() {
-  const [items, setItems] = useState<LocalCatalogueItem[]>([]);
+  const [items, setItems] = useState<LocalCatalogueItem[]>(() => listCatalogueItems());
 
   useEffect(() => {
-    setItems(listCatalogueItems());
     const onUpdate = () => setItems(listCatalogueItems());
     window.addEventListener("catalogue:updated", onUpdate);
     return () => window.removeEventListener("catalogue:updated", onUpdate);
@@ -34,28 +33,31 @@ export default function CataloguePage() {
           ) : (
             <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-20 xl:gap-y-20">
               {items.map((item) => (
-                <div key={item.skuCode} className="rounded-3xl bg-white p-4 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.12)]">
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-slate-100">
+                <div key={item.skuCode} className="group">
+                  <div className="relative flex h-[320px] items-center justify-center">
+                    <div className="pointer-events-none absolute inset-x-8 bottom-6 h-12 rounded-full bg-slate-300/20 blur-2xl transition duration-500 group-hover:bg-amber-200/30" />
                     <Image
                       src={item.image}
                       alt={item.name}
                       fill
                       unoptimized
-                      className="object-contain"
+                      className="object-contain transition duration-500 group-hover:scale-[1.03]"
                     />
                   </div>
-                  <div className="mt-4">
-                    <div className="text-[11px] font-extrabold uppercase">{item.name}</div>
-                    <div className="text-[9px] uppercase tracking-widest text-slate-400">
+                  <div className="mt-2 text-center">
+                    <div className="text-sm font-extrabold uppercase tracking-[0.08em] text-slate-900">
+                      {item.name}
+                    </div>
+                    <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-700/80">
                       {item.size || "Size unavailable"}
                     </div>
-                    <div className="mt-4 flex items-center justify-between gap-2">
-                      <div className="rounded-full bg-slate-100 px-3 py-1 text-[9px] font-bold uppercase text-slate-600">
+                    <div className="mt-5 flex items-center justify-center gap-3">
+                      <div className="rounded-full border border-slate-200/80 bg-white/60 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 backdrop-blur-sm">
                         {item.skuCode}
                       </div>
                       <button
                         onClick={() => removeFromCatalogue(item.skuCode)}
-                        className="rounded-full border border-slate-200 px-3 py-1 text-[9px] font-bold uppercase text-slate-600 hover:bg-slate-50"
+                        className="rounded-full border border-amber-200 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700 transition hover:border-amber-300 hover:bg-amber-50"
                       >
                         Remove
                       </button>
