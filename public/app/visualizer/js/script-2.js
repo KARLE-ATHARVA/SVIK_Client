@@ -977,6 +977,9 @@ $(function(){
             if (!isFinite(tk)) continue;
 
             var layout = $('.layout-type-input[data-tile-id=' + tk + ']:checked').val() || "grid";
+            if (layout === "dragdrop") {
+                layout = "grid";
+            }
             var groutId = getSelectedGroutId(tk);
             var clickedTiles = [];
 
@@ -1059,6 +1062,39 @@ $(function(){
         return getCurrentRoomName() + "-" + getSaveDateStamp() + "." + extension;
     }
 
+    function hasAppliedTilesSelected() {
+        if (typeof getAppliedTilesByPanel !== "function") return false;
+        var sections = getAppliedTilesByPanel();
+        return !!(sections && sections.length);
+    }
+
+    function buildWhatsAppShareUrl() {
+        var lines = ["SVIK room design PDF"];
+        var designLink = "";
+        try {
+            designLink = createDesignShareLink();
+        } catch (e) {}
+        if (designLink) {
+            lines.push("Design link: " + designLink);
+        }
+        return "https://wa.me/?text=" + encodeURIComponent(lines.join("\n"));
+    }
+
+    function openWhatsAppShareWindow(url) {
+        if (!url) return false;
+        try {
+            var popup = window.open(url, "_blank", "noopener");
+            if (popup) return true;
+        } catch (e) {}
+
+        try {
+            window.location.href = url;
+            return true;
+        } catch (err) {}
+
+        return false;
+    }
+
     function setSaveOptionsOpen(isOpen) {
         var panel = document.getElementById("saveOptionsPanel");
         var toggle = document.querySelector(".save-options-toggle");
@@ -1088,48 +1124,23 @@ $(function(){
     }
 
     function shareDesignImageInternal() {
-        function buildWatermarkedShareFile(done) {
-            var sourceDataUrl = vis_cvs.toDataURL_('image/png');
-            var img = new Image();
-            img.onload = function() {
-                try {
-                    var footerHeight = 54;
-                    var exportCanvas = document.createElement("canvas");
-                    exportCanvas.width = img.width;
-                    exportCanvas.height = img.height + footerHeight;
-                    var ctx = exportCanvas.getContext("2d");
-                    if (!ctx) {
-                        done(null);
-                        return;
-                    }
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-                    ctx.drawImage(img, 0, 0, img.width, img.height);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, img.height, exportCanvas.width, footerHeight);
-                    ctx.fillStyle = "#0f172a";
-                    ctx.font = "700 " + Math.max(18, Math.round(exportCanvas.width * 0.028)) + "px Arial";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText("SvikInfotech", exportCanvas.width / 2, img.height + footerHeight / 2);
-                    exportCanvas.toBlob(function(blob) {
-                        if (!blob) {
-                            done(null);
-                            return;
-                        }
-                        done(new File([blob], "svik-room-share.png", { type: "image/png" }));
-                    }, "image/png");
-                } catch (e) {
-                    done(null);
-                }
-            };
-            img.onerror = function() { done(null); };
-            img.src = sourceDataUrl;
+        if (!hasAppliedTilesSelected()) {
+            alert("Please apply at least one tile before sharing on WhatsApp.");
+            return;
         }
 
-        buildWatermarkedShareFile(function(file) {
+        setShareOptionsOpen(false);
+        setSaveOptionsOpen(false);
+        $('#preloader2').show();
+        var whatsappUrl = buildWhatsAppShareUrl();
+        saveDesignInfoPdf({
+            mode: "share"
+        }, function(result) {
+            $('#preloader2').hide();
+
+            var file = result && result.file ? result.file : null;
             if (!file) {
-                alert("Unable to prepare share image.");
+                alert("Unable to prepare PDF for sharing.");
                 return;
             }
 
@@ -1145,16 +1156,25 @@ $(function(){
                 if (withMessage) alert(withMessage);
             }
 
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            function fallbackToWhatsApp(withMessage) {
+                downloadFile();
+                openWhatsAppShareWindow(whatsappUrl);
+                if (withMessage) alert(withMessage);
+            }
+
+            if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
                 navigator.share({
                     files: [file],
-                    title: "SvikInfotech Room Design",
-                    text: "SvikInfotech room design"
-                }).catch(function() {});
+                    title: "SvikInfotech Room Design PDF",
+                    text: "Sharing the room design PDF. You can choose WhatsApp if it is available on your device."
+                }).catch(function(err) {
+                    if (err && err.name === "AbortError") return;
+                    fallbackToWhatsApp("Direct PDF sharing is not supported on this device, so the PDF was downloaded and WhatsApp was opened with the design link.");
+                });
                 return;
             }
 
-            downloadFile("Direct image sharing is not supported in this browser, so the image was downloaded instead.");
+            fallbackToWhatsApp("PDF file sharing is not supported in this browser, so the PDF was downloaded and WhatsApp was opened with the design link. You can attach the PDF manually in WhatsApp.");
         });
     }
 
@@ -1827,6 +1847,9 @@ $(function(){
                 layoutMode = $('.layout-type-input[data-tile-id=' + tid + ']:checked').val()
                     || (window.__layoutByTileType && window.__layoutByTileType[tid])
                     || "grid";
+                if (layoutMode === "dragdrop") {
+                    layoutMode = "grid";
+                }
             } else if (window.__layoutByTileType) {
                 var fb = Number(window.__targetTileType || window.__wallTargetTileType || 0);
                 if (isFinite(fb) && window.__layoutByTileType[fb]) {
@@ -2460,10 +2483,34 @@ $(function(){
         });
     }
 
-    saveDesignInfoPdf = function(onDone) {
+    saveDesignInfoPdf = function(options, onDone) {
+        if (typeof options === "function") {
+            onDone = options;
+            options = {};
+        }
+        options = options || {};
+
         var pdf = new jsPDF("p", "mm", "a4");
         var pageW = 210;
         var margin = 12;
+        var fileName = getPdfFilename();
+
+        function finish() {
+            if (options.mode === "share") {
+                try {
+                    var blob = pdf.output("blob");
+                    var file = new File([blob], fileName, { type: "application/pdf" });
+                    if (typeof onDone === "function") onDone({ blob: blob, file: file, fileName: fileName });
+                } catch (e) {
+                    console.error("Unable to prepare PDF file for sharing", e);
+                    if (typeof onDone === "function") onDone({ blob: null, file: null, fileName: fileName });
+                }
+                return;
+            }
+
+            pdf.save(fileName);
+            if (typeof onDone === "function") onDone({ fileName: fileName });
+        }
 
         pdf.setFillColor(14, 70, 69);
         pdf.rect(0, 0, pageW, 24, "F");
@@ -2493,8 +2540,7 @@ $(function(){
             pdf.setFontSize(10);
             pdf.setFontStyle("normal");
             pdf.text("No applied tiles found for wall/floor.", margin, 136);
-            pdf.save(getPdfFilename());
-            if (typeof onDone === "function") onDone();
+            finish();
             return;
         }
 
@@ -2507,8 +2553,7 @@ $(function(){
 
         function nextCard() {
             if (idx >= cards.length) {
-                pdf.save(getPdfFilename());
-                if (typeof onDone === "function") onDone();
+                finish();
                 return;
             }
 
@@ -2991,6 +3036,9 @@ function selectTile(tiles) {
         setTile(tiles[0].tile_type,tiles,function(tid,tile_data)
         {
             var layoutType = $('.layout-type-input[data-tile-id=' + tid + ']:checked').val() || "grid";
+            if (layoutType === "dragdrop") {
+                layoutType = "grid";
+            }
 
             if(layoutType=="dragdrop")
             {

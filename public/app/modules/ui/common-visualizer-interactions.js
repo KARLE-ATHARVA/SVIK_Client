@@ -253,11 +253,7 @@ $(function() {
         vis_cvs.style.touchAction = "none";
 
         function isFreeLayoutActive() {
-            if (window.__freeLayoutActive) return true;
-            var tid = window.__targetTileType || window.__wallTargetTileType;
-            if (!tid || typeof $ !== "function") return false;
-            var val = $('.layout-type-input[data-tile-id=' + tid + ']:checked').val();
-            return val === "dragdrop";
+            return false;
         }
 
         var onPointerDown = function(e) {

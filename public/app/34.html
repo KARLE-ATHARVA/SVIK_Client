@@ -293,8 +293,14 @@ function syncVisibleLayoutToStore(tileType) {
 }
 
 function setVisibleLayoutForWall(tileType) {
+    var $storedGroup = $('#layouts-section-1 .js-layout-state-store .layout-type-input[data-room="1"][data-tile-id="' + tileType + '"]');
     var $storedChecked = $('#layouts-section-1 .js-layout-state-store .layout-type-input[data-room="1"][data-tile-id="' + tileType + '"]:checked');
     var selectedLayout = $storedChecked.val() || 'grid';
+    if (selectedLayout === 'dragdrop') {
+        $storedGroup.prop('checked', false);
+        $storedGroup.filter('[value="grid"]').prop('checked', true);
+        selectedLayout = 'grid';
+    }
     var $visibleInputs = $('#layouts-section-1 .layout-list .layout-type-input[data-room="1"]');
 
     $visibleInputs.each(function() {
