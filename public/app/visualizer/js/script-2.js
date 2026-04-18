@@ -1393,68 +1393,72 @@ $(function(){
                 required:"Please  Fill the message"
             }
         },
-submitHandler: function () {
-    var endpoint = resolveMailEndpoint();
-    var fullname = $(".full_name").val();
-    var to = $(".to").val();
-    var subject = $(".subject").val();
-    var message = $(".message").val();
-    var roomname = $.trim($(".rooms-tabs li.active a").text());
-    var designLink = createDesignShareLink();
-
-    $("#sendMail").attr("disabled", "disabled").text("SENDING...");
-
-    // Using same PDF generator WITHOUT download
-    saveDesignInfoPdf(function (pdfBlob) {
-
-        if (!pdfBlob) {
-            alert("PDF generation failed");
-            $("#sendMail").removeAttr("disabled").text("Send");
-            return;
-        }
-
-        var formData = new FormData();
-        formData.append("FullName", fullname || "");
-        formData.append("To", to || "");
-        formData.append("Subject", subject || "");
-        formData.append("Message", message || "");
-        formData.append("RoomName", roomname || "");
-        formData.append("DesignLink", designLink || "");
-
-        // SAME PDF
-        formData.append("Pdf", pdfBlob, getPdfFilename());
-
-        $.ajax({
-            url: endpoint,
-            type: "POST",
-            data: formData,
-            processData: false,
-            contentType: false,
-            timeout: 30000,
-
-            success: function () {
-                $("#mailform")[0].reset();
-                $("#modal_mail").find(".mail-form-fields").hide();
-                $("#modal_mail").find(".mail-success-message").show();
-                $("#sendMail").hide();
-
-                setTimeout(function () {
-                    $("#modal_mail").modal('hide');
-                }, 2000);
-            },
-
-            error: function () {
-                $("#modal_mail").modal('hide');
-                fallbackToMailClient(fullname, to, subject, message, roomname, designLink);
-            },
-
-            complete: function () {
-                $("#sendMail").removeAttr("disabled").text("Send");
+        submitHandler : function() {
+            var endpoint = resolveMailEndpoint();
+            var fullname    = $(".full_name").val();
+            var to      = $(".to").val();
+            var subject = $(".subject").val();
+            var message = $(".message").val();
+            var imgUrl  = vis_cvs.toDataURL_('image/jpeg');
+            var roomname = $.trim($(".rooms-tabs li.active a").text());
+            var designLink = createDesignShareLink();
+            var imageBlob = dataUrlToBlob(imgUrl);
+            if (!imageBlob) {
+                alert("Unable to prepare preview image.");
+                return;
             }
-        });
 
-    }, true); //  IMPORTANT FLAG
-}
+            var formData = new FormData();
+            formData.append("FullName", fullname || "");
+            formData.append("To", to || "");
+            formData.append("Subject", subject || "");
+            formData.append("Message", message || "");
+            formData.append("RoomName", roomname || "");
+            formData.append("DesignLink", designLink || "");
+            formData.append("Image", imageBlob, "visualizer-2d.jpg");
+
+            $("#sendMail").attr("disabled","disabled").text("SENDING...");
+            $.ajax({
+                url: endpoint,
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                timeout: 30000,
+                success : function(data){
+                    console.log("Email is sent");
+                    $("#mailform")[0].reset();
+                    $("#modal_mail").find(".mail-form-fields").hide();
+                    $("#modal_mail").find(".mail-success-message").show();
+                    $("#sendMail").hide();
+                    setTimeout(function() {
+                        $("#modal_mail").modal('hide');
+                    }, 2000);
+                },
+                error: function(xhr) {
+                    var serverError = "";
+                    try {
+                        var payload = xhr && xhr.responseJSON ? xhr.responseJSON : null;
+                        if (payload && payload.error) {
+                            serverError = payload.error;
+                            if (payload.details) {
+                                serverError += " (" + payload.details + ")";
+                            }
+                        } else if (xhr && xhr.responseText) {
+                            serverError = String(xhr.responseText);
+                        }
+                    } catch (e) {}
+                    if (serverError) {
+                        alert("Email send failed: " + serverError);
+                    }
+                    $("#modal_mail").modal('hide');
+                    fallbackToMailClient(fullname, to, subject, message, roomname, designLink);
+                },
+                complete: function() {
+                    $("#sendMail").removeAttr("disabled").text("Send");
+                }
+            });
+        }
     });
 
     $(".ic-download").click(function(e){
@@ -2479,7 +2483,6 @@ submitHandler: function () {
         });
     }
 
-<<<<<<< HEAD
     saveDesignInfoPdf = function(options, onDone) {
         if (typeof options === "function") {
             onDone = options;
@@ -2487,9 +2490,6 @@ submitHandler: function () {
         }
         options = options || {};
 
-=======
-    saveDesignInfoPdf = function(onDone, returnBlobOnly) {
->>>>>>> 780c61124bed161e46d2a02b109e56efac3575b9
         var pdf = new jsPDF("p", "mm", "a4");
         var pageW = 210;
         var margin = 12;
@@ -2551,32 +2551,13 @@ submitHandler: function () {
         // Keep in sync with drawProductCard() height + spacing.
         var cardTotalHeight = 64;
 
-<<<<<<< HEAD
         function nextCard() {
             if (idx >= cards.length) {
                 finish();
-=======
-            function finalize() {
-                var pdfBlob = pdf.output("blob");
-
-                // ✅ If used for email → return blob
-                if (returnBlobOnly) {
-                    if (typeof onDone === "function") onDone(pdfBlob);
-                    return;
-                }
-
-                // ✅ Default behavior → download
-                pdf.save(getPdfFilename());
-                if (typeof onDone === "function") onDone();
-            }
-
-        function nextCard() {
-            if (idx >= cards.length) {
-                finalize();
->>>>>>> 780c61124bed161e46d2a02b109e56efac3575b9
                 return;
             }
 
+            // Start a new page when the full next card cannot fit.
             if (y + cardTotalHeight > pageH - bottomMargin) {
                 pdf.addPage();
                 y = 16;
@@ -2588,7 +2569,6 @@ submitHandler: function () {
                 nextCard();
             });
         }
-
 
         nextCard();
     };
